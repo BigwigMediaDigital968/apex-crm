@@ -1,5 +1,5 @@
 export const ROUTES = {
-  dashboard: "/",
+  dashboard: "/dashboard",
   employees: "/employees",
   leads: "/leads",
   attendance: "/attendance",

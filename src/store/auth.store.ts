@@ -1,67 +1,44 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { AuthUser } from "@/types/auth";
 
-export type UserRole =
-  | "ADMIN"
-  | "MANAGER"
-  | "TEAM_LEAD"
-  | "SALES"
-  | "HR";
-
-export interface AuthUser {
-  id: string;
-  name: string;
-  email: string;
-  avatar?: string;
-  role: UserRole;
-}
-
-interface AuthStore {
+interface AuthState {
   user: AuthUser | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  isBootstrapping: boolean;
 
-  token: string | null;
-
-  isAuthenticated: boolean;
-
-  login: (user: AuthUser, token: string) => void;
-
-  logout: () => void;
-
-  updateUser: (user: Partial<AuthUser>) => void;
+  setSession: (user: AuthUser, accessToken: string, refreshToken: string) => void;
+  setAccessToken: (accessToken: string) => void;
+  setBootstrapping: (value: boolean) => void;
+  clearSession: () => void;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
-  user: {
-    id: "1",
-    name: "Demo Admin",
-    email: "admin@crm.com",
-    role: "ADMIN",
-  },
-
-  token: "demo-token",
-
-  isAuthenticated: true,
-
-  login: (user, token) =>
-    set({
-      user,
-      token,
-      isAuthenticated: true,
-    }),
-
-  logout: () =>
-    set({
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
       user: null,
-      token: null,
-      isAuthenticated: false,
-    }),
+      accessToken: null,
+      refreshToken: null,
+      isBootstrapping: true,
 
-  updateUser: (updatedUser) =>
-    set((state) => ({
-      user: state.user
-        ? {
-            ...state.user,
-            ...updatedUser,
-          }
-        : null,
-    })),
-}));
+      setSession: (user, accessToken, refreshToken) =>
+        set({ user, accessToken, refreshToken }),
+
+      setAccessToken: (accessToken) => set({ accessToken }),
+
+      setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
+
+      clearSession: () =>
+        set({ user: null, accessToken: null, refreshToken: null }),
+    }),
+    {
+      name: "crm-auth",
+      // accessToken is intentionally excluded — memory only
+      partialize: (state) => ({
+        refreshToken: state.refreshToken,
+        user: state.user,
+      }),
+    }
+  )
+);
