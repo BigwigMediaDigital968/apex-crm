@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { NavLink, useLocation } from "react-router";
 import { ROUTES } from "@/config/routes";
 import { useSidebarStore } from "@/store/sidebar.store";
+import { useAuthStore } from "@/store/auth.store";
+import { ROLES } from "@/types/auth";
 
 interface NavItem {
   label: string;
@@ -10,47 +12,56 @@ interface NavItem {
   children?: { label: string; path: string }[];
 }
 
-const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
+const MAIN_NAV_ITEMS: NavItem[] = [
+  { label: "Dashboard", path: ROUTES.dashboard, icon: "dashboard" },
   {
-    title: "MAIN",
-    items: [
-      { label: "Dashboard", path: ROUTES.dashboard, icon: "dashboard" },
-      {
-        label: "Leads",
-        icon: "group",
-        children: [
-          { label: "All Leads", path: ROUTES.leads },
-          { label: "My Leads", path: `${ROUTES.leads}?view=mine` },
-          { label: "Follow-ups", path: `${ROUTES.leads}?view=followups` },
-          { label: "Hot Leads", path: `${ROUTES.leads}?view=hot` },
-        ],
-      },
-      {
-        label: "Dialer",
-        icon: "call",
-        children: [
-          { label: "Dialer", path: "/dialer" },
-          { label: "History", path: "/dialer/history" },
-          { label: "Analytics", path: "/dialer/analytics" },
-        ],
-      },
-      { label: "Tasks", path: "/tasks", icon: "check_circle" },
-      { label: "Attendance", path: ROUTES.attendance, icon: "calendar_today" },
-      { label: "Achievements", path: "/achievements", icon: "military_tech" },
+    label: "Leads",
+    icon: "group",
+    children: [
+      { label: "All Leads", path: ROUTES.leads },
+      { label: "My Leads", path: `${ROUTES.leads}?view=mine` },
+      { label: "Follow-ups", path: `${ROUTES.leads}?view=followups` },
+      { label: "Hot Leads", path: `${ROUTES.leads}?view=hot` },
     ],
   },
   {
-    title: "SYSTEM",
-    items: [
-      { label: "Employees", path: ROUTES.employees, icon: "badge" },
-      { label: "Settings", path: ROUTES.settings, icon: "settings" },
+    label: "Dialer",
+    icon: "call",
+    children: [
+      { label: "Dialer", path: "/dialer" },
+      { label: "History", path: "/dialer/history" },
+      { label: "Analytics", path: "/dialer/analytics" },
     ],
   },
+  { label: "Tasks", path: "/tasks", icon: "check_circle" },
+  { label: "Attendance", path: ROUTES.attendance, icon: "calendar_today" },
+  { label: "Achievements", path: "/achievements", icon: "military_tech" },
+];
+
+// Only Head/Admin/Manager hold the user:view + branch:view permissions these
+// screens depend on (see backend rolePermissions.ts) — a plain Employee would
+// just hit a 403, so the links are hidden rather than shown and broken.
+const SYSTEM_NAV_ITEMS: NavItem[] = [
+  { label: "Employees", path: ROUTES.employees, icon: "badge" },
+  { label: "Branches", path: ROUTES.branches, icon: "domain" },
+  { label: "Settings", path: ROUTES.settings, icon: "settings" },
 ];
 
 const Sidebar = () => {
   const { collapsed, mobileOpen, closeMobileSidebar } = useSidebarStore();
   const location = useLocation();
+  const role = useAuthStore((s) => s.user?.role);
+  const canManageOrganization = role !== undefined && role !== ROLES.EMPLOYEE;
+
+  const NAV_GROUPS = useMemo(
+    () => [
+      { title: "MAIN", items: MAIN_NAV_ITEMS },
+      ...(canManageOrganization
+        ? [{ title: "SYSTEM", items: SYSTEM_NAV_ITEMS }]
+        : []),
+    ],
+    [canManageOrganization]
+  );
 
   // Track expanded parent menu items
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({

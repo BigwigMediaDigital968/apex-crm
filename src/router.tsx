@@ -3,6 +3,7 @@ import DashboardLayout from "@/layouts/DashboardLayout";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { DashboardDispatcher } from "@/features/dashboard";
 import { EmployeeListPage, OnboardEmployeePage } from "@/features/employees";
+import { BranchListPage } from "@/features/branches";
 import { LeadListPage } from "@/features/leads";
 import GuestRoute from "@/routes/GuestRoute";
 import LoginPage from "@/features/auth/pages/LoginPage";
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
           { path: "/dashboard", element: <DashboardDispatcher /> },
           { path: "/employees", element: <EmployeeListPage /> },
           { path: "/employees/onboard", element: <OnboardEmployeePage /> },
+          { path: "/branches", element: <BranchListPage /> },
           { path: "/leads", element: <LeadListPage /> },
         ],
       },

@@ -1,30 +1,28 @@
-import { apiClient } from "@/services/apiClient";
-import { ROLES, type Role } from "@/types/auth";
 import { useState, type FormEvent } from "react";
-import toast from "react-hot-toast";
-import { useNavigate } from "react-router"; // Or 'next/navigation' / 'next/router' depending on your framework
-
-const BRANCH_OPTIONS = [
-    { id: "delhi", label: "Delhi (HQ)" },
-    { id: "mumbai", label: "Mumbai" },
-    { id: "bengaluru", label: "Bengaluru" },
-    { id: "pune", label: "Pune" },
-];
+import { useNavigate } from "react-router";
+import { useBranchesQuery } from "@/features/branches";
+import { useAuthStore } from "@/store/auth.store";
+import { ROLE_LABELS, getAssignableRoles, type Role } from "@/types/auth";
+import { useCreateEmployee } from "../hooks/useEmployees";
 
 const OnboardEmployeePage = () => {
     const navigate = useNavigate();
+    const currentUser = useAuthStore((s) => s.user);
+    const assignableRoles = currentUser ? getAssignableRoles(currentUser.role) : [];
+
+    const { data: branches, isLoading: branchesLoading } = useBranchesQuery();
+    const createEmployee = useCreateEmployee();
 
     const [formData, setFormData] = useState({
         fullName: "",
         officialEmail: "",
-        phone: "",
         password: "",
-        role: "",
+        role: "" as Role | "",
         branches: [] as string[],
     });
 
     const [showPassword, setShowPassword] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     const handleBranchToggle = (branchId: string) => {
         setFormData((prev) => ({
@@ -35,31 +33,35 @@ const OnboardEmployeePage = () => {
         }));
     };
 
+    const validate = () => {
+        const nextErrors: Record<string, string> = {};
+        if (formData.fullName.trim().length < 2) nextErrors.fullName = "Name must be at least 2 characters";
+        if (!/^\S+@\S+\.\S+$/.test(formData.officialEmail)) nextErrors.officialEmail = "Enter a valid email address";
+        if (formData.password.length < 8) nextErrors.password = "Password must be at least 8 characters";
+        if (!formData.role) nextErrors.role = "Select a role";
+        setErrors(nextErrors);
+        return Object.keys(nextErrors).length === 0;
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        setIsSubmitting(true);
+        if (!validate() || !formData.role) return;
 
         try {
-            console.log("Submitting new employee:", formData);
-            await apiClient.post('/users', {
-                name: formData.fullName,
-                email: formData.officialEmail,
+            await createEmployee.mutateAsync({
+                name: formData.fullName.trim(),
+                email: formData.officialEmail.trim().toLowerCase(),
                 password: formData.password,
                 role: formData.role,
-                branches: formData.branches
+                branches: formData.branches,
             });
-            toast.success("User created successfully!");
-
-            setTimeout(() => {
-                navigate("/dashboard");
-            }, 1500); // Redirect after 1.5 seconds
-        } catch (error: any) {
-            toast.error(error.response?.data?.message || "Failed to create user");
-            console.error("Failed to onboard employee:", error);
-        } finally {
-            setIsSubmitting(false);
+            navigate("/employees");
+        } catch {
+            // toast is already shown by the mutation's onError handler
         }
     };
+
+    const isSubmitting = createEmployee.isPending;
 
     return (
         <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
@@ -132,7 +134,7 @@ const OnboardEmployeePage = () => {
                                 >
                                     Full Name
                                 </label>
-                                <div className="relative flex items-center rounded-xl border border-outline-variant/40 bg-surface-container-low px-3.5 py-2.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                                <div className={`relative flex items-center rounded-xl border bg-surface-container-low px-3.5 py-2.5 focus-within:ring-2 transition-all ${errors.fullName ? "border-error focus-within:border-error focus-within:ring-error/20" : "border-outline-variant/40 focus-within:border-primary focus-within:ring-primary/20"}`}>
                                     <span className="material-symbols-outlined text-xl text-on-surface-variant/60 mr-2.5">
                                         person
                                     </span>
@@ -148,6 +150,9 @@ const OnboardEmployeePage = () => {
                                         required
                                     />
                                 </div>
+                                {errors.fullName && (
+                                    <p className="font-body-sm text-[11px] text-error">{errors.fullName}</p>
+                                )}
                             </div>
 
                             {/* Official Email */}
@@ -158,7 +163,7 @@ const OnboardEmployeePage = () => {
                                 >
                                     Official Email
                                 </label>
-                                <div className="relative flex items-center rounded-xl border border-outline-variant/40 bg-surface-container-low px-3.5 py-2.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                                <div className={`relative flex items-center rounded-xl border bg-surface-container-low px-3.5 py-2.5 focus-within:ring-2 transition-all ${errors.officialEmail ? "border-error focus-within:border-error focus-within:ring-error/20" : "border-outline-variant/40 focus-within:border-primary focus-within:ring-primary/20"}`}>
                                     <span className="material-symbols-outlined text-xl text-on-surface-variant/60 mr-2.5">
                                         mail
                                     </span>
@@ -174,43 +179,20 @@ const OnboardEmployeePage = () => {
                                         required
                                     />
                                 </div>
-                            </div>
-
-                            {/* Phone Number */}
-                            <div className="space-y-1.5">
-                                <label
-                                    htmlFor="phone"
-                                    className="block font-label-md text-xs font-medium text-on-surface-variant"
-                                >
-                                    Phone Number
-                                </label>
-                                <div className="relative flex items-center rounded-xl border border-outline-variant/40 bg-surface-container-low focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-                                    <span className="px-3 py-2.5 border-r border-outline-variant/40 font-label-md text-xs font-bold text-on-surface-variant/80">
-                                        +91
-                                    </span>
-                                    <input
-                                        id="phone"
-                                        type="tel"
-                                        placeholder="98765 43210"
-                                        value={formData.phone}
-                                        onChange={(e) =>
-                                            setFormData({ ...formData, phone: e.target.value })
-                                        }
-                                        className="w-full bg-transparent px-3.5 py-2.5 font-body-md text-sm text-on-surface outline-none placeholder:text-on-surface-variant/40"
-                                        required
-                                    />
-                                </div>
+                                {errors.officialEmail && (
+                                    <p className="font-body-sm text-[11px] text-error">{errors.officialEmail}</p>
+                                )}
                             </div>
 
                             {/* Temporary Password */}
-                            <div className="space-y-1.5">
+                            <div className="space-y-1.5 sm:col-span-2">
                                 <label
                                     htmlFor="password"
                                     className="block font-label-md text-xs font-medium text-on-surface-variant"
                                 >
                                     Temporary Password
                                 </label>
-                                <div className="relative flex items-center rounded-xl border border-outline-variant/40 bg-surface-container-low px-3.5 py-2.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+                                <div className={`relative flex items-center rounded-xl border bg-surface-container-low px-3.5 py-2.5 focus-within:ring-2 transition-all ${errors.password ? "border-error focus-within:border-error focus-within:ring-error/20" : "border-outline-variant/40 focus-within:border-primary focus-within:ring-primary/20"}`}>
                                     <span className="material-symbols-outlined text-xl text-on-surface-variant/60 mr-2.5">
                                         lock
                                     </span>
@@ -236,6 +218,13 @@ const OnboardEmployeePage = () => {
                                         </span>
                                     </button>
                                 </div>
+                                {errors.password ? (
+                                    <p className="font-body-sm text-[11px] text-error">{errors.password}</p>
+                                ) : (
+                                    <p className="font-body-sm text-[11px] text-on-surface-variant/70">
+                                        Minimum 8 characters. The employee should change this after first login.
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -268,24 +257,29 @@ const OnboardEmployeePage = () => {
                                     onChange={(e) =>
                                         setFormData({ ...formData, role: e.target.value as Role })
                                     }
-                                    className="w-full appearance-none rounded-xl border border-outline-variant/40 bg-surface-container-low px-3.5 py-2.5 pr-10 font-body-md text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
+                                    className={`w-full appearance-none rounded-xl border bg-surface-container-low px-3.5 py-2.5 pr-10 font-body-md text-sm text-on-surface outline-none focus:ring-2 transition-all cursor-pointer ${errors.role ? "border-error focus:border-error focus:ring-error/20" : "border-outline-variant/40 focus:border-primary focus:ring-primary/20"}`}
                                     required
                                 >
                                     <option value="" disabled>
                                         Select a role...
                                     </option>
-                                    <option value={ROLES.HEAD}>Head</option>
-                                    <option value={ROLES.ADMIN}>Administrator</option>
-                                    <option value={ROLES.MANAGER}>Manager</option>
-                                    <option value={ROLES.EMPLOYEE}>Employee</option>
+                                    {assignableRoles.map((role) => (
+                                        <option key={role} value={role}>
+                                            {ROLE_LABELS[role]}
+                                        </option>
+                                    ))}
                                 </select>
                                 <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xl text-on-surface-variant">
                                     expand_more
                                 </span>
                             </div>
-                            <p className="font-body-sm text-[11px] text-on-surface-variant/70">
-                                Determines access level and permissions within the CRM.
-                            </p>
+                            {errors.role ? (
+                                <p className="font-body-sm text-[11px] text-error">{errors.role}</p>
+                            ) : (
+                                <p className="font-body-sm text-[11px] text-on-surface-variant/70">
+                                    Determines access level and permissions within the CRM.
+                                </p>
+                            )}
                         </div>
 
                         {/* Assigned Branches Checkboxes */}
@@ -293,30 +287,42 @@ const OnboardEmployeePage = () => {
                             <label className="block font-label-md text-xs font-medium text-on-surface-variant">
                                 Assigned Branches
                             </label>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                {BRANCH_OPTIONS.map((branch) => {
-                                    const isChecked = formData.branches.includes(branch.id);
-                                    return (
-                                        <label
-                                            key={branch.id}
-                                            className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition-all cursor-pointer ${isChecked
-                                                ? "border-primary bg-primary/5 text-primary font-medium"
-                                                : "border-outline-variant/40 bg-surface-container-low text-on-surface hover:bg-surface-container"
-                                                }`}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={isChecked}
-                                                onChange={() => handleBranchToggle(branch.id)}
-                                                className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary/20 accent-primary cursor-pointer"
-                                            />
-                                            <span className="font-body-sm text-xs truncate">
-                                                {branch.label}
-                                            </span>
-                                        </label>
-                                    );
-                                })}
-                            </div>
+                            {branchesLoading ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    {Array.from({ length: 4 }).map((_, i) => (
+                                        <div key={i} className="h-11 rounded-xl bg-surface-container-high animate-pulse" />
+                                    ))}
+                                </div>
+                            ) : !branches || branches.length === 0 ? (
+                                <p className="font-body-sm text-xs text-on-surface-variant/70 italic">
+                                    No active branches yet — create one from the Branches page first.
+                                </p>
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    {branches.map((branch) => {
+                                        const isChecked = formData.branches.includes(branch._id);
+                                        return (
+                                            <label
+                                                key={branch._id}
+                                                className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 transition-all cursor-pointer ${isChecked
+                                                    ? "border-primary bg-primary/5 text-primary font-medium"
+                                                    : "border-outline-variant/40 bg-surface-container-low text-on-surface hover:bg-surface-container"
+                                                    }`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={() => handleBranchToggle(branch._id)}
+                                                    className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary/20 accent-primary cursor-pointer"
+                                                />
+                                                <span className="font-body-sm text-xs truncate">
+                                                    {branch.name}
+                                                </span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     </div>
 

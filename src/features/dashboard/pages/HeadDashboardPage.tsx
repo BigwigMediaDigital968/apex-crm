@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useModalStore } from "@/store/modal.store"; // Adjust import path
+import { useMemo, useState } from "react";
 import { Link } from "react-router";
+import { BranchFormModal, useBranchesQuery } from "@/features/branches";
+import { useEmployeeCountsByBranch, useEmployeesQuery } from "@/features/employees";
 
 interface RecentLead {
   id: string;
@@ -38,16 +39,25 @@ const MOCK_RECENT_LEADS: RecentLead[] = [
   },
 ];
 
-const MOCK_BRANCH_METRICS = [
-  { name: "Delhi (HQ)", leads: 540, employees: 42, revenue: "₹48.2L" },
-  { name: "Mumbai", leads: 380, employees: 28, revenue: "₹32.5L" },
-  { name: "Bengaluru", leads: 260, employees: 20, revenue: "₹24.1L" },
-  { name: "Pune", leads: 104, employees: 8, revenue: "₹8.4L" },
-];
-
 const HeadDashboardPage = () => {
-  const openModal = useModalStore((s) => s.openModal);
   const [selectedTimeframe, setSelectedTimeframe] = useState("This Month");
+  const [isCreateBranchOpen, setIsCreateBranchOpen] = useState(false);
+
+  const { data: branches, isLoading: branchesLoading } = useBranchesQuery();
+  const { data: employeesData, isLoading: employeesLoading } = useEmployeesQuery({
+    limit: 1,
+  });
+
+  const branchIds = useMemo(() => branches?.map((b) => b._id) ?? [], [branches]);
+  const { counts: employeeCountsByBranch } = useEmployeeCountsByBranch(branchIds);
+
+  const totalEmployees = employeesData?.pagination.total;
+  const totalBranches = branches?.length;
+
+  const topBranches = useMemo(
+    () => (branches ?? []).slice(0, 5),
+    [branches]
+  );
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
@@ -101,25 +111,41 @@ const HeadDashboardPage = () => {
             <span>Create Employee</span>
           </Link>
 
-          <button className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container-high transition-all">
+          <button
+            onClick={() => setIsCreateBranchOpen(true)}
+            className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container-high transition-all"
+          >
             <span className="material-symbols-outlined text-lg text-primary">
               add_business
             </span>
             <span>Create Branch</span>
           </button>
 
-          <button className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container-high transition-all">
-            <span className="material-symbols-outlined text-lg text-secondary">
-              person_search
-            </span>
-            <span>Add New Lead</span>
-          </button>
+          {/* Leads module isn't wired to a backend yet — surfaced but disabled so the UI stays honest */}
+          <div className="relative group">
+            <button
+              disabled
+              className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface-variant/50 cursor-not-allowed"
+            >
+              <span className="material-symbols-outlined text-lg">
+                person_search
+              </span>
+              <span>Add New Lead</span>
+            </button>
+            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-20">
+              <div className="bg-on-surface text-surface-container-lowest font-label-sm text-[11px] py-1 px-2.5 rounded-lg shadow-md whitespace-nowrap">
+                Leads module coming soon
+              </div>
+              <div className="w-2 h-2 bg-on-surface rotate-45 absolute left-4 -bottom-1" />
+            </div>
+          </div>
 
           {/* Icon-Only Action with UI/UX Tooltip */}
           <div className="relative group ml-auto">
             <button
               aria-label="Export Global Business Report"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+              disabled
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-container-low text-on-surface-variant/50 cursor-not-allowed"
             >
               <span className="material-symbols-outlined text-xl">
                 download
@@ -128,7 +154,7 @@ const HeadDashboardPage = () => {
             {/* Tooltip */}
             <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-20">
               <div className="bg-on-surface text-surface-container-lowest font-label-sm text-[11px] py-1 px-2.5 rounded-lg shadow-md whitespace-nowrap">
-                Export Executive Report
+                Reporting coming soon
               </div>
               <div className="w-2 h-2 bg-on-surface rotate-45 absolute right-4 -bottom-1" />
             </div>
@@ -138,7 +164,7 @@ const HeadDashboardPage = () => {
 
       {/* Top Stats Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Total Leads */}
+        {/* Total Leads (sample data — no leads backend yet) */}
         <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-2">
           <div className="flex items-center justify-between">
             <span className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
@@ -153,9 +179,9 @@ const HeadDashboardPage = () => {
           <p className="font-headline-md text-3xl font-extrabold text-on-surface">
             1,284
           </p>
-          <p className="font-label-sm text-xs font-semibold text-emerald-600 flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">trending_up</span>
-            +14.2% from last month
+          <p className="font-label-sm text-xs font-semibold text-on-surface-variant/60 flex items-center gap-1">
+            <span className="material-symbols-outlined text-sm">info</span>
+            Sample data
           </p>
         </div>
 
@@ -171,12 +197,16 @@ const HeadDashboardPage = () => {
               </span>
             </span>
           </div>
-          <p className="font-headline-md text-3xl font-extrabold text-on-surface">
-            98
-          </p>
+          {employeesLoading ? (
+            <div className="h-9 w-16 rounded-lg bg-surface-container-high animate-pulse" />
+          ) : (
+            <p className="font-headline-md text-3xl font-extrabold text-on-surface">
+              {totalEmployees ?? 0}
+            </p>
+          )}
           <p className="font-label-sm text-xs font-semibold text-primary flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">group_add</span>
-            +6 onboarded this month
+            <span className="material-symbols-outlined text-sm">group</span>
+            Across all branches
           </p>
         </div>
 
@@ -192,21 +222,25 @@ const HeadDashboardPage = () => {
               </span>
             </span>
           </div>
-          <p className="font-headline-md text-3xl font-extrabold text-on-surface">
-            04
-          </p>
+          {branchesLoading ? (
+            <div className="h-9 w-16 rounded-lg bg-surface-container-high animate-pulse" />
+          ) : (
+            <p className="font-headline-md text-3xl font-extrabold text-on-surface">
+              {String(totalBranches ?? 0).padStart(2, "0")}
+            </p>
+          )}
           <p className="font-body-sm text-xs text-on-surface-variant flex items-center gap-1">
             <span className="material-symbols-outlined text-sm text-emerald-600">
               check_circle
             </span>
-            100% operational efficiency
+            All operational
           </p>
         </div>
       </div>
 
       {/* Main Grid Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Column (Simple Performance Visualizer) */}
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-sm space-y-4">
@@ -216,26 +250,8 @@ const HeadDashboardPage = () => {
                   Lead & Revenue Trends
                 </h3>
                 <p className="font-body-sm text-xs text-on-surface-variant">
-                  Monthly progression across all regional territories.
+                  Sample data — connect the leads module to see real trends.
                 </p>
-              </div>
-
-              {/* Icon-Only Refresh Action with Tooltip */}
-              <div className="relative group">
-                <button
-                  aria-label="Refresh Graph Data"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
-                >
-                  <span className="material-symbols-outlined text-lg">
-                    refresh
-                  </span>
-                </button>
-                <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-20">
-                  <div className="bg-on-surface text-surface-container-lowest font-label-sm text-[11px] py-1 px-2.5 rounded-lg shadow-md whitespace-nowrap">
-                    Sync Chart Data
-                  </div>
-                  <div className="w-2 h-2 bg-on-surface rotate-45 absolute right-3 -bottom-1" />
-                </div>
               </div>
             </div>
 
@@ -258,7 +274,7 @@ const HeadDashboardPage = () => {
                       {bar.leads}
                     </div>
                     <div
-                      className="w-full max-w-[36px] bg-primary/80 group-hover:bg-primary rounded-t-lg transition-all"
+                      className="w-full max-w-9 bg-primary/80 group-hover:bg-primary rounded-t-lg transition-all"
                       style={{ height: bar.height }}
                     />
                     <span className="font-label-sm text-xs text-on-surface-variant/70 mt-1">
@@ -287,16 +303,16 @@ const HeadDashboardPage = () => {
               <h3 className="font-headline-sm text-base font-bold text-on-surface">
                 High Value Pipeline
               </h3>
-              <button className="font-label-md text-xs font-bold text-primary hover:underline">
-                View All Leads
-              </button>
+              <span className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60 bg-surface-container px-2 py-0.5 rounded-md">
+                Sample data
+              </span>
             </div>
 
             <div className="divide-y divide-outline-variant/20">
               {MOCK_RECENT_LEADS.map((lead) => (
                 <div
                   key={lead.id}
-                  className="flex items-center justify-between p-4 hover:bg-surface-container-low/30 transition-colors"
+                  className="flex items-center justify-between p-4"
                 >
                   <div>
                     <p className="font-label-md text-sm font-bold text-on-surface">
@@ -316,24 +332,6 @@ const HeadDashboardPage = () => {
                         {lead.status}
                       </span>
                     </div>
-
-                    {/* Action Icon with Tooltip */}
-                    <div className="relative group">
-                      <button
-                        aria-label="Inspect Lead Details"
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-lg">
-                          chevron_right
-                        </span>
-                      </button>
-                      <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block z-20">
-                        <div className="bg-on-surface text-surface-container-lowest font-label-sm text-[11px] py-1 px-2.5 rounded-lg shadow-md whitespace-nowrap">
-                          View Lead
-                        </div>
-                        <div className="w-2 h-2 bg-on-surface rotate-45 absolute right-3 -bottom-1" />
-                      </div>
-                    </div>
                   </div>
                 </div>
               ))}
@@ -348,36 +346,68 @@ const HeadDashboardPage = () => {
               Branch Breakdown
             </h3>
 
-            <div className="space-y-3">
-              {MOCK_BRANCH_METRICS.map((branch, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-xl border border-outline-variant/30 bg-surface-container-low/40 p-3.5 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="font-label-md text-sm font-bold text-on-surface">
-                      {branch.name}
-                    </p>
-                    <span className="font-label-md text-xs font-bold text-primary">
-                      {branch.revenue}
-                    </span>
-                  </div>
+            {branchesLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-16 rounded-xl bg-surface-container-high animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : !branches || branches.length === 0 ? (
+              <div className="text-center py-6">
+                <span className="material-symbols-outlined text-3xl text-outline">
+                  domain
+                </span>
+                <p className="font-body-sm text-xs text-on-surface-variant mt-1">
+                  No branches yet. Create your first one to get started.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {topBranches.map((branch) => (
+                  <div
+                    key={branch._id}
+                    className="rounded-xl border border-outline-variant/30 bg-surface-container-low/40 p-3.5 space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="font-label-md text-sm font-bold text-on-surface">
+                        {branch.name}
+                      </p>
+                      <span className="font-label-sm text-[10px] font-bold text-primary uppercase">
+                        {branch.code}
+                      </span>
+                    </div>
 
-                  <div className="flex items-center justify-between font-body-sm text-xs text-on-surface-variant/80">
-                    <span>{branch.leads} Leads</span>
-                    <span>{branch.employees} Employees</span>
+                    <div className="flex items-center justify-between font-body-sm text-xs text-on-surface-variant/80">
+                      <span>
+                        {employeeCountsByBranch[branch._id] ?? "…"} Employees
+                      </span>
+                      {branch.city && <span>{branch.city}</span>}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
-            <button className="w-full py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-low font-label-md text-xs font-bold text-on-surface hover:bg-surface-container transition-colors">
+            <Link
+              to="/branches"
+              className="block w-full py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-low font-label-md text-xs font-bold text-on-surface text-center hover:bg-surface-container transition-colors"
+            >
               Manage All Branches
-            </button>
+            </Link>
           </div>
         </div>
 
       </div>
+
+      <BranchFormModal
+        key={isCreateBranchOpen ? "open" : "closed"}
+        open={isCreateBranchOpen}
+        branch={null}
+        onClose={() => setIsCreateBranchOpen(false)}
+      />
     </div>
   );
 };

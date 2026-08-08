@@ -1,103 +1,106 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
+import { Link } from "react-router";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { useBranchesQuery } from "@/features/branches";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useAuthStore } from "@/store/auth.store";
+import { ROLE_LABELS, ROLES, getAssignableRoles, type Role } from "@/types/auth";
+import type { Employee } from "@/types/employee";
+import AssignBranchesModal from "../components/AssignBranchesModal";
+import EmployeeFormModal from "../components/EmployeeFormModal";
+import { useEmployeesQuery, useUpdateEmployeeStatus } from "../hooks/useEmployees";
 
-interface Employee {
-  id: string;
-  employeeId: string;
-  name: string;
-  email: string;
-  avatar: string;
-  designation: string;
-  team: string;
-  reportingTo: {
-    name: string;
-    initials: string;
-  };
-  status: "ACTIVE" | "INACTIVE";
-  joiningDate: string;
-  score: number;
-}
+const PAGE_SIZE = 10;
 
-const MOCK_EMPLOYEES: Employee[] = [
-  {
-    id: "1",
-    employeeId: "MTX-00124",
-    name: "Arjun Sharma",
-    email: "arjun.s@marketrixa.com",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-    designation: "Senior Sales Lead",
-    team: "ENTERPRISE WEST",
-    reportingTo: { name: "Vikram Singh", initials: "VS" },
-    status: "ACTIVE",
-    joiningDate: "12 Oct, 2021",
-    score: 9.2,
-  },
-  {
-    id: "2",
-    employeeId: "MTX-00356",
-    name: "Priya Iyer",
-    email: "priya.i@marketrixa.com",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-    designation: "Product Designer",
-    team: "EXPERIENCE UNIT",
-    reportingTo: { name: "Rohan Kapoor", initials: "RK" },
-    status: "INACTIVE",
-    joiningDate: "05 Jan, 2023",
-    score: 7.8,
-  },
-  {
-    id: "3",
-    employeeId: "MTX-00912",
-    name: "Siddharth Nair",
-    email: "sid.n@marketrixa.com",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-    designation: "Backend Engineer",
-    team: "INFRASTRUCTURE",
-    reportingTo: { name: "Ananya K.", initials: "AK" },
-    status: "ACTIVE",
-    joiningDate: "22 Jul, 2022",
-    score: 8.5,
-  },
-  {
-    id: "4",
-    employeeId: "MTX-00411",
-    name: "Ananya Kulkarni",
-    email: "ananya.k@marketrixa.com",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-    designation: "VP of Engineering",
-    team: "INFRASTRUCTURE",
-    reportingTo: { name: "CEO Office", initials: "CO" },
-    status: "ACTIVE",
-    joiningDate: "14 Feb, 2020",
-    score: 9.6,
-  },
+const ROLE_FILTER_OPTIONS: { label: string; value: Role | "" }[] = [
+  { label: "All Roles", value: "" },
+  { label: "Head", value: ROLES.HEAD },
+  { label: "Administrator", value: ROLES.ADMIN },
+  { label: "Manager", value: ROLES.MANAGER },
+  { label: "Employee", value: ROLES.EMPLOYEE },
 ];
 
-const DEPARTMENTS = [
-  "All Departments",
-  "ENTERPRISE WEST",
-  "EXPERIENCE UNIT",
-  "INFRASTRUCTURE",
-];
+const STATUS_FILTER_OPTIONS = [
+  { label: "All Statuses", value: "" },
+  { label: "Active", value: "true" },
+  { label: "Inactive", value: "false" },
+] as const;
+
+const getInitials = (name: string) =>
+  name
+    .split(" ")
+    .map((n) => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 
 const EmployeeListPage = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDept, setSelectedDept] = useState("All Departments");
-  const [currentPage, setCurrentPage] = useState(1);
+  const currentUser = useAuthStore((s) => s.user);
+  const assignableRoles = currentUser ? getAssignableRoles(currentUser.role) : [];
 
-  // Filter employees based on search & department
-  const filteredEmployees = useMemo(() => {
-    return MOCK_EMPLOYEES.filter((emp) => {
-      const matchesSearch =
-        emp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        emp.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        emp.employeeId.toLowerCase().includes(searchQuery.toLowerCase());
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebouncedValue(searchInput);
+  const [roleFilter, setRoleFilter] = useState<Role | "">("");
+  const [branchFilter, setBranchFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTER_OPTIONS)[number]["value"]>("");
+  const [page, setPage] = useState(1);
 
-      const matchesDept =
-        selectedDept === "All Departments" || emp.team === selectedDept;
+  // Jump back to page 1 whenever the result set changes shape. Adjusting
+  // state during render (rather than in an effect) avoids an extra
+  // render-then-fetch-then-render cascade — see "You Might Not Need an Effect".
+  const filtersKey = `${debouncedSearch}|${roleFilter}|${branchFilter}|${statusFilter}`;
+  const [trackedFiltersKey, setTrackedFiltersKey] = useState(filtersKey);
+  if (filtersKey !== trackedFiltersKey) {
+    setTrackedFiltersKey(filtersKey);
+    setPage(1);
+  }
 
-      return matchesSearch && matchesDept;
+  const { data: branches } = useBranchesQuery();
+
+  const { data, isLoading, isFetching, isError, error } = useEmployeesQuery({
+    page,
+    limit: PAGE_SIZE,
+    search: debouncedSearch || undefined,
+    role: roleFilter || undefined,
+    branchId: branchFilter || undefined,
+    isActive: statusFilter === "" ? undefined : statusFilter === "true",
+  });
+
+  const isForbidden =
+    isError &&
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error &&
+    (error as { response?: { status?: number } }).response?.status === 403;
+
+  const employees = data?.employees ?? [];
+  const pagination = data?.pagination;
+
+  const [editTarget, setEditTarget] = useState<Employee | null>(null);
+  const [branchTarget, setBranchTarget] = useState<Employee | null>(null);
+  const [statusTarget, setStatusTarget] = useState<Employee | null>(null);
+
+  const updateStatus = useUpdateEmployeeStatus();
+
+  const handleConfirmStatusChange = async () => {
+    if (!statusTarget) return;
+    await updateStatus.mutateAsync({
+      id: statusTarget._id,
+      isActive: !statusTarget.isActive,
     });
-  }, [searchQuery, selectedDept]);
+    setStatusTarget(null);
+  };
+
+  const isRowLocked = (emp: Employee) =>
+    emp.role === ROLES.HEAD || emp._id === currentUser?.id;
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
@@ -112,291 +115,342 @@ const EmployeeListPage = () => {
             Organization Directory
           </h1>
           <p className="font-body-md text-on-surface-variant mt-1 max-w-2xl">
-            Manage your global workforce, monitor performance metrics, and
-            orchestrate team structures across all regional offices.
+            Manage your workforce, update roles, and control branch access
+            across the organization.
           </p>
         </div>
 
-        <button className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-label-md text-on-primary shadow-md hover:bg-primary/90 transition-all self-start md:self-auto shrink-0">
+        <Link
+          to="/employees/onboard"
+          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-label-md text-on-primary shadow-md hover:bg-primary/90 transition-all self-start md:self-auto shrink-0"
+        >
           <span className="material-symbols-outlined text-xl">person_add</span>
           <span>Onboard Employee</span>
-        </button>
+        </Link>
       </div>
 
-      {/* Filter and Metric Bar */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        {/* Search & Department Filters */}
-        <div className="flex flex-wrap items-center gap-3 flex-1 max-w-2xl">
-          {/* Search Input */}
-          <div className="relative flex-1 min-w-[240px] items-center rounded-xl border border-outline-variant/50 bg-surface-container-lowest px-3.5 py-2.5 shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-            <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-xl text-on-surface-variant">
-              search
-            </span>
-            <input
-              type="text"
-              placeholder="Search by name, ID, or email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent pl-8 font-body-md text-on-surface outline-none placeholder:text-on-surface-variant/60"
-            />
-          </div>
-
-          {/* Department Select Dropdown */}
-          <div className="relative">
-            <select
-              value={selectedDept}
-              onChange={(e) => setSelectedDept(e.target.value)}
-              className="appearance-none rounded-xl border border-outline-variant/50 bg-surface-container-low px-4 py-2.5 pr-10 font-label-md text-on-surface outline-none focus:border-primary transition-all"
-            >
-              {DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
-            <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xl text-on-surface-variant">
-              expand_more
-            </span>
-          </div>
+      {/* Filter Bar */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative flex-1 min-w-60 items-center rounded-xl border border-outline-variant/50 bg-surface-container-lowest px-3.5 py-2.5 shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+          <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-xl text-on-surface-variant">
+            search
+          </span>
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="w-full bg-transparent pl-8 font-body-md text-on-surface outline-none placeholder:text-on-surface-variant/60"
+          />
         </div>
 
-        {/* Metrics & Utility Actions */}
-        <div className="flex items-center justify-between lg:justify-end gap-6 border-t lg:border-t-0 border-outline-variant/30 pt-3 lg:pt-0">
-          <div className="flex items-center gap-6">
-            <div>
-              <p className="font-label-sm text-[10px] uppercase font-bold tracking-wider text-on-surface-variant/70">
-                Total Strength
-              </p>
-              <p className="font-headline-sm text-headline-sm text-on-surface">
-                1,284{" "}
-                <span className="font-body-sm text-xs font-medium text-on-surface-variant">
-                  Active
-                </span>
-              </p>
-            </div>
-
-            <div className="h-8 w-px bg-outline-variant/40" />
-
-            <div>
-              <p className="font-label-sm text-[10px] uppercase font-bold tracking-wider text-on-surface-variant/70">
-                Growth Rate
-              </p>
-              <p className="font-headline-sm text-headline-sm text-secondary flex items-center gap-1">
-                +12.4%{" "}
-                <span className="font-body-sm text-xs font-medium text-on-surface-variant">
-                  MoM
-                </span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              title="Filter"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
-            >
-              <span className="material-symbols-outlined text-xl">
-                tune
-              </span>
-            </button>
-            <button
-              title="Export CSV"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
-            >
-              <span className="material-symbols-outlined text-xl">
-                download
-              </span>
-            </button>
-          </div>
+        <div className="relative">
+          <select
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value as Role | "")}
+            className="w-full appearance-none rounded-xl border border-outline-variant/50 bg-surface-container-low px-4 py-2.5 pr-10 font-label-md text-on-surface outline-none focus:border-primary transition-all"
+          >
+            {ROLE_FILTER_OPTIONS.map((opt) => (
+              <option key={opt.label} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xl text-on-surface-variant">
+            expand_more
+          </span>
         </div>
+
+        <div className="relative">
+          <select
+            value={branchFilter}
+            onChange={(e) => setBranchFilter(e.target.value)}
+            className="w-full appearance-none rounded-xl border border-outline-variant/50 bg-surface-container-low px-4 py-2.5 pr-10 font-label-md text-on-surface outline-none focus:border-primary transition-all"
+          >
+            <option value="">All Branches</option>
+            {branches?.map((branch) => (
+              <option key={branch._id} value={branch._id}>
+                {branch.name}
+              </option>
+            ))}
+          </select>
+          <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xl text-on-surface-variant">
+            expand_more
+          </span>
+        </div>
+
+        <div className="relative">
+          <select
+            value={statusFilter}
+            onChange={(e) =>
+              setStatusFilter(e.target.value as (typeof STATUS_FILTER_OPTIONS)[number]["value"])
+            }
+            className="w-full appearance-none rounded-xl border border-outline-variant/50 bg-surface-container-low px-4 py-2.5 pr-10 font-label-md text-on-surface outline-none focus:border-primary transition-all"
+          >
+            {STATUS_FILTER_OPTIONS.map((opt) => (
+              <option key={opt.label} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xl text-on-surface-variant">
+            expand_more
+          </span>
+        </div>
+
+        {pagination && (
+          <p className="font-body-sm text-xs text-on-surface-variant lg:ml-auto shrink-0">
+            <span className="font-bold text-on-surface">{pagination.total}</span>{" "}
+            employees found
+          </p>
+        )}
       </div>
 
       {/* Directory Table Card */}
       <div className="overflow-hidden rounded-2xl border border-outline-variant/40 bg-surface-container-lowest shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-outline-variant/30 bg-surface-container-low/50">
-                <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
-                  Profile
-                </th>
-                <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
-                  Employee ID
-                </th>
-                <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
-                  Designation & Team
-                </th>
-                <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
-                  Reporting To
-                </th>
-                <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
-                  Status
-                </th>
-                <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
-                  Joining Date
-                </th>
-                <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
-                  Score
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/20">
-              {filteredEmployees.length > 0 ? (
-                filteredEmployees.map((emp) => (
-                  <tr
-                    key={emp.id}
-                    className="hover:bg-surface-container-low/40 transition-colors group cursor-pointer"
-                  >
-                    {/* Profile Column */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={emp.avatar}
-                          alt={emp.name}
-                          className="h-10 w-10 rounded-full object-cover ring-2 ring-surface-container-high"
-                        />
-                        <div>
-                          <p className="font-label-md text-on-surface group-hover:text-primary transition-colors">
-                            {emp.name}
-                          </p>
-                          <p className="font-body-sm text-xs text-on-surface-variant/80">
-                            {emp.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Employee ID */}
-                    <td className="px-6 py-4 font-label-md text-xs text-on-surface-variant/90">
-                      {emp.employeeId}
-                    </td>
-
-                    {/* Designation & Team */}
-                    <td className="px-6 py-4">
-                      <p className="font-body-md text-xs font-semibold text-on-surface">
-                        {emp.designation}
-                      </p>
-                      <p className="font-label-sm text-[10px] font-bold tracking-wider text-primary uppercase">
-                        {emp.team}
-                      </p>
-                    </td>
-
-                    {/* Reporting Manager */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary-fixed text-[11px] font-bold text-on-secondary-fixed">
-                          {emp.reportingTo.initials}
-                        </span>
-                        <span className="font-body-md text-xs text-on-surface">
-                          {emp.reportingTo.name}
-                        </span>
-                      </div>
-                    </td>
-
-                    {/* Status Badge */}
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-label-sm text-[11px] font-semibold ${
-                          emp.status === "ACTIVE"
-                            ? "bg-emerald-500/10 text-emerald-700"
-                            : "bg-surface-container-high text-on-surface-variant"
-                        }`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            emp.status === "ACTIVE"
-                              ? "bg-emerald-500"
-                              : "bg-outline"
-                          }`}
-                        />
-                        {emp.status}
+        {isForbidden ? (
+          <div className="px-6 py-16 text-center">
+            <span className="material-symbols-outlined text-4xl mb-2 text-outline">
+              lock
+            </span>
+            <p className="font-body-md text-on-surface-variant">
+              You don't have permission to view the employee directory.
+            </p>
+          </div>
+        ) : isError ? (
+          <div className="px-6 py-16 text-center">
+            <span className="material-symbols-outlined text-4xl mb-2 text-error">
+              error
+            </span>
+            <p className="font-body-md text-error">
+              Failed to load employees. Please try again.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-outline-variant/30 bg-surface-container-low/50">
+                  <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
+                    Profile
+                  </th>
+                  <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
+                    Role
+                  </th>
+                  <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
+                    Branches
+                  </th>
+                  <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80">
+                    Joined
+                  </th>
+                  <th className="px-6 py-4 font-label-md text-[11px] uppercase tracking-wider text-on-surface-variant/80 text-right">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant/20">
+                {isLoading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={i}>
+                      <td colSpan={6} className="px-6 py-4">
+                        <div className="h-9 rounded-lg bg-surface-container-high animate-pulse" />
+                      </td>
+                    </tr>
+                  ))
+                ) : employees.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant">
+                      <span className="material-symbols-outlined text-4xl mb-2 text-outline block">
+                        search_off
                       </span>
-                    </td>
-
-                    {/* Joining Date */}
-                    <td className="px-6 py-4 font-body-sm text-xs text-on-surface-variant">
-                      {emp.joiningDate}
-                    </td>
-
-                    {/* Score Progress Indicator */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-container-high">
-                          <div
-                            className="h-full rounded-full bg-primary"
-                            style={{ width: `${(emp.score / 10) * 100}%` }}
-                          />
-                        </div>
-                        <span className="font-label-md text-xs text-on-surface">
-                          {emp.score}
-                        </span>
-                      </div>
+                      <p className="font-body-md">
+                        No employees found matching your filters.
+                      </p>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-6 py-12 text-center text-on-surface-variant"
-                  >
-                    <span className="material-symbols-outlined text-4xl mb-2 text-outline">
-                      search_off
-                    </span>
-                    <p className="font-body-md">No employees found matching your filters.</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  employees.map((emp) => {
+                    const locked = isRowLocked(emp);
+                    return (
+                      <tr
+                        key={emp._id}
+                        className="hover:bg-surface-container-low/40 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 font-label-md text-xs font-bold text-primary">
+                              {getInitials(emp.name)}
+                            </div>
+                            <div>
+                              <p className="font-label-md text-on-surface">{emp.name}</p>
+                              <p className="font-body-sm text-xs text-on-surface-variant/80">
+                                {emp.email}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
 
-        {/* Table Footer / Pagination */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-outline-variant/30 px-6 py-4 bg-surface-container-lowest">
-          <p className="font-body-sm text-xs text-on-surface-variant">
-            Showing <span className="font-medium text-on-surface">1</span> to{" "}
-            <span className="font-medium text-on-surface">
-              {filteredEmployees.length}
-            </span>{" "}
-            of <span className="font-medium text-on-surface">1,284</span> employees
-          </p>
+                        <td className="px-6 py-4">
+                          <span className="inline-block rounded-full bg-primary/10 px-2.5 py-1 font-label-sm text-[11px] font-semibold text-primary">
+                            {ROLE_LABELS[emp.role]}
+                          </span>
+                        </td>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container disabled:opacity-40 transition-colors"
-            >
-              <span className="material-symbols-outlined text-lg">
-                chevron_left
-              </span>
-            </button>
+                        <td className="px-6 py-4">
+                          {emp.branches.length === 0 ? (
+                            <span className="font-body-sm text-xs text-on-surface-variant/50 italic">
+                              Unassigned
+                            </span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1.5 max-w-55">
+                              {emp.branches.slice(0, 2).map((b) => (
+                                <span
+                                  key={b._id}
+                                  className="inline-block rounded-md bg-surface-container-high px-2 py-0.5 font-label-sm text-[10px] font-semibold text-on-surface-variant"
+                                >
+                                  {b.code}
+                                </span>
+                              ))}
+                              {emp.branches.length > 2 && (
+                                <span className="inline-block rounded-md bg-surface-container-high px-2 py-0.5 font-label-sm text-[10px] font-semibold text-on-surface-variant">
+                                  +{emp.branches.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
 
-            {[1, 2, 3, "...", 129].map((page, idx) => (
-              <button
-                key={idx}
-                onClick={() => typeof page === "number" && setCurrentPage(page)}
-                className={`flex h-8 w-8 items-center justify-center rounded-lg font-label-sm text-xs transition-colors ${
-                  currentPage === page
-                    ? "bg-primary font-bold text-on-primary"
-                    : "text-on-surface-variant hover:bg-surface-container"
-                }`}
-              >
-                {page}
-              </button>
-            ))}
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-label-sm text-[11px] font-semibold ${
+                              emp.isActive
+                                ? "bg-emerald-500/10 text-emerald-700"
+                                : "bg-surface-container-high text-on-surface-variant"
+                            }`}
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                emp.isActive ? "bg-emerald-500" : "bg-outline"
+                              }`}
+                            />
+                            {emp.isActive ? "ACTIVE" : "INACTIVE"}
+                          </span>
+                        </td>
 
-            <button
-              onClick={() => setCurrentPage((p) => p + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container transition-colors"
-            >
-              <span className="material-symbols-outlined text-lg">
-                chevron_right
-              </span>
-            </button>
+                        <td className="px-6 py-4 font-body-sm text-xs text-on-surface-variant">
+                          {formatDate(emp.createdAt)}
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => setBranchTarget(emp)}
+                              disabled={locked}
+                              title={locked ? "This account cannot be reassigned" : "Assign branches"}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-lg">
+                                domain
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => setEditTarget(emp)}
+                              disabled={locked}
+                              title={locked ? "This account cannot be edited here" : "Edit employee"}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-lg">
+                                edit
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => setStatusTarget(emp)}
+                              disabled={locked}
+                              title={
+                                locked
+                                  ? "Status cannot be changed here"
+                                  : emp.isActive
+                                  ? "Deactivate employee"
+                                  : "Activate employee"
+                              }
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-lg">
+                                {emp.isActive ? "block" : "check_circle"}
+                              </span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
+        )}
+
+        {/* Pagination */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-outline-variant/30 px-6 py-4 bg-surface-container-lowest">
+            <p className="font-body-sm text-xs text-on-surface-variant">
+              Page <span className="font-medium text-on-surface">{pagination.page}</span> of{" "}
+              <span className="font-medium text-on-surface">{pagination.totalPages}</span>
+              {isFetching && " · refreshing…"}
+            </p>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={pagination.page <= 1}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container disabled:opacity-40 transition-colors"
+              >
+                <span className="material-symbols-outlined text-lg">chevron_left</span>
+              </button>
+              <button
+                onClick={() => setPage((p) => Math.min(p + 1, pagination.totalPages))}
+                disabled={pagination.page >= pagination.totalPages}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container disabled:opacity-40 transition-colors"
+              >
+                <span className="material-symbols-outlined text-lg">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      <EmployeeFormModal
+        key={editTarget?._id ?? "closed"}
+        open={Boolean(editTarget)}
+        employee={editTarget}
+        assignableRoles={assignableRoles}
+        onClose={() => setEditTarget(null)}
+      />
+
+      <AssignBranchesModal
+        key={branchTarget?._id ?? "closed"}
+        open={Boolean(branchTarget)}
+        employee={branchTarget}
+        onClose={() => setBranchTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(statusTarget)}
+        onClose={() => setStatusTarget(null)}
+        onConfirm={handleConfirmStatusChange}
+        isLoading={updateStatus.isPending}
+        tone={statusTarget?.isActive ? "danger" : "primary"}
+        title={statusTarget?.isActive ? "Deactivate Employee?" : "Activate Employee?"}
+        description={
+          statusTarget?.isActive
+            ? `${statusTarget?.name} will lose access to the CRM immediately.`
+            : `${statusTarget?.name} will regain access to the CRM.`
+        }
+        confirmLabel={statusTarget?.isActive ? "Deactivate" : "Activate"}
+      />
     </div>
   );
 };
