@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuthStore } from "@/store/auth.store";
 import { useSidebarStore } from "@/store/sidebar.store";
 import { useLogout } from "@/hooks/useAuth";
+import { Link } from "react-router";
 
 const Header = () => {
   const user = useAuthStore((s) => s.user);
@@ -121,15 +122,16 @@ const Header = () => {
                   </p>
                 </div>
 
-                <a
-                  href="#profile"
+                <Link
+                  to="/profile"
+                  onClick={()=>setProfileOpen(false)}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container-high transition-colors"
                 >
                   <span className="material-symbols-outlined text-lg text-on-surface-variant">
                     person
                   </span>
                   My Profile
-                </a>
+                </Link>
                 <a
                   href="#settings"
                   className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container-high transition-colors"

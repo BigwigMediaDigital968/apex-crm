@@ -35,7 +35,13 @@ export interface AuthUser {
   email: string;
   role: Role;
   branches: string[];
+  createdAt: string;
+  updatedAt: string;
 }
+
+export type Permission = string;
+
+export type PermissionsByRole = Record<Role, Permission[]>;
 
 export interface LoginPayload {
   email: string;

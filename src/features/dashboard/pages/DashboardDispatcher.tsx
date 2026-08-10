@@ -5,6 +5,7 @@ import DashboardSkeleton from '../components/ui/skeleton/DashboardSkeleton';
 // Lazy-load dashboard components for optimal code-splitting
 const HeadDashboardPage = React.lazy(() => import('./HeadDashboardPage'));
 const EmployeeDashboardPage = React.lazy(() => import('./EmployeeDashboardPage'));
+const AdminDashboardPage = React.lazy(() => import('./AdminDashboardPage'));
 
 export const DashboardDispatcher = () => {
   const user = useAuthStore((state) => state.user);
@@ -13,7 +14,9 @@ export const DashboardDispatcher = () => {
 
   return (
     <Suspense fallback={<DashboardSkeleton />}>
-      {user?.role === 'head' || user.role === 'manager' ? (
+      {user?.role === 'admin' ? (
+        <AdminDashboardPage />
+      ) : user?.role === 'head' || user?.role === 'manager' ? (
         <HeadDashboardPage />
       ) : (
         <EmployeeDashboardPage />

@@ -26,6 +26,13 @@ export const useEmployeesQuery = (query: EmployeeListQuery = {}) =>
     placeholderData: keepPreviousData,
   });
 
+export const useEmployeeQuery = (id: string | undefined) =>
+  useQuery({
+    queryKey: ["employees", id],
+    queryFn: () => employeeApi.getById(id as string),
+    enabled: !!id,
+  });
+
 export const useCreateEmployee = () => {
   const queryClient = useQueryClient();
 

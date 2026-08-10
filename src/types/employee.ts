@@ -10,6 +10,7 @@ export interface Employee {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  createdBy?: string;
 }
 
 export interface EmployeeListQuery {
@@ -40,6 +41,8 @@ export interface UpdateEmployeeInput {
   name?: string;
   email?: string;
   role?: Role;
+  branches?: string[];
+  isActive?: boolean;
 }
 
 /** Slim record returned by create/update/status/branch-assignment mutations. */

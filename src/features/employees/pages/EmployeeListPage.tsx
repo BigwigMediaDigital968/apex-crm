@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useBranchesQuery } from "@/features/branches";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
@@ -52,6 +52,7 @@ const EmployeeListPage = () => {
   const [branchFilter, setBranchFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTER_OPTIONS)[number]["value"]>("");
   const [page, setPage] = useState(1);
+  const navigate = useNavigate();
 
   // Jump back to page 1 whenever the result set changes shape. Adjusting
   // state during render (rather than in an effect) avoids an extra
@@ -85,6 +86,7 @@ const EmployeeListPage = () => {
   const pagination = data?.pagination;
 
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
+  const [viewTarget, setViewTarget] = useState<Employee | null>(null)
   const [branchTarget, setBranchTarget] = useState<Employee | null>(null);
   const [statusTarget, setStatusTarget] = useState<Employee | null>(null);
 
@@ -325,16 +327,14 @@ const EmployeeListPage = () => {
 
                         <td className="px-6 py-4">
                           <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-label-sm text-[11px] font-semibold ${
-                              emp.isActive
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-label-sm text-[11px] font-semibold ${emp.isActive
                                 ? "bg-emerald-500/10 text-emerald-700"
                                 : "bg-surface-container-high text-on-surface-variant"
-                            }`}
+                              }`}
                           >
                             <span
-                              className={`h-1.5 w-1.5 rounded-full ${
-                                emp.isActive ? "bg-emerald-500" : "bg-outline"
-                              }`}
+                              className={`h-1.5 w-1.5 rounded-full ${emp.isActive ? "bg-emerald-500" : "bg-outline"
+                                }`}
                             />
                             {emp.isActive ? "ACTIVE" : "INACTIVE"}
                           </span>
@@ -356,8 +356,21 @@ const EmployeeListPage = () => {
                                 domain
                               </span>
                             </button>
+
                             <button
-                              onClick={() => setEditTarget(emp)}
+                              // onClick={() => setViewTarget(emp)}
+                              onClick={() => (navigate(`/employees/${emp._id}/profile`))}
+                              disabled={locked}
+                              title={locked ? "This account cannn't be viewd" : "View employee"}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                            >
+
+                              <span className="material-symbols-outlined text-lg">
+                                visibility
+                              </span>
+                            </button>
+                            <button
+                              onClick={() => (navigate(`/employees/${emp._id}/edit`))}
                               disabled={locked}
                               title={locked ? "This account cannot be edited here" : "Edit employee"}
                               className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
@@ -373,8 +386,8 @@ const EmployeeListPage = () => {
                                 locked
                                   ? "Status cannot be changed here"
                                   : emp.isActive
-                                  ? "Deactivate employee"
-                                  : "Activate employee"
+                                    ? "Deactivate employee"
+                                    : "Activate employee"
                               }
                               className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                             >
