@@ -112,21 +112,20 @@ const EmployeeListPage = () => {
             <span className="h-0.5 w-4 bg-primary rounded-full" />
             <span>Human Resources</span>
           </div>
-          <h1 className="font-headline-md text-headline-md text-on-surface">
+          <h1 className="font-headline-md text-2xl sm:text-3xl font-extrabold text-on-surface">
             Organization Directory
           </h1>
-          <p className="font-body-md text-on-surface-variant mt-1 max-w-2xl">
+          <p className="font-body-md text-xs sm:text-sm text-on-surface-variant mt-1 max-w-2xl">
             Manage your workforce, update roles, and control branch access
-            across the organization.
-          </p>
+            across the organization.          </p>
         </div>
 
         <Link
-          to="/employees/onboard"
-          className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-label-md text-on-primary shadow-md hover:bg-primary/90 transition-all self-start md:self-auto shrink-0"
+          to={'/employees/onboard'}
+            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all self-start md:self-auto shrink-0"
         >
           <span className="material-symbols-outlined text-xl">person_add</span>
-          <span>Onboard Employee</span>
+          <span>Create Branch</span>
         </Link>
       </div>
 
@@ -327,8 +326,8 @@ const EmployeeListPage = () => {
                         <td className="px-6 py-4">
                           <span
                             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-label-sm text-[11px] font-semibold ${emp.isActive
-                                ? "bg-emerald-500/10 text-emerald-700"
-                                : "bg-surface-container-high text-on-surface-variant"
+                              ? "bg-emerald-500/10 text-emerald-700"
+                              : "bg-surface-container-high text-on-surface-variant"
                               }`}
                           >
                             <span

@@ -5,10 +5,14 @@ import { DashboardDispatcher } from "@/features/dashboard";
 import { EmployeeFormPage, EmployeeListPage, UserProfilePage } from "@/features/employees";
 import { BranchListPage } from "@/features/branches";
 import { LeadListPage } from "@/features/leads";
+import { LoginPage, ProfilePage } from "@/features/auth";
+import { AuditLogPage } from "@/features/logs";
+
 import GuestRoute from "@/routes/GuestRoute";
-import LoginPage from "@/features/auth/pages/LoginPage";
-import ProfilePage from "./features/auth/pages/ProfilePage";
 import PermissionRoute from "./routes/PermissionRoute";
+import UnauthorizedPage from "./pages/UnauthorizedPage";
+import NotFoundPage from "./pages/NotFoundPage";
+import ComingSoonPage from "./pages/ComingSoonPage";
 
 export const router = createBrowserRouter([
   {
@@ -62,7 +66,27 @@ export const router = createBrowserRouter([
               { path: "/leads", element: <LeadListPage /> },
             ],
           },
-          { path: "/profile", element: <ProfilePage /> }
+
+          { path: "/profile", element: <ProfilePage /> },
+
+           {
+            element: <PermissionRoute permission={'audit:view'} />,
+            children: [
+              { path: "/logs", element: <AuditLogPage /> },
+            ],
+          },
+
+          { path: "/tasks", element: <ComingSoonPage featureName={"Tasks"} /> },
+          { path: "/attendance", element: <ComingSoonPage featureName="Attendance" /> },
+          { path: "/achievements", element: <ComingSoonPage featureName="Achievements" /> },
+          { path: "/settings", element: <ComingSoonPage featureName="Settings" /> },
+          { path: "/dialer", element: <ComingSoonPage featureName="Dialer" /> },
+
+          { path: "/dialer/*", element: <ComingSoonPage featureName="Dialer" /> },
+
+          { path: "/unauthorized", element: <UnauthorizedPage /> },
+          { path: "*", element: <NotFoundPage /> }
+
         ],
       },
     ],

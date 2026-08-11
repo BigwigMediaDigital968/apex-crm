@@ -14,9 +14,16 @@ const BranchListPage = () => {
   const updateStatus = useUpdateBranchStatus();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [formModal, setFormModal] = useState<{ open: boolean; branch: Branch | null }>({
-    open: false,
-    branch: null,
+  const [formModal, setFormModal] = useState<{
+    open: boolean;
+    branch: Branch | null;
+  }>(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    return {
+      open: params.has("new"),
+      branch: null,
+    };
   });
   const [statusTarget, setStatusTarget] = useState<Branch | null>(null);
 
@@ -177,17 +184,16 @@ const BranchListPage = () => {
 
                   {/* Team Size */}
                   <td className="py-4 px-6 text-center font-bold text-on-surface">
-                    { branch?.teamSize ?? "—"}
+                    {branch?.teamSize ?? "—"}
                   </td>
 
                   {/* Status */}
                   <td className="py-4 px-6 text-center">
                     <span
-                      className={`inline-flex items-center justify-center rounded-full px-3 py-1 font-label-sm text-[10px] font-extrabold uppercase tracking-wider ${
-                        branch.isActive
+                      className={`inline-flex items-center justify-center rounded-full px-3 py-1 font-label-sm text-[10px] font-extrabold uppercase tracking-wider ${branch.isActive
                           ? "bg-emerald-500/10 text-emerald-700"
                           : "bg-blue-500/10 text-blue-700"
-                      }`}
+                        }`}
                     >
                       {branch.isActive ? "Active" : "Setup Phase"}
                     </span>
@@ -206,11 +212,10 @@ const BranchListPage = () => {
                         </button>
                         <button
                           onClick={() => setStatusTarget(branch)}
-                          className={`rounded-lg p-1.5 transition-colors ${
-                            branch.isActive
+                          className={`rounded-lg p-1.5 transition-colors ${branch.isActive
                               ? "text-error hover:bg-error/10"
                               : "text-emerald-700 hover:bg-emerald-500/10"
-                          }`}
+                            }`}
                           title={branch.isActive ? "Deactivate" : "Activate"}
                         >
                           <span className="material-symbols-outlined text-lg">

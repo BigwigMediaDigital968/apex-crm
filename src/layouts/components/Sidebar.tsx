@@ -44,6 +44,7 @@ const MAIN_NAV_ITEMS: NavItem[] = [
 const SYSTEM_NAV_ITEMS: NavItem[] = [
   { label: "Employees", path: ROUTES.employees, icon: "badge" },
   { label: "Branches", path: ROUTES.branches, icon: "domain" },
+  { label: "Logs", path: ROUTES.logs, icon: "timer" },
   { label: "Settings", path: ROUTES.settings, icon: "settings" },
 ];
 
