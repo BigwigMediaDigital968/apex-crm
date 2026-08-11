@@ -84,9 +84,8 @@ const Sidebar = () => {
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-full flex-col bg-primary text-on-primary shadow-2xl transition-all duration-300 select-none ${
-          collapsed ? "w-20" : "w-64"
-        } ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+        className={`fixed left-0 top-0 z-50 flex h-full flex-col bg-primary text-on-primary shadow-2xl transition-all duration-300 select-none ${collapsed ? "w-20" : "w-64"
+          } ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
         {/* Brand Header */}
         <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5 shrink-0">
@@ -129,10 +128,9 @@ const Sidebar = () => {
                       onClick={closeMobileSidebar}
                       title={collapsed ? item.label : undefined}
                       className={({ isActive }) =>
-                        `group relative flex items-center gap-3.5 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${
-                          isActive
-                            ? "bg-white/15 text-white font-semibold shadow-sm"
-                            : "text-on-primary/75 hover:bg-white/10 hover:text-white"
+                        `group relative flex items-center gap-3.5 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${isActive
+                          ? "bg-white/15 text-white font-semibold shadow-sm"
+                          : "text-on-primary/75 hover:bg-white/10 hover:text-white"
                         }`
                       }
                     >
@@ -160,11 +158,10 @@ const Sidebar = () => {
                       type="button"
                       onClick={() => toggleSubmenu(item.label)}
                       title={collapsed ? item.label : undefined}
-                      className={`w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${
-                        isChildActive
+                      className={`w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${isChildActive
                           ? "text-white font-semibold"
                           : "text-on-primary/75 hover:bg-white/10 hover:text-white"
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-3.5">
                         <span className="material-symbols-outlined text-xl shrink-0">
@@ -175,9 +172,8 @@ const Sidebar = () => {
 
                       {!collapsed && (
                         <span
-                          className={`material-symbols-outlined text-lg transition-transform duration-200 ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
+                          className={`material-symbols-outlined text-lg transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                            }`}
                         >
                           expand_more
                         </span>
@@ -194,10 +190,9 @@ const Sidebar = () => {
                             onClick={closeMobileSidebar}
                             end
                             className={({ isActive }) =>
-                              `block rounded-lg px-3 py-1.5 text-sm font-normal transition-colors ${
-                                isActive
-                                  ? "text-white font-medium bg-white/10"
-                                  : "text-on-primary/65 hover:text-white hover:bg-white/5"
+                              `block rounded-lg px-3 py-1.5 text-sm font-normal transition-colors ${isActive
+                                ? "text-white font-medium bg-white/10"
+                                : "text-on-primary/65 hover:text-white hover:bg-white/5"
                               }`
                             }
                           >

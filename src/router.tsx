@@ -27,22 +27,41 @@ export const router = createBrowserRouter([
         children: [
           { path: "/dashboard", element: <DashboardDispatcher /> },
           {
-            element: <PermissionRoute permission={'user:create'} />,
+            element: <PermissionRoute permission={'user:view'} />,
             children: [
               { path: "/employees", element: <EmployeeListPage /> },
             ],
           },
-                    
           {
             element: <PermissionRoute permission={'user:create'} />,
             children: [
               { path: "/employees/onboard", element: <EmployeeFormPage /> },
             ],
           },
-          { path: "/employees/:id/edit", element: <EmployeeFormPage /> },
-          { path: "/employees/:id/profile", element: <UserProfilePage /> },
-          { path: "/branches", element: <BranchListPage /> },
-          { path: "/leads", element: <LeadListPage /> },
+          {
+            element: <PermissionRoute permission={'user:update'} />,
+            children: [
+              { path: "/employees/:id/edit", element: <EmployeeFormPage /> },
+            ],
+          },
+          {
+            element: <PermissionRoute permission={'user:view'} />,
+            children: [
+              { path: "/employees/:id/profile", element: <UserProfilePage /> },
+            ],
+          },
+          {
+            element: <PermissionRoute permission={'branch:view'} />,
+            children: [
+              { path: "/branches", element: <BranchListPage /> },
+            ],
+          },
+          {
+            element: <PermissionRoute permission={'lead:view'} />,
+            children: [
+              { path: "/leads", element: <LeadListPage /> },
+            ],
+          },
           { path: "/profile", element: <ProfilePage /> }
         ],
       },

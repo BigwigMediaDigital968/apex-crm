@@ -75,7 +75,23 @@ const EmployeeFormPage = () => {
                 ? prev.branches.filter((b) => b !== branchId)
                 : [...prev.branches, branchId],
         }));
+
+        if(['employee', 'manager'].includes(formData.role)){
+            setFormData((prev) => ({
+            ...prev,
+            branches: [branchId],
+        }));
+        }
     };
+
+    useEffect(()=>{
+
+        setFormData((prev) => ({
+            ...prev,
+            branches: isEditMode && existingEmployee ? existingEmployee.branches.map((b: any) => b._id):[],
+        }));
+
+    },[formData.role, existingEmployee])
 
     const validate = () => {
         const nextErrors: Record<string, string> = {};

@@ -10,7 +10,7 @@ export default function Providers({ children }: Props) {
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster
-        position="top-center"
+        position="bottom-right"
         reverseOrder={false}
         gutter={8}
         toasterId="default"

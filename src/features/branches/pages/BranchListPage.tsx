@@ -14,9 +14,10 @@ const BranchListPage = () => {
   const updateStatus = useUpdateBranchStatus();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [formModal, setFormModal] = useState<{ open: boolean; branch: Branch | null }>(
-    { open: false, branch: null }
-  );
+  const [formModal, setFormModal] = useState<{ open: boolean; branch: Branch | null }>({
+    open: false,
+    branch: null,
+  });
   const [statusTarget, setStatusTarget] = useState<Branch | null>(null);
 
   const filteredBranches = useMemo(() => {
@@ -31,8 +32,6 @@ const BranchListPage = () => {
         branch.city?.toLowerCase().includes(query)
     );
   }, [branches, searchQuery]);
-
-  const activeCount = branches?.filter((b) => b.isActive).length ?? 0;
 
   const handleConfirmStatusChange = async () => {
     if (!statusTarget) return;
@@ -52,29 +51,28 @@ const BranchListPage = () => {
             <span className="h-0.5 w-4 bg-primary rounded-full" />
             <span>Operations</span>
           </div>
-          <h1 className="font-headline-md text-headline-md text-on-surface">
+          <h1 className="font-headline-md text-2xl sm:text-3xl font-extrabold text-on-surface">
             Branch Network
           </h1>
-          <p className="font-body-md text-on-surface-variant mt-1 max-w-2xl">
-            View and manage every regional office your organization operates
-            from.
+          <p className="font-body-md text-xs sm:text-sm text-on-surface-variant mt-1 max-w-2xl">
+            View and manage every regional office your organization operates from.
           </p>
         </div>
 
         {canManageBranches && (
           <button
             onClick={() => setFormModal({ open: true, branch: null })}
-            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-label-md text-on-primary shadow-md hover:bg-primary/90 transition-all self-start md:self-auto shrink-0"
+            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all self-start md:self-auto shrink-0"
           >
-            <span className="material-symbols-outlined text-xl">add_business</span>
+            <span className="material-symbols-outlined text-lg">add_business</span>
             <span>Create Branch</span>
           </button>
         )}
       </div>
 
-      {/* Search + summary */}
+      {/* Search Toolbar */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative flex-1 max-w-md items-center rounded-xl border border-outline-variant/50 bg-surface-container-lowest px-3.5 py-2.5 shadow-sm focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+        <div className="relative flex-1 max-w-md items-center rounded-xl border border-outline-variant/50 bg-surface-container-lowest px-3.5 py-2.5 shadow-xs focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
           <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-xl text-on-surface-variant">
             search
           </span>
@@ -83,42 +81,31 @@ const BranchListPage = () => {
             placeholder="Search by name, code, or city..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-transparent pl-8 font-body-md text-on-surface outline-none placeholder:text-on-surface-variant/60"
+            className="w-full bg-transparent pl-8 font-body-sm text-xs sm:text-sm text-on-surface outline-none placeholder:text-on-surface-variant/60"
           />
         </div>
-
-        <p className="font-body-sm text-xs text-on-surface-variant">
-          <span className="font-bold text-on-surface">{activeCount}</span>{" "}
-          active of{" "}
-          <span className="font-bold text-on-surface">
-            {branches?.length ?? 0}
-          </span>{" "}
-          branches
-        </p>
       </div>
 
-      {/* Content */}
+      {/* Main List Table */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
-              className="h-40 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest animate-pulse"
+              className="h-16 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest animate-pulse"
             />
           ))}
         </div>
       ) : isError ? (
-        <div className="rounded-2xl border border-error/30 bg-error-container/10 p-8 text-center">
-          <span className="material-symbols-outlined text-3xl text-error">
-            error
-          </span>
+        <div className="rounded-2xl border border-error/30 bg-error/10 p-8 text-center">
+          <span className="material-symbols-outlined text-3xl text-error">error</span>
           <p className="font-body-md text-sm text-error mt-2">
             Failed to load branches. Please try again.
           </p>
         </div>
       ) : filteredBranches.length === 0 ? (
         <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-12 text-center">
-          <span className="material-symbols-outlined text-4xl text-outline">
+          <span className="material-symbols-outlined text-4xl text-outline-variant">
             domain
           </span>
           <p className="font-body-md text-on-surface-variant mt-2">
@@ -126,96 +113,121 @@ const BranchListPage = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredBranches.map((branch) => (
-            <div
-              key={branch._id}
-              className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-4"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-label-md text-sm font-bold text-on-surface">
-                    {branch.name}
-                  </p>
-                  <span className="font-label-sm text-[10px] font-bold tracking-wider text-primary uppercase">
-                    {branch.code}
-                  </span>
-                </div>
-                <span
-                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 font-label-sm text-[11px] font-semibold ${
-                    branch.isActive
-                      ? "bg-emerald-500/10 text-emerald-700"
-                      : "bg-surface-container-high text-on-surface-variant"
-                  }`}
+        <div className="overflow-x-auto rounded-2xl border border-outline-variant/30 bg-surface-container-lowest shadow-xs">
+          <table className="w-full text-left border-collapse font-body-sm text-xs">
+            <thead>
+              <tr className="border-b border-outline-variant/20 bg-surface-container-low/50 font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+                <th className="py-4 px-6">Branch Code</th>
+                <th className="py-4 px-6">Location</th>
+                {/* <th className="py-4 px-6">Assigned Admin</th> */}
+                <th className="py-4 px-6 text-center">Team Size</th>
+                <th className="py-4 px-6 text-center">Status</th>
+                {canManageBranches && <th className="py-4 px-6 text-right">Actions</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant/20">
+              {filteredBranches.map((branch) => (
+                <tr
+                  key={branch._id}
+                  className="hover:bg-surface-container-low/40 transition-colors"
                 >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${
-                      branch.isActive ? "bg-emerald-500" : "bg-outline"
-                    }`}
-                  />
-                  {branch.isActive ? "ACTIVE" : "INACTIVE"}
-                </span>
-              </div>
+                  {/* Branch Code */}
+                  <td className="py-4 px-6 font-mono font-extrabold text-xs text-on-surface">
+                    {branch.code}
+                  </td>
 
-              <div className="space-y-1.5 font-body-sm text-xs text-on-surface-variant">
-                {(branch.city || branch.state) && (
-                  <p className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm">
-                      location_on
-                    </span>
-                    {[branch.city, branch.state, branch.country]
-                      .filter(Boolean)
-                      .join(", ")}
-                  </p>
-                )}
-                {branch.phone && (
-                  <p className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm">call</span>
-                    {branch.phone}
-                  </p>
-                )}
-                {branch.email && (
-                  <p className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-sm">mail</span>
-                    {branch.email}
-                  </p>
-                )}
-                {!branch.city && !branch.phone && !branch.email && (
-                  <p className="text-on-surface-variant/50 italic">
-                    No additional contact details on file.
-                  </p>
-                )}
-              </div>
+                  {/* Location & Name */}
+                  <td className="py-4 px-6">
+                    <p className="font-bold text-sm text-on-surface">{branch.name}</p>
+                    <p className="text-on-surface-variant text-xs mt-0.5">
+                      {[branch.address, branch.city, branch.state, branch.country]
+                        .filter(Boolean)
+                        .join(", ") || "Address not provided"}
+                    </p>
+                  </td>
 
-              {canManageBranches && (
-                <div className="flex items-center gap-2 pt-3 border-t border-outline-variant/20">
-                  <button
-                    onClick={() => setFormModal({ open: true, branch })}
-                    className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-base">edit</span>
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => setStatusTarget(branch)}
-                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 font-label-md text-xs font-bold transition-colors ${
-                      branch.isActive
-                        ? "border-error/30 text-error hover:bg-error-container/10"
-                        : "border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-base">
-                      {branch.isActive ? "toggle_off" : "toggle_on"}
+                  {/* Assigned Admin */}
+                  {/* <td className="py-4 px-6">
+                    {branch.assignedAdmin ? (
+                      <div className="flex items-center gap-2.5">
+                        {branch.assignedAdmin.avatar ? (
+                          <img
+                            src={branch.assignedAdmin.avatar}
+                            alt={branch.assignedAdmin.name}
+                            className="h-7 w-7 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-[10px]">
+                            {branch.assignedAdmin.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </div>
+                        )}
+                        <span className="font-semibold text-on-surface">
+                          {branch.assignedAdmin.name}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-on-surface-variant/50 italic">
+                        Unassigned
+                      </span>
+                    )}
+                  </td> */}
+
+                  {/* Team Size */}
+                  <td className="py-4 px-6 text-center font-bold text-on-surface">
+                    { branch?.teamSize ?? "—"}
+                  </td>
+
+                  {/* Status */}
+                  <td className="py-4 px-6 text-center">
+                    <span
+                      className={`inline-flex items-center justify-center rounded-full px-3 py-1 font-label-sm text-[10px] font-extrabold uppercase tracking-wider ${
+                        branch.isActive
+                          ? "bg-emerald-500/10 text-emerald-700"
+                          : "bg-blue-500/10 text-blue-700"
+                      }`}
+                    >
+                      {branch.isActive ? "Active" : "Setup Phase"}
                     </span>
-                    {branch.isActive ? "Deactivate" : "Activate"}
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+                  </td>
+
+                  {/* Actions */}
+                  {canManageBranches && (
+                    <td className="py-4 px-6 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => setFormModal({ open: true, branch })}
+                          className="rounded-lg p-1.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                          title="Edit Branch"
+                        >
+                          <span className="material-symbols-outlined text-lg">edit</span>
+                        </button>
+                        <button
+                          onClick={() => setStatusTarget(branch)}
+                          className={`rounded-lg p-1.5 transition-colors ${
+                            branch.isActive
+                              ? "text-error hover:bg-error/10"
+                              : "text-emerald-700 hover:bg-emerald-500/10"
+                          }`}
+                          title={branch.isActive ? "Deactivate" : "Activate"}
+                        >
+                          <span className="material-symbols-outlined text-lg">
+                            {branch.isActive ? "toggle_off" : "toggle_on"}
+                          </span>
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
+      {/* Form Modal */}
       <BranchFormModal
         key={formModal.open ? formModal.branch?._id ?? "create" : "closed"}
         open={formModal.open}
@@ -223,15 +235,14 @@ const BranchListPage = () => {
         onClose={() => setFormModal({ open: false, branch: null })}
       />
 
+      {/* Status Confirm Dialog */}
       <ConfirmDialog
         open={Boolean(statusTarget)}
         onClose={() => setStatusTarget(null)}
         onConfirm={handleConfirmStatusChange}
         isLoading={updateStatus.isPending}
         tone={statusTarget?.isActive ? "danger" : "primary"}
-        title={
-          statusTarget?.isActive ? "Deactivate Branch?" : "Activate Branch?"
-        }
+        title={statusTarget?.isActive ? "Deactivate Branch?" : "Activate Branch?"}
         description={
           statusTarget?.isActive
             ? `${statusTarget?.name} will stop appearing in active branch lists and new employees can no longer be assigned to it.`

@@ -86,7 +86,6 @@ const EmployeeListPage = () => {
   const pagination = data?.pagination;
 
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
-  const [viewTarget, setViewTarget] = useState<Employee | null>(null)
   const [branchTarget, setBranchTarget] = useState<Employee | null>(null);
   const [statusTarget, setStatusTarget] = useState<Employee | null>(null);
 

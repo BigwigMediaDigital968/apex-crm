@@ -12,6 +12,7 @@ export interface Branch {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  teamSize?: string;
 }
 
 export interface BranchFormInput {
