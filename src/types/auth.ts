@@ -30,7 +30,7 @@ export const getAssignableRoles = (actorRole: Role): Role[] =>
   ROLE_HIERARCHY[actorRole] ?? [];
 
 export interface AuthUser {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   role: Role;

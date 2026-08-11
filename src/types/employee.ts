@@ -47,7 +47,7 @@ export interface UpdateEmployeeInput {
 
 /** Slim record returned by create/update/status/branch-assignment mutations. */
 export interface EmployeeMutationResult {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   role: Role;

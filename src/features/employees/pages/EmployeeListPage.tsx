@@ -102,7 +102,7 @@ const EmployeeListPage = () => {
   };
 
   const isRowLocked = (emp: Employee) =>
-    emp.role === ROLES.HEAD || emp._id === currentUser?.id;
+    emp.role === ROLES.HEAD || emp._id === currentUser?._id;
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">

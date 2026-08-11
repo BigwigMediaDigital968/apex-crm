@@ -1,12 +1,17 @@
+import { useEmployeeQuery } from "@/features/employees";
 import { useAuthStore } from "@/store/auth.store";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 
 
 const ProfilePage = () => {
     const user = useAuthStore((s) => s.user);
 
-    console.log(user)
+    const { data: userProfile, isLoading: userProfileLoading } = useEmployeeQuery(user?._id);
+    console.log("user:", user);
+    console.log("user id:", user?._id);
+    console.log("userProfile:", userProfile);
+    console.log("loading:", userProfileLoading);
 
     const navigate = useNavigate();
 
@@ -16,12 +21,22 @@ const ProfilePage = () => {
 
     // Form State
     const [formData, setFormData] = useState({
-        name: user?.name,
-        email: user?.email,
+        name: "",
+        email: "",
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
     });
+
+    useEffect(() => {
+        if (userProfile) {
+            setFormData((prev) => ({
+                ...prev,
+                name: userProfile.name ?? "",
+                email: userProfile.email ?? "",
+            }));
+        }
+    }, [userProfile]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -46,6 +61,18 @@ const ProfilePage = () => {
             setIsSubmitting(false);
         }
     };
+
+    if (userProfileLoading) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-surface">
+                <div className="flex items-center gap-2 text-on-surface-variant font-body-md">
+                    <span className="material-symbols-outlined animate-spin">sync</span>
+                    Loading profile...
+                </div>
+            </div>
+        );
+    }
+
 
     return (
         <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -109,13 +136,13 @@ const ProfilePage = () => {
             {/* 2. Profile Overview Header Card */}
             <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-sm flex flex-col sm:flex-row items-center gap-6">
                 <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-headline-md text-2xl font-extrabold">
-                    {user?.name.split(" ").map((n) => n[0]).join("")}
+                    {userProfile?.name.split(" ").map((n) => n[0]).join("")}
                 </div>
 
                 <div className="space-y-1 text-center sm:text-left">
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                         <h2 className="font-headline-sm text-xl font-bold text-on-surface">
-                            {user?.name}
+                            {userProfile?.name}
                         </h2>
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
                             <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -124,17 +151,17 @@ const ProfilePage = () => {
                     </div>
 
                     <p className="font-body-md text-sm text-on-surface-variant">
-                        {user?.email}
+                        {userProfile?.email}
                     </p>
 
                     <div className="pt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2 font-label-sm text-xs">
                         <span className="rounded-lg bg-surface-container-high px-3 py-1 font-bold text-on-surface uppercase tracking-wider">
-                            Role: {user?.role}
+                            Role: {userProfile?.role}
                         </span>
                         {
-                            user?.createdAt && (
+                            userProfile?.createdAt && (
                                 <span className="text-on-surface-variant/60">
-                                    Member since {new Date(user?.createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
+                                    Member since {new Date(userProfile?.createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
                                 </span>
                             )
                         }
@@ -195,32 +222,32 @@ const ProfilePage = () => {
 
                 {/* System & Branch Access Info (Read-Only) */}
                 {
-                    user?.role != 'head' && (
+                    userProfile?.role != 'head' && (
                         <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-headline-sm text-base font-bold text-on-surface flex items-center gap-2">
-                            <span className="material-symbols-outlined text-primary text-xl">storefront</span>
-                            Assigned Operational Branches
-                        </h3>
-                        <span className="font-label-sm text-[11px] text-on-surface-variant/60 bg-surface-container-high px-2 py-0.5 rounded">
-                            Managed by Admin
-                        </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {user?.branches.map((branch: any) => (
-                            <div
-                                key={branch._id}
-                                className="flex items-center gap-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2.5"
-                            >
-                                <span className="material-symbols-outlined text-primary text-lg">location_on</span>
-                                <span className="font-body-sm text-xs font-bold text-on-surface">
-                                    {branch.name}
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-headline-sm text-base font-bold text-on-surface flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-primary text-xl">storefront</span>
+                                    Assigned Operational Branches
+                                </h3>
+                                <span className="font-label-sm text-[11px] text-on-surface-variant/60 bg-surface-container-high px-2 py-0.5 rounded">
+                                    Managed by Admin
                                 </span>
                             </div>
-                        ))}
-                    </div>
-                </div>
+
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                {userProfile?.branches.map((branch: any) => (
+                                    <div
+                                        key={branch._id}
+                                        className="flex items-center gap-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2.5"
+                                    >
+                                        <span className="material-symbols-outlined text-primary text-lg">location_on</span>
+                                        <span className="font-body-sm text-xs font-bold text-on-surface">
+                                            {branch.name}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     )
                 }
 

@@ -16,7 +16,7 @@ const EmployeeFormPage = () => {
     const isEditMode = !!id;
 
     const currentUser = useAuthStore((s) => s.user);
-    const isSelfEdit = isEditMode && currentUser?.id === id;
+    const isSelfEdit = isEditMode && currentUser?._id === id;
 
     const { data: existingEmployee, isLoading: employeeLoading } =
         useEmployeeQuery(id);
