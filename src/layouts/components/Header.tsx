@@ -4,6 +4,7 @@ import { useSidebarStore } from "@/store/sidebar.store";
 import { useLogout } from "@/hooks/useAuth";
 import { Link } from "react-router";
 import QuickAddMenu from "./QuickAddMenu";
+import { Can } from "@/components/Auth/Can";
 
 const Header = () => {
   const user = useAuthStore((s) => s.user);
@@ -71,7 +72,9 @@ const Header = () => {
           <span className="material-symbols-outlined text-lg">add</span>
           <span>Quick Add</span>
         </button> */}
-        <QuickAddMenu />
+        <Can permission={['user:create', 'lead:create', 'branch:create']}>
+          <QuickAddMenu />
+        </Can>
 
         {/* Notification Icon */}
         <button

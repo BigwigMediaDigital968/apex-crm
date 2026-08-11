@@ -9,6 +9,7 @@ import type { Employee } from "@/types/employee";
 import AssignBranchesModal from "../components/AssignBranchesModal";
 import EmployeeFormModal from "../components/EmployeeFormModal";
 import { useEmployeesQuery, useUpdateEmployeeStatus } from "../hooks/useEmployees";
+import { Can } from "@/components/Auth/Can";
 
 const PAGE_SIZE = 10;
 
@@ -120,13 +121,15 @@ const EmployeeListPage = () => {
             across the organization.          </p>
         </div>
 
-        <Link
-          to={'/employees/onboard'}
+        <Can permission={'user:create'}>
+          <Link
+            to={'/employees/onboard'}
             className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all self-start md:self-auto shrink-0"
-        >
-          <span className="material-symbols-outlined text-xl">person_add</span>
-          <span>Create Branch</span>
-        </Link>
+          >
+            <span className="material-symbols-outlined text-xl">person_add</span>
+            <span>Onboard Employee</span>
+          </Link>
+        </Can>
       </div>
 
       {/* Filter Bar */}
@@ -344,18 +347,22 @@ const EmployeeListPage = () => {
 
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end gap-1">
-                            <button
-                              onClick={() => setBranchTarget(emp)}
-                              disabled={locked}
-                              title={locked ? "This account cannot be reassigned" : "Assign branches"}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                            >
-                              <span className="material-symbols-outlined text-lg">
-                                domain
-                              </span>
-                            </button>
+                            <Can permission={'user:assign-branch'}>
 
-                            <button
+                              <button
+                                onClick={() => setBranchTarget(emp)}
+                                disabled={locked}
+                                title={locked ? "This account cannot be reassigned" : "Assign branches"}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-lg">
+                                  domain
+                                </span>
+                              </button>
+                            </Can>
+
+                            <Can permission={'user:view'}>
+                              <button
                               // onClick={() => setViewTarget(emp)}
                               onClick={() => (navigate(`/employees/${emp._id}/profile`))}
                               disabled={locked}
@@ -367,32 +374,38 @@ const EmployeeListPage = () => {
                                 visibility
                               </span>
                             </button>
-                            <button
-                              onClick={() => (navigate(`/employees/${emp._id}/edit`))}
-                              disabled={locked}
-                              title={locked ? "This account cannot be edited here" : "Edit employee"}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                            >
-                              <span className="material-symbols-outlined text-lg">
-                                edit
-                              </span>
-                            </button>
-                            <button
-                              onClick={() => setStatusTarget(emp)}
-                              disabled={locked}
-                              title={
-                                locked
-                                  ? "Status cannot be changed here"
-                                  : emp.isActive
-                                    ? "Deactivate employee"
-                                    : "Activate employee"
-                              }
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                            >
-                              <span className="material-symbols-outlined text-lg">
-                                {emp.isActive ? "block" : "check_circle"}
-                              </span>
-                            </button>
+                            </Can>
+                            <Can permission={'user:update'}>
+                              <button
+                                onClick={() => (navigate(`/employees/${emp._id}/edit`))}
+                                disabled={locked}
+                                title={locked ? "This account cannot be edited here" : "Edit employee"}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-lg">
+                                  edit
+                                </span>
+                              </button>
+                            </Can>
+                            <Can permission={'user:delete'}>
+                              <button
+                                onClick={() => setStatusTarget(emp)}
+                                disabled={locked}
+                                title={
+                                  locked
+                                    ? "Status cannot be changed here"
+                                    : emp.isActive
+                                      ? "Deactivate employee"
+                                      : "Activate employee"
+                                }
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                              >
+                                <span className="material-symbols-outlined text-lg">
+                                  {emp.isActive ? "block" : "check_circle"}
+                                </span>
+                              </button>
+                            </Can>
+
                           </div>
                         </td>
                       </tr>
