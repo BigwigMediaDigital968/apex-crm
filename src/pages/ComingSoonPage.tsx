@@ -1,4 +1,3 @@
-import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 
 interface ComingSoonProps {
@@ -8,7 +7,6 @@ interface ComingSoonProps {
 
 const ComingSoonPage = ({
   featureName = "Advanced CRM Analytics",
-  estimatedRelease = "Q3 2026",
 }: ComingSoonProps) => {
   const navigate = useNavigate();
 

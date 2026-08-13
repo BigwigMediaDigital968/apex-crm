@@ -19,7 +19,6 @@ const UserProfilePage = () => {
 
     // Permission Checks
     const isOwnProfile = Boolean(userProfile && currentUser?._id === userProfile._id);
-    const canUpdateUser = true;
     // const canUpdateUser = LOGGED_IN_USER_PERMISSIONS.includes("user:update") || isOwnProfile;
 
     if (userProfileLoading || branchesLoading) {
