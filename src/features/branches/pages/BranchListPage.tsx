@@ -5,7 +5,148 @@ import { ROLES } from "@/types/auth";
 import BranchFormModal from "../components/BranchFormModal";
 import { useBranchesQuery, useUpdateBranchStatus } from "../hooks/useBranches";
 import type { Branch } from "@/types/branch";
+import { Can } from "@/components/Auth/Can";
 
+// --- BRANCH VIEW MODAL COMPONENT ---
+interface BranchViewModalProps {
+  branch: Branch | null;
+  open: boolean;
+  onClose: () => void;
+  onEdit?: () => void;
+  onToggleStatus?: () => void;
+  canManage: boolean;
+}
+
+const BranchViewModal = ({
+  branch,
+  open,
+  onClose,
+  onEdit,
+  onToggleStatus,
+  canManage,
+}: BranchViewModalProps) => {
+  if (!open || !branch) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-xl rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-2xl space-y-6">
+
+        {/* Modal Header */}
+        <div className="flex items-start justify-between border-b border-outline-variant/20 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <span className="material-symbols-outlined text-2xl">domain</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-extrabold text-on-surface">{branch.name}</h3>
+                <span
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${branch.isActive
+                    ? "bg-emerald-500/10 text-emerald-700"
+                    : "bg-blue-500/10 text-blue-700"
+                    }`}
+                >
+                  {branch.isActive ? "Active" : "Setup Phase"}
+                </span>
+              </div>
+              <p className="font-mono text-xs font-bold text-on-surface-variant/70 mt-0.5">
+                CODE: {branch.code}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+          >
+            <span className="material-symbols-outlined text-xl">close</span>
+          </button>
+        </div>
+
+        {/* Modal Content / Details */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+
+          {/* Location */}
+          <div className="sm:col-span-2 rounded-xl bg-surface-container-low p-3.5 space-y-1">
+            <p className="font-bold uppercase tracking-wider text-[10px] text-on-surface-variant">
+              Full Address
+            </p>
+            <p className="font-semibold text-on-surface">
+              {[branch.address, branch.city, branch.state, branch.country]
+                .filter(Boolean)
+                .join(", ") || "Address not provided"}
+            </p>
+          </div>
+
+          {/* City */}
+          <div className="rounded-xl bg-surface-container-low p-3.5 space-y-1">
+            <p className="font-bold uppercase tracking-wider text-[10px] text-on-surface-variant">
+              City / Region
+            </p>
+            <p className="font-bold text-on-surface">{branch.city || "N/A"}</p>
+          </div>
+
+          {/* Team Size */}
+          <div className="rounded-xl bg-surface-container-low p-3.5 space-y-1">
+            <p className="font-bold uppercase tracking-wider text-[10px] text-on-surface-variant">
+              Team Size
+            </p>
+            <p className="font-bold text-on-surface">
+              {branch.teamSize ? `${branch.teamSize} Members` : "No staff recorded"}
+            </p>
+          </div>
+
+        </div>
+
+        {/* Modal Actions Footer */}
+        <div className="flex items-center justify-between border-t border-outline-variant/20 pt-4">
+          <button
+            onClick={onClose}
+            className="rounded-xl border border-outline-variant/40 px-4 py-2 text-xs font-bold text-on-surface-variant hover:bg-surface-container transition-colors"
+          >
+            Close
+          </button>
+
+            <div className="flex items-center gap-2">
+                                    <Can permission={'branch:update'}>
+              <button
+                onClick={() => {
+                  onClose();
+                  onToggleStatus?.();
+                }}
+                className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-colors ${branch.isActive
+                  ? "bg-rose-500/10 text-rose-700 hover:bg-rose-500/20"
+                  : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
+                  }`}
+              >
+                <span className="material-symbols-outlined text-base">
+                  {branch.isActive ? "toggle_off" : "toggle_on"}
+                </span>
+                <span>{branch.isActive ? "Deactivate" : "Activate"}</span>
+              </button>
+
+
+              <button
+                onClick={() => {
+                  onClose();
+                  onEdit?.();
+                }}
+                className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all"
+              >
+                <span className="material-symbols-outlined text-base">edit</span>
+                <span>Edit Branch</span>
+              </button>
+              </Can>
+
+            </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+// --- MAIN PAGE COMPONENT ---
 const BranchListPage = () => {
   const user = useAuthStore((s) => s.user);
   const canManageBranches = user?.role === ROLES.HEAD || user?.role === ROLES.ADMIN;
@@ -14,12 +155,14 @@ const BranchListPage = () => {
   const updateStatus = useUpdateBranchStatus();
 
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Modal States
+  const [viewBranch, setViewBranch] = useState<Branch | null>(null);
   const [formModal, setFormModal] = useState<{
     open: boolean;
     branch: Branch | null;
   }>(() => {
     const params = new URLSearchParams(window.location.search);
-
     return {
       open: params.has("new"),
       branch: null,
@@ -66,7 +209,7 @@ const BranchListPage = () => {
           </p>
         </div>
 
-        {canManageBranches && (
+        <Can permission={"branch:create"}>
           <button
             onClick={() => setFormModal({ open: true, branch: null })}
             className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all self-start md:self-auto shrink-0"
@@ -74,7 +217,7 @@ const BranchListPage = () => {
             <span className="material-symbols-outlined text-lg">add_business</span>
             <span>Create Branch</span>
           </button>
-        )}
+        </Can>
       </div>
 
       {/* Search Toolbar */}
@@ -126,10 +269,9 @@ const BranchListPage = () => {
               <tr className="border-b border-outline-variant/20 bg-surface-container-low/50 font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
                 <th className="py-4 px-6">Branch Code</th>
                 <th className="py-4 px-6">Location</th>
-                {/* <th className="py-4 px-6">Assigned Admin</th> */}
                 <th className="py-4 px-6 text-center">Team Size</th>
                 <th className="py-4 px-6 text-center">Status</th>
-                {canManageBranches && <th className="py-4 px-6 text-right">Actions</th>}
+                <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/20">
@@ -143,44 +285,22 @@ const BranchListPage = () => {
                     {branch.code}
                   </td>
 
-                  {/* Location & Name */}
+                  {/* Location & Name (Clickable to View) */}
                   <td className="py-4 px-6">
-                    <p className="font-bold text-sm text-on-surface">{branch.name}</p>
-                    <p className="text-on-surface-variant text-xs mt-0.5">
-                      {[branch.address, branch.city, branch.state, branch.country]
-                        .filter(Boolean)
-                        .join(", ") || "Address not provided"}
-                    </p>
+                    <button
+                      onClick={() => setViewBranch(branch)}
+                      className="text-left group"
+                    >
+                      <p className="font-bold text-sm text-on-surface group-hover:text-primary transition-colors">
+                        {branch.name}
+                      </p>
+                      <p className="text-on-surface-variant text-xs mt-0.5">
+                        {[branch.address, branch.city, branch.state, branch.country]
+                          .filter(Boolean)
+                          .join(", ") || "Address not provided"}
+                      </p>
+                    </button>
                   </td>
-
-                  {/* Assigned Admin */}
-                  {/* <td className="py-4 px-6">
-                    {branch.assignedAdmin ? (
-                      <div className="flex items-center gap-2.5">
-                        {branch.assignedAdmin.avatar ? (
-                          <img
-                            src={branch.assignedAdmin.avatar}
-                            alt={branch.assignedAdmin.name}
-                            className="h-7 w-7 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-[10px]">
-                            {branch.assignedAdmin.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </div>
-                        )}
-                        <span className="font-semibold text-on-surface">
-                          {branch.assignedAdmin.name}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-on-surface-variant/50 italic">
-                        Unassigned
-                      </span>
-                    )}
-                  </td> */}
 
                   {/* Team Size */}
                   <td className="py-4 px-6 text-center font-bold text-on-surface">
@@ -191,8 +311,8 @@ const BranchListPage = () => {
                   <td className="py-4 px-6 text-center">
                     <span
                       className={`inline-flex items-center justify-center rounded-full px-3 py-1 font-label-sm text-[10px] font-extrabold uppercase tracking-wider ${branch.isActive
-                          ? "bg-emerald-500/10 text-emerald-700"
-                          : "bg-blue-500/10 text-blue-700"
+                        ? "bg-emerald-500/10 text-emerald-700"
+                        : "bg-blue-500/10 text-blue-700"
                         }`}
                     >
                       {branch.isActive ? "Active" : "Setup Phase"}
@@ -200,9 +320,21 @@ const BranchListPage = () => {
                   </td>
 
                   {/* Actions */}
-                  {canManageBranches && (
-                    <td className="py-4 px-6 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                  <td className="py-4 px-6 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {/* View Action Button */}
+                      <Can permission={"branch:view"}>
+                        <button
+                          onClick={() => setViewBranch(branch)}
+                          className="rounded-lg p-1.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
+                          title="View Details"
+                        >
+                          <span className="material-symbols-outlined text-lg">visibility</span>
+                        </button>
+                      </Can>
+
+                      {/* Edit Action Button */}
+                      <Can permission={'branch:update'}>
                         <button
                           onClick={() => setFormModal({ open: true, branch })}
                           className="rounded-lg p-1.5 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
@@ -210,11 +342,15 @@ const BranchListPage = () => {
                         >
                           <span className="material-symbols-outlined text-lg">edit</span>
                         </button>
+                      </Can>
+                      {/* Toggle Status Action Button */}
+
+                      <Can permission={'branch:delete'}>
                         <button
                           onClick={() => setStatusTarget(branch)}
                           className={`rounded-lg p-1.5 transition-colors ${branch.isActive
-                              ? "text-error hover:bg-error/10"
-                              : "text-emerald-700 hover:bg-emerald-500/10"
+                            ? "text-error hover:bg-error/10"
+                            : "text-emerald-700 hover:bg-emerald-500/10"
                             }`}
                           title={branch.isActive ? "Deactivate" : "Activate"}
                         >
@@ -222,9 +358,10 @@ const BranchListPage = () => {
                             {branch.isActive ? "toggle_off" : "toggle_on"}
                           </span>
                         </button>
-                      </div>
-                    </td>
-                  )}
+                      </Can>
+
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -232,7 +369,17 @@ const BranchListPage = () => {
         </div>
       )}
 
-      {/* Form Modal */}
+      {/* --- VIEW BRANCH MODAL --- */}
+      <BranchViewModal
+        open={Boolean(viewBranch)}
+        branch={viewBranch}
+        canManage={canManageBranches}
+        onClose={() => setViewBranch(null)}
+        onEdit={() => setFormModal({ open: true, branch: viewBranch })}
+        onToggleStatus={() => setStatusTarget(viewBranch)}
+      />
+
+      {/* --- FORM MODAL --- */}
       <BranchFormModal
         key={formModal.open ? formModal.branch?._id ?? "create" : "closed"}
         open={formModal.open}
@@ -240,7 +387,7 @@ const BranchListPage = () => {
         onClose={() => setFormModal({ open: false, branch: null })}
       />
 
-      {/* Status Confirm Dialog */}
+      {/* --- STATUS CONFIRM DIALOG --- */}
       <ConfirmDialog
         open={Boolean(statusTarget)}
         onClose={() => setStatusTarget(null)}

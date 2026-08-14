@@ -4,37 +4,54 @@ import { useAuthStore } from "@/store/auth.store";
 import type { Permission } from "@/types/auth";
 
 export const useRolePermissionsMap = () => {
-  const isAuthenticated = useAuthStore((s) => !!s.accessToken);
+  const isAuthenticated = useAuthStore(
+    (s) => !!s.accessToken
+  );
 
   return useQuery({
     queryKey: ["permissions"],
     queryFn: permissionApi.getAll,
     enabled: isAuthenticated,
-    staleTime: Infinity, // static per deployment, no need to refetch
+    staleTime: Infinity,
   });
 };
 
 export const usePermissions = () => {
   const user = useAuthStore((s) => s.user);
-  const { data: rolePermissionsMap, isLoading } = useRolePermissionsMap();
-  console.log("rolePermissionsMap",rolePermissionsMap)
-  console.log("user", user)
+
+  const {
+    data: rolePermissionsMap,
+    isLoading,
+    isError,
+  } = useRolePermissionsMap();
 
   const permissions: Permission[] =
-    user && rolePermissionsMap ? rolePermissionsMap[user.role] ?? [] : [];
+    user && rolePermissionsMap
+      ? rolePermissionsMap[user.role] ?? []
+      : [];
 
-  const hasPermission = (permission: Permission) =>
-    permissions.includes(permission);
+  const permissionSet = new Set(permissions);
 
-  const hasAnyPermission = (perms: Permission[]) =>
-    perms.some((p) => permissions.includes(p));
+  const hasPermission = (permission: Permission) => {
+    return permissionSet.has(permission);
+  };
 
-  const hasAllPermissions = (perms: Permission[]) =>
-    perms.every((p) => permissions.includes(p));
+  const hasAnyPermission = (required: Permission[]) => {
+    return required.some((permission) =>
+      permissionSet.has(permission)
+    );
+  };
+
+  const hasAllPermissions = (required: Permission[]) => {
+    return required.every((permission) =>
+      permissionSet.has(permission)
+    );
+  };
 
   return {
     permissions,
     isLoading,
+    isError,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,

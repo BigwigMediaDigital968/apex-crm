@@ -1,17 +1,63 @@
 import { useState } from "react";
 import { useCreateLead, useImportLeads, useLeads } from "../hooks/useLeads";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import type { CreateLeadPayload } from "@/types/lead";
+import { getErrorMessage } from "@/utils/getErrorMessage";
+import type { CreateLeadPayload, Lead, LeadStatus } from "@/types/lead";
 import { useBranchesQuery } from "@/features/branches";
 import { Can } from "@/components/Auth/Can";
+import LeadDetailModal from "../components/Leaddetailmodal";
 
-// --- TYPES ---
+const PAGE_SIZE = 15;
 
+// These must match the values leads are actually created with (createLead
+// service hardcodes "Website" for manual entries, lead-import.service.ts
+// hardcodes "Excel Import"). The old hardcoded ad-campaign-style options
+// never matched any real lead and silently returned empty results.
+const SOURCE_OPTIONS = ["All Sources", "Website", "Excel Import"];
 
-const PAGE_SIZE = 15
+// NOTE: GET /leads?status=... on the backend only accepts a legacy
+// uppercase enum that doesn't match the values leads actually get created
+// with (LEAD_STATUS is lowercase — see lead.validator.ts vs
+// listLeadQuerySchema). Sending status to the API would silently return
+// zero rows. Until that's fixed backend-side, we filter status client-side
+// on the currently loaded page instead of passing it to the API — filtering
+// only reflects leads already fetched for this page.
+const STATUS_FILTERS: { label: string; value: LeadStatus | "" }[] = [
+  { label: "All Statuses", value: "" },
+  { label: "New", value: "new" },
+  { label: "Assigned", value: "assigned" },
+  { label: "Contacted", value: "contacted" },
+  { label: "Follow-up", value: "follow_up" },
+  { label: "Interested", value: "interested" },
+  { label: "Qualified", value: "qualified" },
+  { label: "Converted", value: "converted" },
+  { label: "Lost", value: "lost" },
+  { label: "Closed", value: "closed" },
+];
 
-const STATUS_TABS = ["All Statuses", "New Lead", "Interested", "Attempted", "Qualified", "Closed"];
-const SOURCE_OPTIONS = ["All Sources", "Facebook Ads", "Newsletter", "Referral", "Website Inbound", "Cold Call"];
+const STATUS_BADGE_CLASSES: Record<LeadStatus, string> = {
+  new: "bg-indigo-500/10 text-indigo-700",
+  assigned: "bg-sky-500/10 text-sky-700",
+  contacted: "bg-amber-500/10 text-amber-700",
+  follow_up: "bg-amber-500/10 text-amber-700",
+  interested: "bg-sky-500/10 text-sky-700",
+  qualified: "bg-emerald-500/10 text-emerald-700",
+  converted: "bg-green-500/10 text-green-700",
+  lost: "bg-rose-500/10 text-rose-700",
+  closed: "bg-surface-container-high text-on-surface-variant",
+};
+
+const STATUS_DOT_CLASSES: Record<LeadStatus, string> = {
+  new: "bg-indigo-500",
+  assigned: "bg-sky-500",
+  contacted: "bg-amber-500",
+  follow_up: "bg-amber-500",
+  interested: "bg-sky-500",
+  qualified: "bg-emerald-500",
+  converted: "bg-green-500",
+  lost: "bg-rose-500",
+  closed: "bg-outline",
+};
 
 const LeadListPage = () => {
   // Navigation & Filtering States
@@ -19,11 +65,12 @@ const LeadListPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery);
 
-  const [selectedStatus, setSelectedStatus] = useState("All Statuses");
+  const [selectedStatus, setSelectedStatus] = useState<LeadStatus | "">("");
   const [selectedSource, setSelectedSource] = useState("All Sources");
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [branchFilter, setBranchFilter] = useState("");
+  const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
 
   const createLead = useCreateLead();
 
@@ -36,18 +83,19 @@ const LeadListPage = () => {
     page: currentPage,
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
-    source: selectedSource,
-    status: selectedStatus,
+    source: selectedSource === "All Sources" ? undefined : selectedSource,
     branchId: branchFilter || undefined,
   });
 
-  const leadsData = data?.leads ?? [];
+  const leadsData: Lead[] = data?.leads ?? [];
   const pagination = data?.pagination;
 
+  // Client-side status filter — see note above STATUS_FILTERS.
+  const visibleLeads = selectedStatus
+    ? leadsData?.filter((l) => l.status === selectedStatus)
+    : leadsData;
+
   const { data: branches } = useBranchesQuery();
-
-
-
 
   // Modal Control States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(params.has("new") || false);
@@ -72,7 +120,6 @@ const LeadListPage = () => {
 
     createLead.mutate(manualForm, {
       onSuccess: () => {
-        alert("Lead created successfully!");
         closeCreateModal();
 
         setManualForm({
@@ -108,15 +155,7 @@ const LeadListPage = () => {
         branchId: importBranchId,
       },
       {
-        onSuccess: (result) => {
-          alert(
-            `Import completed!\n\n` +
-            `Total: ${result.totalRows}\n` +
-            `Successful: ${result.successful}\n` +
-            `Duplicates: ${result.duplicates}\n` +
-            `Failed: ${result.failed}`
-          );
-
+        onSuccess: () => {
           setImportFile(null);
           closeCreateModal();
         },
@@ -132,10 +171,10 @@ const LeadListPage = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedLeads.length === leadsData?.length) {
+    if (selectedLeads.length === visibleLeads.length) {
       setSelectedLeads([]);
     } else {
-      setSelectedLeads(leadsData?.map((l: any) => l.id));
+      setSelectedLeads(visibleLeads.map((l) => l._id));
     }
   };
 
@@ -216,68 +255,57 @@ const LeadListPage = () => {
         <div className="relative">
           <select
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
+            onChange={(e) => setSelectedStatus(e.target.value as LeadStatus | "")}
             className="appearance-none rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2 pr-9 text-xs font-semibold text-on-surface outline-none focus:border-primary cursor-pointer transition-all"
           >
-            {STATUS_TABS.map((status) => {
-              const count =
-                status === "All Statuses"
-                  ? leadsData.length
-                  : leadsData.filter((l) => l.status === status).length;
+            {STATUS_FILTERS.map((f) => {
+              // const count = f.value && leadsData
+              //   ? leadsData?.filter((l) => l.status === f.value).length
+              //   : leadsData?.length;
 
               return (
-                <option key={status} value={status}>
-                  {status} ({count})
+                <option key={f.label} value={f.value}>
+                  {f.label} 
+                  {/* ({count}) */}
                 </option>
               );
             })}
           </select>
 
-          {/* Custom Dropdown Chevron Icon */}
           <span className="material-symbols-outlined pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-lg text-on-surface-variant">
             expand_more
           </span>
         </div>
-        {
-          branches && (
-            <>
-              {console.log("branchFilter", branchFilter)
-              }
-              <div className="relative">
-                <select
-                  value={branchFilter}
-                  onChange={(e) => setBranchFilter(e.target.value)}
-                  className="appearance-none rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2 pr-9 text-xs font-semibold text-on-surface outline-none focus:border-primary cursor-pointer transition-all"
-                >
-                  <option key={"All"} value={undefined}>
-                    {'All Branch'}
-                  </option>
-                  {branches.map((branch) => {
-                    return (
-                      <option key={branch.name} value={branch._id}>
-                        {branch.name}
-                      </option>
-                    );
-                  })}
-                </select>
+        {branches && (
+          <div className="relative">
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="appearance-none rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2 pr-9 text-xs font-semibold text-on-surface outline-none focus:border-primary cursor-pointer transition-all"
+            >
+              <option value="">All Branch</option>
+              {branches.map((branch) => (
+                <option key={branch._id} value={branch._id}>
+                  {branch.name}
+                </option>
+              ))}
+            </select>
 
-                {/* Custom Dropdown Chevron Icon */}
-                <span className="material-symbols-outlined pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-lg text-on-surface-variant">
-                  expand_more
-                </span>
-              </div>
-            </>
-          )
-        }
+            <span className="material-symbols-outlined pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-lg text-on-surface-variant">
+              expand_more
+            </span>
+          </div>
+        )}
 
 
         {/* Clear Filters Button (If active) */}
-        {(searchQuery || selectedStatus !== "All Statuses" || selectedSource !== "All Sources") && (
+        {(searchQuery || selectedStatus || selectedSource !== "All Sources" || branchFilter) && (
           <button
             onClick={() => {
               setSearchQuery("");
-              setSelectedStatus("All Statuses");
+              setSelectedStatus("");
               setSelectedSource("All Sources");
+              setBranchFilter("");
             }}
             className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:underline px-2 py-1"
           >
@@ -286,6 +314,15 @@ const LeadListPage = () => {
           </button>
         )}
       </div>
+
+      {selectedStatus && (
+        <p className="-mt-2 flex items-center gap-1.5 font-body-sm text-[11px] text-on-surface-variant/70">
+          <span className="material-symbols-outlined text-sm">info</span>
+          Status filter is applied to leads already loaded on this page only —
+          it isn't sent to the server, so results on other pages aren't
+          included.
+        </p>
+      )}
 
       {/* --- MAIN DATA TABLE --- */}
       <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm">
@@ -323,8 +360,8 @@ const LeadListPage = () => {
                   <input
                     type="checkbox"
                     checked={
-                      selectedLeads.length === leadsData.length &&
-                      leadsData.length > 0
+                      selectedLeads.length === visibleLeads.length &&
+                      visibleLeads.length > 0
                     }
                     onChange={toggleSelectAll}
                     className="h-4 w-4 rounded border-outline-variant text-primary focus:ring-primary/30 accent-primary cursor-pointer"
@@ -334,19 +371,19 @@ const LeadListPage = () => {
                   Lead Details
                 </th>
                 <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
-                  Company & Source
+                  Location & Industry
                 </th>
                 <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
-                  Pipeline Status
+                  Source
                 </th>
                 <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
-                  Priority
+                  Status
                 </th>
                 <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
                   Assigned To
                 </th>
                 <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
-                  Follow-up Schedule
+                  Created
                 </th>
                 <th className="px-4 py-3.5 w-10" />
               </tr>
@@ -357,12 +394,9 @@ const LeadListPage = () => {
                 // Loading State
                 Array.from({ length: 6 }).map((_, index) => (
                   <tr key={`skeleton-${index}`} className="animate-pulse">
-                    {/* Checkbox */}
                     <td className="px-5 py-4">
                       <div className="h-4 w-4 rounded bg-surface-container-high" />
                     </td>
-
-                    {/* Lead Details */}
                     <td className="px-6 py-4">
                       <div className="space-y-2">
                         <div className="h-4 w-32 rounded bg-surface-container-high" />
@@ -370,51 +404,39 @@ const LeadListPage = () => {
                         <div className="h-2.5 w-40 rounded bg-surface-container-high" />
                       </div>
                     </td>
-
-                    {/* Location / Industry */}
                     <td className="px-6 py-4">
                       <div className="space-y-2">
                         <div className="h-4 w-24 rounded bg-surface-container-high" />
                         <div className="h-3 w-28 rounded bg-surface-container-high" />
                       </div>
                     </td>
-
-                    {/* Status */}
-                    <td className="px-6 py-4">
-                      <div className="h-6 w-20 rounded-full bg-surface-container-high" />
-                    </td>
-
-                    {/* Source */}
                     <td className="px-6 py-4">
                       <div className="space-y-2">
                         <div className="h-4 w-24 rounded bg-surface-container-high" />
                         <div className="h-3 w-20 rounded bg-surface-container-high" />
                       </div>
                     </td>
-
-                    {/* Assigned Rep */}
+                    <td className="px-6 py-4">
+                      <div className="h-6 w-20 rounded-full bg-surface-container-high" />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className="h-6 w-6 rounded-full bg-surface-container-high" />
                         <div className="h-4 w-20 rounded bg-surface-container-high" />
                       </div>
                     </td>
-
-                    {/* Created */}
                     <td className="px-6 py-4">
                       <div className="space-y-2">
                         <div className="h-4 w-20 rounded bg-surface-container-high" />
                         <div className="h-3 w-14 rounded bg-surface-container-high" />
                       </div>
                     </td>
-
-                    {/* Action */}
                     <td className="px-4 py-4">
                       <div className="ml-auto h-7 w-7 rounded-lg bg-surface-container-high" />
                     </td>
                   </tr>
                 ))
-              ) : isError && error ? (
+              ) : isError ? (
                 // Error State
                 <tr>
                   <td colSpan={8} className="px-6 py-14 text-center">
@@ -430,33 +452,28 @@ const LeadListPage = () => {
                       </p>
 
                       <p className="mt-1 max-w-sm text-xs text-on-surface-variant/70">
-                        {error?.message || "Something went wrong while fetching your leads."}
+                        {getErrorMessage(error, "Something went wrong while fetching your leads.")}
                       </p>
-
-                      {/* <button
-                        type="button"
-                        onClick={us}
-                        className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-bold text-on-primary transition-colors hover:bg-primary/90"
-                      >
-                        <span className="material-symbols-outlined text-sm">
-                          refresh
-                        </span>
-                        Try Again
-                      </button> */}
                     </div>
                   </td>
                 </tr>
-              ) : leadsData.length > 0 ? (
+              ) : visibleLeads.length > 0 ? (
                 // Data State
-                leadsData.map((lead) => {
+                visibleLeads.map((lead) => {
                   const isSelected = selectedLeads.includes(lead._id);
+                  const branchLabel =
+                    typeof lead.branch === "object" ? lead.branch.name : null;
+                  const assignee =
+                    lead.assignedTo && typeof lead.assignedTo === "object"
+                      ? lead.assignedTo
+                      : null;
 
                   return (
                     <tr
                       key={lead._id}
                       className={`group transition-colors ${isSelected
-                          ? "bg-primary/5"
-                          : "hover:bg-surface-container-low/40"
+                        ? "bg-primary/5"
+                        : "hover:bg-surface-container-low/40"
                         }`}
                     >
                       {/* Checkbox */}
@@ -472,9 +489,13 @@ const LeadListPage = () => {
                       {/* Lead Details */}
                       <td className="px-6 py-4">
                         <div className="space-y-0.5">
-                          <p className="font-bold text-sm text-on-surface group-hover:text-primary transition-colors cursor-pointer">
+                          <button
+                            type="button"
+                            onClick={() => setDetailLeadId(lead._id)}
+                            className="font-bold text-sm text-on-surface group-hover:text-primary transition-colors text-left"
+                          >
                             {lead.name}
-                          </p>
+                          </button>
 
                           <p className="text-on-surface-variant/80 font-medium">
                             {lead.phoneCountryCode} {lead.phone}
@@ -483,6 +504,11 @@ const LeadListPage = () => {
                           {lead.email && (
                             <p className="text-[11px] text-on-surface-variant/70">
                               {lead.email}
+                            </p>
+                          )}
+                          {branchLabel && (
+                            <p className="text-[10px] text-on-surface-variant/60">
+                              {branchLabel}
                             </p>
                           )}
                         </div>
@@ -506,45 +532,6 @@ const LeadListPage = () => {
                         </div>
                       </td>
 
-                      {/* Status */}
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${lead.status === "interested"
-                              ? "bg-sky-500/10 text-sky-700"
-                              : lead.status === "new"
-                                ? "bg-indigo-500/10 text-indigo-700"
-                                : lead.status === "qualified"
-                                  ? "bg-emerald-500/10 text-emerald-700"
-                                  : lead.status === "converted"
-                                    ? "bg-green-500/10 text-green-700"
-                                    : lead.status === "lost"
-                                      ? "bg-rose-500/10 text-rose-700"
-                                      : lead.status === "follow_up"
-                                        ? "bg-amber-500/10 text-amber-700"
-                                        : "bg-surface-container-high text-on-surface-variant"
-                            }`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${lead.status === "interested"
-                                ? "bg-sky-500"
-                                : lead.status === "new"
-                                  ? "bg-indigo-500"
-                                  : lead.status === "qualified"
-                                    ? "bg-emerald-500"
-                                    : lead.status === "converted"
-                                      ? "bg-green-500"
-                                      : lead.status === "lost"
-                                        ? "bg-rose-500"
-                                        : lead.status === "follow_up"
-                                          ? "bg-amber-500"
-                                          : "bg-outline"
-                              }`}
-                          />
-
-                          {lead.status.replace("_", " ")}
-                        </span>
-                      </td>
-
                       {/* Source */}
                       <td className="px-6 py-4">
                         <div>
@@ -561,32 +548,42 @@ const LeadListPage = () => {
                         </div>
                       </td>
 
+                      {/* Status */}
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold ${STATUS_BADGE_CLASSES[lead.status]}`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT_CLASSES[lead.status]}`}
+                          />
+                          {lead.status.replace("_", " ")}
+                        </span>
+                      </td>
+
                       {/* Assigned Rep */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          {false && typeof lead.assignedTo === "object" &&
-                            lead.assignedTo ? (
-                              <></>
-                            // <>
-                            //   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                            //     {lead.assignedTo.name
-                            //       .split(" ")
-                            //       .map((name) => name[0])
-                            //       .slice(0, 2)
-                            //       .join("")
-                            //       .toUpperCase()}
-                            //   </span>
+                          {assignee ? (
+                            <>
+                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                                {assignee.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .slice(0, 2)
+                                  .join("")
+                                  .toUpperCase()}
+                              </span>
 
-                            //   <div>
-                            //     <p className="font-semibold text-on-surface">
-                            //       {lead.assignedTo.name}
-                            //     </p>
+                              <div>
+                                <p className="font-semibold text-on-surface">
+                                  {assignee.name}
+                                </p>
 
-                            //     <p className="text-[10px] text-on-surface-variant/70">
-                            //       {lead.assignedTo.role}
-                            //     </p>
-                            //   </div>
-                            // </>
+                                <p className="text-[10px] text-on-surface-variant/70">
+                                  {assignee.role}
+                                </p>
+                              </div>
+                            </>
                           ) : (
                             <>
                               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-container-high text-[10px] font-bold text-on-surface-variant">
@@ -617,14 +614,16 @@ const LeadListPage = () => {
                         </div>
                       </td>
 
-                      {/* Action Menu */}
+                      {/* Action */}
                       <td className="px-4 py-4 text-right">
                         <button
-                          title="Actions"
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+                          type="button"
+                          title="View & manage lead"
+                          onClick={() => setDetailLeadId(lead._id)}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors ml-auto"
                         >
                           <span className="material-symbols-outlined text-lg">
-                            more_vert
+                            visibility
                           </span>
                         </button>
                       </td>
@@ -657,30 +656,48 @@ const LeadListPage = () => {
         </div>
 
         {/* --- PAGINATION FOOTER --- */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-outline-variant/30 px-6 py-4 bg-surface-container-lowest">
-          <p className="text-xs text-on-surface-variant font-medium">
-            Showing <span className="font-bold text-on-surface">1</span> to{" "}
-            <span className="font-bold text-on-surface">{leadsData.length}</span> of{" "}
-            <span className="font-bold text-on-surface">{pagination?.totalPages}</span> leads
-          </p>
+        {pagination && (
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-t border-outline-variant/30 px-6 py-4 bg-surface-container-lowest">
+            <p className="text-xs text-on-surface-variant font-medium">
+              Showing{" "}
+              <span className="font-bold text-on-surface">
+                {pagination.total === 0
+                  ? 0
+                  : (pagination.page - 1) * pagination.limit + 1}
+              </span>{" "}
+              to{" "}
+              <span className="font-bold text-on-surface">
+                {Math.min(pagination.page * pagination.limit, pagination.total)}
+              </span>{" "}
+              of{" "}
+              <span className="font-bold text-on-surface">
+                {pagination.total}
+              </span>{" "}
+              leads
+              {isFetching && " · refreshing…"}
+            </p>
 
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container disabled:opacity-30"
-            >
-              <span className="material-symbols-outlined text-lg">chevron_left</span>
-            </button>
-            <span className="px-3 text-xs font-bold text-on-surface">Page {currentPage}</span>
-            <button
-              onClick={() => setCurrentPage((p) => p + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container"
-            >
-              <span className="material-symbols-outlined text-lg">chevron_right</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={pagination.page <= 1}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container disabled:opacity-30"
+              >
+                <span className="material-symbols-outlined text-lg">chevron_left</span>
+              </button>
+              <span className="px-3 text-xs font-bold text-on-surface">
+                Page {pagination.page} of {Math.max(pagination.totalPages, 1)}
+              </span>
+              <button
+                onClick={() => setCurrentPage((p) => p + 1)}
+                disabled={pagination.page >= pagination.totalPages}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container disabled:opacity-30"
+              >
+                <span className="material-symbols-outlined text-lg">chevron_right</span>
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
 
@@ -884,31 +901,12 @@ const LeadListPage = () => {
                     </label>
 
                     <input type="text"
-                      value={"Website / Maual"}
+                      value={manualForm.source}
                       disabled={true}
                       title="This field cannot be changed"
 
                       className="cursor-not-allowed w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-xs font-medium text-on-surface outline-none focus:border-primary"
                     />
-                    {/* <select
-                      required
-                      value={manualForm.source}
-                      onChange={(e) =>
-                        setManualForm({
-                          ...manualForm,
-                          source: e.target.value,
-                        })
-                      }
-                      className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-xs font-medium text-on-surface outline-none focus:border-primary"
-                    >
-                      {SOURCE_OPTIONS
-                        .filter((s) => s !== "All Sources")
-                        .map((src) => (
-                          <option key={src} value={src}>
-                            {src}
-                          </option>
-                        ))}
-                    </select> */}
                   </div>
 
                 </div>
@@ -1085,20 +1083,6 @@ const LeadListPage = () => {
                   </select>
                 </div>
 
-                {/* Template */}
-                <div className="flex items-center justify-between text-xs text-on-surface-variant">
-                  <a
-                    href="#download"
-                    className="font-bold text-primary hover:underline flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-sm">
-                      download
-                    </span>
-
-                    Download Sample CSV Template
-                  </a>
-                </div>
-
                 {/* Footer */}
                 <div className="flex items-center justify-between border-t border-outline-variant/20 pt-4">
 
@@ -1132,6 +1116,12 @@ const LeadListPage = () => {
           </div>
         </div>
       )}
+
+      {/* --- LEAD DETAIL / ACTIONS MODAL --- */}
+      <LeadDetailModal
+        leadId={detailLeadId}
+        onClose={() => setDetailLeadId(null)}
+      />
 
     </div>
   );

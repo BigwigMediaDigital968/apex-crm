@@ -1,4 +1,5 @@
 import type { Pagination } from "./global";
+import type { BranchRef } from "./branch";
 
 export const LEAD_STATUS = {
   NEW: "new",
@@ -18,6 +19,17 @@ export const LEAD_SOURCE_TYPE = {
   API: "API",
   IMPORT: "IMPORT",
 } as const;
+
+/**
+ * Slim user shape the backend populates onto a Lead's `assignedTo` /
+ * `createdBy` fields (`.populate(field, "name email role")`).
+ */
+export interface LeadUserSummary {
+  _id: string;
+  name: string;
+  email: string;
+  role: string;
+}
 
 export interface Lead {
   _id: string;
@@ -45,15 +57,18 @@ export interface Lead {
 
   externalId?: string;
 
-  branch: string;
+  /** Populated on list/get responses; falls back to a raw id elsewhere. */
+  branch: BranchRef | string;
 
-  assignedTo?: string;
+  /** Populated on list/get responses; undefined when unassigned. */
+  assignedTo?: LeadUserSummary | string;
 
   assignedBy?: string;
 
   assignedAt?: Date;
 
-  createdBy: string;
+  /** Populated on list/get responses. */
+  createdBy: LeadUserSummary | string;
 
   isDeleted: boolean;
 
@@ -130,24 +145,14 @@ export interface CompleteLeadFollowUpPayload {
 export interface LeadFollowUp {
   _id: string;
   lead: string;
-  assignedTo: string | {
-    _id: string;
-    name: string;
-    email: string;
-    role: string;
-  };
+  assignedTo: string | LeadUserSummary;
   createdBy: string;
   branch: string;
   scheduledAt: string;
   status: "PENDING" | "COMPLETED" | "CANCELLED" | "MISSED";
   remark?: string;
   completedAt?: string | null;
-  completedBy?: string | {
-    _id: string;
-    name: string;
-    email: string;
-    role: string;
-  } | null;
+  completedBy?: string | LeadUserSummary | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -161,12 +166,7 @@ export interface LeadActivity {
   | "status_changed"
   | "remark_added"
   | "follow_up";
-  performedBy: {
-    _id: string;
-    name: string;
-    email: string;
-    role: string;
-  };
+  performedBy: LeadUserSummary;
   previousStatus?: string;
   newStatus?: string;
   remark?: string;

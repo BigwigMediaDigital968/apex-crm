@@ -111,33 +111,33 @@ const HeadDashboardPage = () => {
             <span>Create Employee</span>
           </Link>
 
-          <button
-            onClick={() => setIsCreateBranchOpen(true)}
+          <Link
+            to={'/branches?new'}
             className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container-high transition-all"
           >
             <span className="material-symbols-outlined text-lg text-primary">
               add_business
             </span>
             <span>Create Branch</span>
-          </button>
+          </Link>
 
           {/* Leads module isn't wired to a backend yet — surfaced but disabled so the UI stays honest */}
           <div className="relative group">
-            <button
-              disabled
-              className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface-variant/50 cursor-not-allowed"
+            <Link
+              to={'/leads?new'}
+            className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container-high transition-all"
             >
               <span className="material-symbols-outlined text-lg">
                 person_search
               </span>
               <span>Add New Lead</span>
-            </button>
-            <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-20">
+            </Link>
+            {/* <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-20">
               <div className="bg-on-surface text-surface-container-lowest font-label-sm text-[11px] py-1 px-2.5 rounded-lg shadow-md whitespace-nowrap">
                 Leads module coming soon
               </div>
               <div className="w-2 h-2 bg-on-surface rotate-45 absolute left-4 -bottom-1" />
-            </div>
+            </div> */}
           </div>
 
           {/* Icon-Only Action with UI/UX Tooltip */}

@@ -1,17 +1,18 @@
+import type { PermissionsByRole } from "@/types/auth";
 import { apiClient } from "./apiClient";
-import type { Permission, Role } from "@/types/auth";
 
-interface ApiEnvelope<T> {
+interface PermissionsResponse {
   success: boolean;
-  data: T;
+  data: PermissionsByRole;
 }
 
 export const permissionApi = {
-  // GET /permissions -> all roles' permission maps
-  getAll: async () => {
-    const { data } = await apiClient.get<ApiEnvelope<Record<Role, Permission[]>>>(
+  getAll: async (): Promise<PermissionsByRole> => {
+    const response = await apiClient.get<PermissionsResponse>(
       "/permissions"
     );
-    return data.data;
+
+    return response.data.data;
   },
 };
+

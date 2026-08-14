@@ -3,18 +3,20 @@ import {
     useQuery,
     useQueryClient,
 } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 
 import {
     leadsApi,
 } from "@/services/leadsApi";
-import type { 
-    AddLeadRemarkPayload, 
-    AssignLeadPayload, 
-    CompleteLeadFollowUpPayload, 
-    CreateLeadFollowUpPayload, 
-    CreateLeadPayload, 
-    LeadListQuery, 
-    UpdateLeadStatusPayload 
+import { getErrorMessage } from "@/utils/getErrorMessage";
+import type {
+    AddLeadRemarkPayload,
+    AssignLeadPayload,
+    CompleteLeadFollowUpPayload,
+    CreateLeadFollowUpPayload,
+    CreateLeadPayload,
+    LeadListQuery,
+    UpdateLeadStatusPayload
 } from "@/types/lead";
 
 /* =========================================================
@@ -87,9 +89,14 @@ export const useCreateLead = () => {
             leadsApi.create(payload),
 
         onSuccess: () => {
+            toast.success("Lead created successfully");
             queryClient.invalidateQueries({
                 queryKey: leadQueryKeys.lists(),
             });
+        },
+
+        onError: (error) => {
+            toast.error(getErrorMessage(error, "Failed to create lead"));
         },
     });
 };
@@ -113,6 +120,8 @@ export const useAssignLead = () => {
         }) => leadsApi.assign(id, payload),
 
         onSuccess: (lead) => {
+            toast.success("Lead assigned successfully");
+
             // Update current lead cache immediately
             queryClient.setQueryData(
                 leadQueryKeys.detail(lead._id),
@@ -128,6 +137,10 @@ export const useAssignLead = () => {
             queryClient.invalidateQueries({
                 queryKey: leadQueryKeys.activities(lead._id),
             });
+        },
+
+        onError: (error) => {
+            toast.error(getErrorMessage(error, "Failed to assign lead"));
         },
     });
 };
@@ -151,6 +164,8 @@ export const useUpdateLeadStatus = () => {
         }) => leadsApi.updateStatus(id, payload),
 
         onSuccess: (lead) => {
+            toast.success("Lead status updated");
+
             queryClient.setQueryData(
                 leadQueryKeys.detail(lead._id),
                 lead
@@ -163,6 +178,10 @@ export const useUpdateLeadStatus = () => {
             queryClient.invalidateQueries({
                 queryKey: leadQueryKeys.activities(lead._id),
             });
+        },
+
+        onError: (error) => {
+            toast.error(getErrorMessage(error, "Failed to update lead status"));
         },
     });
 };
@@ -186,6 +205,8 @@ export const useAddLeadRemark = () => {
         }) => leadsApi.addRemark(id, payload),
 
         onSuccess: (lead) => {
+            toast.success("Remark added");
+
             queryClient.setQueryData(
                 leadQueryKeys.detail(lead._id),
                 lead
@@ -194,6 +215,10 @@ export const useAddLeadRemark = () => {
             queryClient.invalidateQueries({
                 queryKey: leadQueryKeys.activities(lead._id),
             });
+        },
+
+        onError: (error) => {
+            toast.error(getErrorMessage(error, "Failed to add remark"));
         },
     });
 };
@@ -232,10 +257,18 @@ export const useImportLeads = () => {
             branchId: string;
         }) => leadsApi.import(file, branchId),
 
-        onSuccess: () => {
+        onSuccess: (result) => {
+            toast.success(
+                `Import completed: ${result.successful} added, ${result.duplicates} duplicates, ${result.failed} failed`
+            );
+
             queryClient.invalidateQueries({
                 queryKey: leadQueryKeys.lists(),
             });
+        },
+
+        onError: (error) => {
+            toast.error(getErrorMessage(error, "Failed to import leads"));
         },
     });
 };
@@ -259,6 +292,8 @@ export const useScheduleFollowUp = () => {
         }) => leadsApi.scheduleFollowUp(id, payload),
 
         onSuccess: (_, variables) => {
+            toast.success("Follow-up scheduled");
+
             queryClient.invalidateQueries({
                 queryKey: leadQueryKeys.followUps(variables.id),
             });
@@ -270,6 +305,10 @@ export const useScheduleFollowUp = () => {
             queryClient.invalidateQueries({
                 queryKey: leadQueryKeys.activities(variables.id),
             });
+        },
+
+        onError: (error) => {
+            toast.error(getErrorMessage(error, "Failed to schedule follow-up"));
         },
     });
 };
@@ -293,12 +332,15 @@ export const useCompleteFollowUp = () => {
         }) => leadsApi.completeFollowUp(followUpId, payload),
 
         onSuccess: (followUp) => {
+            toast.success("Follow-up marked complete");
+
+            const leadId =
+                typeof followUp.lead === "string"
+                    ? followUp.lead
+                    : followUp.lead;
+
             queryClient.invalidateQueries({
-                queryKey: leadQueryKeys.followUps(
-                    typeof followUp.lead === "string"
-                        ? followUp.lead
-                        : followUp.lead
-                ),
+                queryKey: leadQueryKeys.followUps(leadId),
             });
 
             queryClient.invalidateQueries({
@@ -306,14 +348,13 @@ export const useCompleteFollowUp = () => {
             });
 
             // Activity is created when follow-up is completed.
-            const leadId =
-                typeof followUp.lead === "string"
-                    ? followUp.lead
-                    : followUp.lead;
-
             queryClient.invalidateQueries({
                 queryKey: leadQueryKeys.activities(leadId),
             });
+        },
+
+        onError: (error) => {
+            toast.error(getErrorMessage(error, "Failed to complete follow-up"));
         },
     });
 };

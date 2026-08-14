@@ -8,7 +8,7 @@ const AdminDashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-8">
-      
+
       {/* 1. Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-outline-variant/30 pb-5">
         <div>
@@ -27,13 +27,13 @@ const AdminDashboardPage = () => {
         {/* Global Controls */}
         <div className="flex items-center gap-3">
           {/* Permission check: report:export */}
-          <button
+          {/* <button
             onClick={() => alert("Exporting full system data log...")}
             className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container transition-all shadow-sm"
           >
             <span className="material-symbols-outlined text-base">download</span>
             <span>Export System Audit</span>
-          </button>
+          </button> */}
 
           {/* Permission check: user:create */}
           <button
@@ -48,7 +48,7 @@ const AdminDashboardPage = () => {
 
       {/* 2. System KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
+
         {/* User Management Stat */}
         <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-2">
           <div className="flex items-center justify-between">
@@ -131,72 +131,58 @@ const AdminDashboardPage = () => {
           Admin Quick Operations
         </h2>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          
-          {/* Action: Create User (`user:create`) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+
+          {/* Employee Management */}
           <button
-            onClick={() => navigate("/employees/onboard")}
+            onClick={() => navigate("/employees")}
             className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
           >
             <span className="material-symbols-outlined text-2xl text-primary group-hover:scale-110 transition-transform">
-              person_add
+              group
             </span>
-            <span className="font-label-md text-xs font-bold text-on-surface">Create User</span>
+            <span className="font-label-md text-xs font-bold text-on-surface">
+              Employee Management
+            </span>
           </button>
 
-          {/* Action: Manage Roles (`user:assign-role`) */}
+          {/* Branch Management */}
           <button
-            onClick={() => alert("Open Role Assignment Matrix")}
+            onClick={() => navigate("/branches")}
             className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
           >
             <span className="material-symbols-outlined text-2xl text-on-surface-variant group-hover:scale-110 transition-transform">
-              badge
+              domain
             </span>
-            <span className="font-label-md text-xs font-bold text-on-surface">Assign Roles</span>
+            <span className="font-label-md text-xs font-bold text-on-surface">
+              Branch Management
+            </span>
           </button>
 
-          {/* Action: Assign Branch (`user:assign-branch`) */}
+          {/* Lead Management */}
           <button
-            onClick={() => alert("Open Branch Allocation Modal")}
-            className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
-          >
-            <span className="material-symbols-outlined text-2xl text-on-surface-variant group-hover:scale-110 transition-transform">
-              add_location_alt
-            </span>
-            <span className="font-label-md text-xs font-bold text-on-surface">Assign Branch</span>
-          </button>
-
-          {/* Action: Create Branch (`branch:create`) */}
-          <button
-            onClick={() => alert("Open New Branch Dialog")}
-            className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
-          >
-            <span className="material-symbols-outlined text-2xl text-on-surface-variant group-hover:scale-110 transition-transform">
-              domain_add
-            </span>
-            <span className="font-label-md text-xs font-bold text-on-surface">Create Branch</span>
-          </button>
-
-          {/* Action: Lead Sources (`lead-source:create`) */}
-          <button
-            onClick={() => alert("Open Lead Source Configurator")}
+            onClick={() => navigate("/leads")}
             className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
           >
             <span className="material-symbols-outlined text-2xl text-on-surface-variant group-hover:scale-110 transition-transform">
               hub
             </span>
-            <span className="font-label-md text-xs font-bold text-on-surface">Lead Sources</span>
+            <span className="font-label-md text-xs font-bold text-on-surface">
+              Lead Management
+            </span>
           </button>
 
-          {/* Action: Audit Logs (`audit:view`) */}
+          {/* Activity Logs */}
           <button
-            onClick={() => alert("Redirecting to Security Audit Table...")}
+            onClick={() => navigate("/logs")}
             className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
           >
             <span className="material-symbols-outlined text-2xl text-on-surface-variant group-hover:scale-110 transition-transform">
-              verified_user
+              history
             </span>
-            <span className="font-label-md text-xs font-bold text-on-surface">Audit Logs</span>
+            <span className="font-label-md text-xs font-bold text-on-surface">
+              Activity Logs
+            </span>
           </button>
 
         </div>
@@ -204,7 +190,7 @@ const AdminDashboardPage = () => {
 
       {/* 4. Core Management Section (User Management & Audit Activity) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Column (User Directory Table with Actions) */}
         <div className="lg:col-span-2 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm overflow-hidden">
           <div className="p-5 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -256,11 +242,10 @@ const AdminDashboardPage = () => {
                     <td className="py-3.5 px-4">
                       {/* `user:status:update` toggle */}
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                          user.status === "Active"
-                            ? "bg-emerald-500/10 text-emerald-700"
-                            : "bg-error/10 text-error"
-                        }`}
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${user.status === "Active"
+                          ? "bg-emerald-500/10 text-emerald-700"
+                          : "bg-error/10 text-error"
+                          }`}
                       >
                         <span className={`h-1.5 w-1.5 rounded-full ${user.status === "Active" ? "bg-emerald-500" : "bg-error"}`} />
                         {user.status}
