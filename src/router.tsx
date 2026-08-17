@@ -5,8 +5,8 @@ import { DashboardDispatcher } from "@/features/dashboard";
 import { EmployeeFormPage, EmployeeListPage, UserProfilePage } from "@/features/employees";
 import { BranchListPage } from "@/features/branches";
 import { LeadListPage } from "@/features/leads";
-import { LoginPage, ProfilePage } from "@/features/auth";
 import { AuditLogPage } from "@/features/logs";
+import { LoginPage, ProfilePage } from "@/features/auth";
 
 import GuestRoute from "@/routes/GuestRoute";
 import PermissionRoute from "./routes/PermissionRoute";
