@@ -14,7 +14,7 @@ interface BranchViewModalProps {
   onClose: () => void;
   onEdit?: () => void;
   onToggleStatus?: () => void;
-  canManage: boolean;
+  canManage?: boolean;
 }
 
 const BranchViewModal = ({
@@ -23,7 +23,6 @@ const BranchViewModal = ({
   onClose,
   onEdit,
   onToggleStatus,
-  canManage,
 }: BranchViewModalProps) => {
   if (!open || !branch) return null;
 
