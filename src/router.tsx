@@ -5,7 +5,6 @@ import { DashboardDispatcher } from "@/features/dashboard";
 import { EmployeeFormPage, EmployeeListPage, UserProfilePage } from "@/features/employees";
 import { BranchListPage } from "@/features/branches";
 import { LeadListPage } from "@/features/leads";
-import { AuditLogPage } from "./features/logs";
 import { LoginPage, ProfilePage } from "@/features/auth";
 
 import GuestRoute from "@/routes/GuestRoute";
@@ -13,6 +12,7 @@ import PermissionRoute from "./routes/PermissionRoute";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import ComingSoonPage from "./pages/ComingSoonPage";
+import AuditLogPage from "./features/logs/pages/AuditLogPage";
 
 export const router = createBrowserRouter([
   {
