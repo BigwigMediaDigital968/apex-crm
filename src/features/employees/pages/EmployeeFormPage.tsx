@@ -167,7 +167,7 @@ const EmployeeFormPage = () => {
             officialEmail: existingEmployee.email,
             password: "",
             role: existingEmployee.role,
-            branches: existingEmployee.branches.map((b: any) => b._id),
+            branches: existingEmployee.branches.map((b: any) => b), //it need to be changed when updated
             isActive: existingEmployee.isActive,
         });
     }, [isEditMode, existingEmployee]);
