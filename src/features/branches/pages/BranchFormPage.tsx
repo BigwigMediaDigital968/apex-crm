@@ -345,7 +345,7 @@ const BranchFormPage = () => {
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-container/30 text-[10px]">
                 2
               </span>
-              Attendance & Hours (Optional)
+              Attendance & Hours
             </div>
           </div>
         )}
@@ -398,7 +398,7 @@ const BranchFormPage = () => {
                 >
                   <span className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-lg text-on-surface-variant">tune</span>
-                    Additional Location Details (Optional)
+                    Additional Location Details
                   </span>
                   <span className={`material-symbols-outlined text-lg transition-transform ${detailsExpanded ? "rotate-180" : ""}`}>
                     expand_more
@@ -563,7 +563,7 @@ const BranchFormPage = () => {
                 >
                   <span className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-lg text-on-surface-variant">tune</span>
-                    Additional Location Details (Optional)
+                    Additional Location Details
                   </span>
                   <span className={`material-symbols-outlined text-lg transition-transform ${detailsExpanded ? "rotate-180" : ""}`}>
                     expand_more
