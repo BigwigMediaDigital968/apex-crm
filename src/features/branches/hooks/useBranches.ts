@@ -19,6 +19,14 @@ export const useBranchesQuery = () =>
     queryFn: branchApi.list,
   });
 
+/** Derives a single branch from the cached list — there's no GET /branches/:id
+ * endpoint, mirroring the same fallback used for employees. */
+export const useBranch = (id: string | undefined) => {
+  const query = useBranchesQuery();
+  const branch = id ? query.data?.find((b) => b._id === id) : undefined;
+  return { ...query, data: branch };
+};
+
 export const useCreateBranch = () => {
   const queryClient = useQueryClient();
 
@@ -75,8 +83,6 @@ export const useUpdateBranchStatus = () => {
   });
 };
 
-/** Read-only fetch of a single branch's attendance config. Enabled only once
- * a branch id exists — the create endpoint doesn't accept attendanceConfig. */
 export const useBranchAttendanceConfig = (id?: string) =>
   useQuery({
     queryKey: branchKeys.attendanceConfig(id ?? ""),
@@ -84,8 +90,6 @@ export const useBranchAttendanceConfig = (id?: string) =>
     enabled: Boolean(id),
   });
 
-/** Deliberately separate from useUpdateBranch — attendance settings are an
- * independent concern with their own save action in the UI. */
 export const useUpdateBranchAttendanceConfig = () => {
   const queryClient = useQueryClient();
 

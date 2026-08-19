@@ -35,7 +35,7 @@ const QuickAddMenu = ({ onAddLead, onAddBranch, onAddEmployee }: QuickAddProps) 
         break;
       case "branch":
         if (onAddBranch) onAddBranch();
-        else navigate("/branches?new");
+        else navigate("/branches/new");
         break;
       case "employee":
         if (onAddEmployee) onAddEmployee();

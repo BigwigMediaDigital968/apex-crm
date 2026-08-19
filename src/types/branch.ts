@@ -1,6 +1,6 @@
 export interface BranchAttendanceLocation {
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   radiusMeters: number;
 }
 
@@ -49,6 +49,8 @@ export interface BranchFormInput {
   country?: string;
   phone?: string;
   email?: string;
+  // Optional attendance configuration for creation
+  attendanceConfig?: BranchAttendanceConfig;
 }
 
 /** All fields optional; when `location` or `workingHours` are sent, the

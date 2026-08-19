@@ -3,7 +3,7 @@ import DashboardLayout from "@/layouts/DashboardLayout";
 import ProtectedRoute from "@/routes/ProtectedRoute";
 import { DashboardDispatcher } from "@/features/dashboard";
 import { EmployeeFormPage, EmployeeListPage, UserProfilePage } from "@/features/employees";
-import { BranchListPage } from "@/features/branches";
+import { BranchDetailPage, BranchFormPage, BranchListPage } from "@/features/branches";
 import { LoginPage, ProfilePage } from "@/features/auth";
 import { LeadListPage } from "@/features/leads";
 
@@ -58,6 +58,19 @@ export const router = createBrowserRouter([
             element: <PermissionRoute permission={'branch:view'} />,
             children: [
               { path: "/branches", element: <BranchListPage /> },
+              { path: "/branches/:id", element: <BranchDetailPage /> },
+            ],
+          },
+          {
+            element: <PermissionRoute permission={'branch:create'} />,
+            children: [
+              { path: "/branches/new", element: <BranchFormPage /> },
+            ],
+          },
+          {
+            element: <PermissionRoute permission={'branch:update'} />,
+            children: [
+              { path: "/branches/:id/edit", element: <BranchFormPage /> },
             ],
           },
           {
