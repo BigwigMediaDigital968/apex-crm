@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { useAuthStore } from "@/store/auth.store";
 import { Can } from "@/components/Auth/Can";
 import { useEmployeeProfileByUserQuery } from "../hooks/useEmployees"; // Updated hook import
 import { PERMISSIONS } from "@/types/auth";
@@ -8,7 +7,6 @@ import { PERMISSIONS } from "@/types/auth";
 const UserProfilePage = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const currentUser = useAuthStore((s) => s.user);
 
   const [activeTab, setActiveTab] = useState<
     "overview" | "personal" | "documents" | "payroll"
@@ -31,7 +29,7 @@ const UserProfilePage = () => {
   const branchObj = getBranchObj();
   const managerObj = getManagerObj();
 
-  const isOwnProfile = Boolean(currentUser && userObj?._id === currentUser._id);
+  // const isOwnProfile = Boolean(currentUser && userObj?._id === currentUser._id);
 
 
   if (isLoading) {

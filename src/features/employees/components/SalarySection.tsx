@@ -1,5 +1,4 @@
 import type { SalaryStructure } from "@/types/employee";
-import { useEffect } from "react";
 
 interface SalarySectionProps {
   salary: SalaryStructure;
