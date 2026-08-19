@@ -2,10 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { branchApi } from "@/services/branchApi";
 import { getErrorMessage } from "@/utils/getErrorMessage";
-import type { BranchFormInput } from "@/types/branch";
+import type {
+  BranchFormInput,
+  UpdateBranchAttendanceConfigInput,
+} from "@/types/branch";
 
 export const branchKeys = {
   all: ["branches"] as const,
+  attendanceConfig: (id: string) =>
+    [...branchKeys.all, id, "attendance-config"] as const,
 };
 
 export const useBranchesQuery = () =>
@@ -66,6 +71,43 @@ export const useUpdateBranchStatus = () => {
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Failed to update branch status"));
+    },
+  });
+};
+
+/** Read-only fetch of a single branch's attendance config. Enabled only once
+ * a branch id exists — the create endpoint doesn't accept attendanceConfig. */
+export const useBranchAttendanceConfig = (id?: string) =>
+  useQuery({
+    queryKey: branchKeys.attendanceConfig(id ?? ""),
+    queryFn: () => branchApi.getAttendanceConfig(id as string),
+    enabled: Boolean(id),
+  });
+
+/** Deliberately separate from useUpdateBranch — attendance settings are an
+ * independent concern with their own save action in the UI. */
+export const useUpdateBranchAttendanceConfig = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdateBranchAttendanceConfigInput;
+    }) => branchApi.updateAttendanceConfig(id, payload),
+    onSuccess: (_, variables) => {
+      toast.success("Attendance settings updated");
+      queryClient.invalidateQueries({
+        queryKey: branchKeys.attendanceConfig(variables.id),
+      });
+      queryClient.invalidateQueries({ queryKey: branchKeys.all });
+    },
+    onError: (error) => {
+      toast.error(
+        getErrorMessage(error, "Failed to update attendance settings")
+      );
     },
   });
 };
