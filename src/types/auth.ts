@@ -49,11 +49,43 @@ export const PERMISSIONS = {
   USER_ASSIGN_BRANCH: "user:assign-branch",
   USER_STATUS_UPDATE: "user:status:update",
 
+  // Employees
+  EMPLOYEE_VIEW: "employee:view",
+  EMPLOYEE_CREATE: "employee:create",
+  EMPLOYEE_UPDATE: "employee:update",
+  EMPLOYEE_DELETE: "employee:delete",
+  EMPLOYEE_DOCUMENT_VIEW: "employee:document:view",
+  EMPLOYEE_DOCUMENT_UPDATE: "employee:document:update",
+  EMPLOYEE_SALARY_VIEW: "employee:salary:view",
+  EMPLOYEE_SALARY_UPDATE: "employee:salary:update",
+
   // Branches
   BRANCH_VIEW: "branch:view",
   BRANCH_CREATE: "branch:create",
   BRANCH_UPDATE: "branch:update",
   BRANCH_DELETE: "branch:delete",
+
+  // Branch Attendance
+  BRANCH_ATTENDANCE_VIEW: "branch-attendance:view",
+  BRANCH_ATTENDANCE_UPDATE: "branch-attendance:update",
+
+  // Attendance Config
+  ATTENDANCE_CONFIG_VIEW: "attendance-config:view",
+  ATTENDANCE_CONFIG_UPDATE: "attendance-config:update",
+
+  // Attendance
+  ATTENDANCE_VIEW: "attendance:view",
+  ATTENDANCE_CHECK_IN: "attendance:check-in",
+  ATTENDANCE_CHECK_OUT: "attendance:check-out",
+  ATTENDANCE_MANAGE: "attendance:manage",
+  ATTENDANCE_REPORT: "attendance:report",
+  ATTENDANCE_EXPORT: "attendance:export",
+
+  // Holidays
+  HOLIDAY_VIEW: "holiday:view",
+  HOLIDAY_CREATE: "holiday:create",
+  HOLIDAY_UPDATE: "holiday:update",
+  HOLIDAY_DELETE: "holiday:delete",
 
   // Lead Sources
   LEAD_SOURCE_READ: "lead-source:read",
@@ -96,13 +128,6 @@ export const PERMISSIONS = {
   ACTIVITY_CREATE: "activity:create",
   ACTIVITY_UPDATE: "activity:update",
   ACTIVITY_DELETE: "activity:delete",
-
-  // Attendance
-  ATTENDANCE_VIEW: "attendance:view",
-  ATTENDANCE_CREATE: "attendance:create",
-  ATTENDANCE_UPDATE: "attendance:update",
-  ATTENDANCE_DELETE: "attendance:delete",
-  ATTENDANCE_MANAGE: "attendance:manage",
 
   // Salary
   SALARY_VIEW: "salary:view",
