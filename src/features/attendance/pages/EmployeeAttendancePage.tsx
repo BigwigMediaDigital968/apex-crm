@@ -5,6 +5,7 @@ import { useAttendanceRecords, useAttendanceSummary, useCheckIn, useCheckOut } f
 import { ATTENDANCE_STATUS, ATTENDANCE_STATUS_LABELS, ATTENDANCE_WORK_MODE_LABELS, type AttendanceStatus } from "@/types/attendance";
 import { useBranch } from "@/features/branches";
 import { daysAgoInput, formatDate, formatMinutes, formatTime, todayInput } from "@/utils/Date";
+import TeamAttendanceTab from "../components/TeamAttendanceTab";
 
 const STATUS_BADGE_CLASSES: Record<AttendanceStatus, string> = {
     present: "bg-emerald-500/10 text-emerald-700",
@@ -294,7 +295,43 @@ const EmployeeAttendancePage = () => {
                             </div>
                         </div>
                     </div>
-
+                    {/* Personal KPIs */}
+                    {mySummary && (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
+                                <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
+                                    Present Days
+                                </p>
+                                <p className="font-headline-sm text-xl font-extrabold text-emerald-700 mt-1">
+                                    {mySummary.presentDays}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
+                                <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
+                                    Late Days
+                                </p>
+                                <p className="font-headline-sm text-xl font-extrabold text-amber-700 mt-1">
+                                    {mySummary.lateDays}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
+                                <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
+                                    Absent Days
+                                </p>
+                                <p className="font-headline-sm text-xl font-extrabold text-rose-700 mt-1">
+                                    {mySummary.absentDays}
+                                </p>
+                            </div>
+                            <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
+                                <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
+                                    Attendance %
+                                </p>
+                                <p className="font-headline-sm text-xl font-extrabold text-primary mt-1">
+                                    {mySummary.attendancePercentage.toFixed(1)}%
+                                </p>
+                            </div>
+                        </div>
+                    )}
                     {/* Monthly Logs Table */}
                     <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-sm space-y-4">
                         <div className="flex items-center justify-between">
@@ -396,73 +433,11 @@ const EmployeeAttendancePage = () => {
                 </div>
             )}
 
-            {/* Personal KPIs */}
-            {mySummary && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
-                        <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                            Present Days
-                        </p>
-                        <p className="font-headline-sm text-xl font-extrabold text-emerald-700 mt-1">
-                            {mySummary.presentDays}
-                        </p>
-                    </div>
-                    <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
-                        <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                            Late Days
-                        </p>
-                        <p className="font-headline-sm text-xl font-extrabold text-amber-700 mt-1">
-                            {mySummary.lateDays}
-                        </p>
-                    </div>
-                    <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
-                        <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                            Absent Days
-                        </p>
-                        <p className="font-headline-sm text-xl font-extrabold text-rose-700 mt-1">
-                            {mySummary.absentDays}
-                        </p>
-                    </div>
-                    <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
-                        <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                            Attendance %
-                        </p>
-                        <p className="font-headline-sm text-xl font-extrabold text-primary mt-1">
-                            {mySummary.attendancePercentage.toFixed(1)}%
-                        </p>
-                    </div>
-                </div>
-            )}
+
 
             {/* TEAM ATTENDANCE TAB CONTENT (Manager View Only) */}
             {isManager && activeTab === "team_attendance" && (
-                <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b border-outline-variant/20 pb-4">
-                        <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-primary text-xl">
-                                groups
-                            </span>
-                            <h3 className="font-headline-sm text-base font-bold text-on-surface">
-                                Direct Reports Attendance
-                            </h3>
-                        </div>
-                        <span className="font-label-sm text-xs font-bold text-primary">
-                            Live Overview
-                        </span>
-                    </div>
-
-                    <div className="text-center py-12 space-y-2">
-                        <span className="material-symbols-outlined text-4xl text-on-surface-variant/40">
-                            badge
-                        </span>
-                        <p className="font-label-md text-sm font-bold text-on-surface">
-                            Team Monitoring Roster
-                        </p>
-                        <p className="font-body-sm text-xs text-on-surface-variant max-w-sm mx-auto">
-                            Team punch logs, late flags, and attendance regularization requests for your direct reports will render in this tab.
-                        </p>
-                    </div>
-                </div>
+                <TeamAttendanceTab />
             )}
         </div>
     );
