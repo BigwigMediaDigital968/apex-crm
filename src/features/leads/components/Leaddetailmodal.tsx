@@ -1,531 +1,236 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router";
 import Modal from "@/components/ui/Modal";
 import { Can } from "@/components/Auth/Can";
-import { useAuthStore } from "@/store/auth.store";
-import { useEmployeesQuery } from "@/features/employees";
-import { ROLES } from "@/types/auth";
 import type { LeadStatus } from "@/types/lead";
-import {
-  useLead,
-  useLeadActivities,
-  useLeadFollowUps,
-  useUpdateLeadStatus,
-  useAddLeadRemark,
-  useAssignLead,
-  useScheduleFollowUp,
-  useCompleteFollowUp,
-} from "../hooks/useLeads";
+import { useLead, useUpdateLeadStatus, useAddLeadRemark } from "../hooks/useLeads";
+import AssignLeadModal from "./AssignLeadModal";
 
 interface LeadDetailModalProps {
   leadId: string | null;
   onClose: () => void;
 }
 
-const STATUS_OPTIONS: { label: string; value: LeadStatus }[] = [
-  { label: "New", value: "new" },
-  { label: "Assigned", value: "assigned" },
-  { label: "Contacted", value: "contacted" },
-  { label: "Follow-up", value: "follow_up" },
-  { label: "Interested", value: "interested" },
-  { label: "Qualified", value: "qualified" },
-  { label: "Converted", value: "converted" },
-  { label: "Lost", value: "lost" },
-  { label: "Closed", value: "closed" },
+const STATUS_BADGE_CLASSES: Record<LeadStatus, string> = {
+  new: "bg-indigo-500/10 text-indigo-700 border-indigo-200/40",
+  assigned: "bg-sky-500/10 text-sky-700 border-sky-200/40",
+  contacted: "bg-amber-500/10 text-amber-700 border-amber-200/40",
+  follow_up: "bg-amber-500/10 text-amber-700 border-amber-200/40",
+  interested: "bg-sky-500/10 text-sky-700 border-sky-200/40",
+  qualified: "bg-emerald-500/10 text-emerald-700 border-emerald-200/40",
+  converted: "bg-emerald-600 text-white border-transparent",
+  lost: "bg-rose-500/10 text-rose-700 border-rose-200/40",
+  closed: "bg-surface-container-high text-on-surface-variant border-outline-variant/30",
+};
+
+const STATUS_OPTIONS: { value: LeadStatus; label: string }[] = [
+  { value: "contacted", label: "Contacted" },
+  { value: "follow_up", label: "Follow Up Scheduled" },
+  { value: "interested", label: "Interested" },
+  { value: "qualified", label: "Qualified" },
+  { value: "converted", label: "Converted" },
+  { value: "lost", label: "Lost" },
 ];
 
-const STATUS_BADGE_CLASSES: Record<LeadStatus, string> = {
-  new: "bg-indigo-500/10 text-indigo-700",
-  assigned: "bg-sky-500/10 text-sky-700",
-  contacted: "bg-amber-500/10 text-amber-700",
-  follow_up: "bg-amber-500/10 text-amber-700",
-  interested: "bg-sky-500/10 text-sky-700",
-  qualified: "bg-emerald-500/10 text-emerald-700",
-  converted: "bg-green-500/10 text-green-700",
-  lost: "bg-rose-500/10 text-rose-700",
-  closed: "bg-surface-container-high text-on-surface-variant",
-};
-
-const ACTIVITY_LABELS: Record<string, string> = {
-  created: "Lead created",
-  assigned: "Lead assigned",
-  status_changed: "Status changed",
-  remark_added: "Remark added",
-  follow_up: "Follow-up activity",
-};
-
-const FOLLOW_UP_BADGE_CLASSES: Record<string, string> = {
-  PENDING: "bg-amber-500/10 text-amber-700",
-  COMPLETED: "bg-emerald-500/10 text-emerald-700",
-  CANCELLED: "bg-surface-container-high text-on-surface-variant",
-  MISSED: "bg-rose-500/10 text-rose-700",
-};
-
-const formatDateTime = (value?: string | Date | null) => {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-};
-
-const SectionCard = ({
-  title,
-  icon,
-  children,
-}: {
-  title: string;
-  icon: string;
-  children: React.ReactNode;
-}) => (
-  <div className="rounded-xl border border-outline-variant/30 bg-surface-container-low/40 p-4 space-y-3">
-    <h4 className="flex items-center gap-2 font-label-md text-xs font-bold text-on-surface">
-      <span className="material-symbols-outlined text-base text-primary">
-        {icon}
-      </span>
-      {title}
-    </h4>
-    {children}
+const InfoField = ({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) => (
+  <div>
+    <span className="font-label-sm text-[10px] uppercase font-bold text-on-surface-variant/60 block">{label}</span>
+    <span className={`font-body-sm text-xs truncate block ${highlight ? "font-bold text-primary" : "font-semibold text-on-surface"}`}>
+      {value}
+    </span>
   </div>
 );
 
 const LeadDetailModal = ({ leadId, onClose }: LeadDetailModalProps) => {
   const open = Boolean(leadId);
-  const currentUser = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
 
   const { data: lead, isLoading } = useLead(leadId ?? undefined);
-  const { data: activities, isLoading: activitiesLoading } =
-    useLeadActivities(leadId ?? undefined);
-  const { data: followUps, isLoading: followUpsLoading } = useLeadFollowUps(
-    leadId ?? undefined
-  );
-
   const updateStatus = useUpdateLeadStatus();
   const addRemark = useAddLeadRemark();
-  const assignLead = useAssignLead();
-  const scheduleFollowUp = useScheduleFollowUp();
-  const completeFollowUp = useCompleteFollowUp();
 
-  const [statusForm, setStatusForm] = useState<{
-    status: LeadStatus | "";
-    remark: string;
-  }>({ status: "", remark: "" });
+  const [selectedStatus, setSelectedStatus] = useState<LeadStatus | "">("");
   const [remarkText, setRemarkText] = useState("");
-  const [assigneeId, setAssigneeId] = useState("");
-  const [followUpForm, setFollowUpForm] = useState({
-    scheduledAt: "",
-    remark: "",
-  });
-  const [completingId, setCompletingId] = useState<string | null>(null);
-  const [completeRemark, setCompleteRemark] = useState("");
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
-  const branchId =
-    lead && typeof lead.branch === "object" ? lead.branch._id : lead?.branch;
+  const creatorName = useMemo(() => {
+    if (!lead?.createdBy) return "System / Self-registered";
+    return typeof lead.createdBy === "object" ? lead.createdBy.name : "System";
+  }, [lead]);
 
-  const { data: branchEmployees, isLoading: employeesLoading } =
-    useEmployeesQuery({
-      role: ROLES.EMPLOYEE,
-      branchId: String(branchId),
-      isActive: true,
-      limit: 100,
-    });
+  const currentBranch = useMemo(
+    () => (lead?.branch && typeof lead.branch === "object" ? lead.branch : null),
+    [lead]
+  );
 
-  const assignedToId =
-    lead?.assignedTo && typeof lead.assignedTo === "object"
-      ? lead.assignedTo._id
-      : lead?.assignedTo;
+  const currentAssignee = useMemo(
+    () => (lead?.assignedTo && typeof lead.assignedTo === "object" ? lead.assignedTo : null),
+    [lead]
+  );
 
-  const resetLocalState = () => {
-    setStatusForm({ status: "", remark: "" });
+  const hasChanges = Boolean(selectedStatus) || Boolean(remarkText.trim());
+
+  const handleQuickSave = async () => {
+    if (!leadId) return;
+    if (selectedStatus) {
+      await updateStatus.mutateAsync({ id: leadId, payload: { status: selectedStatus } });
+    }
+    if (remarkText.trim()) {
+      await addRemark.mutateAsync({ id: leadId, payload: { remark: remarkText.trim() } });
+    }
+    setSelectedStatus("");
     setRemarkText("");
-    setAssigneeId("");
-    setFollowUpForm({ scheduledAt: "", remark: "" });
-    setCompletingId(null);
-    setCompleteRemark("");
-  };
-
-  const handleClose = () => {
-    resetLocalState();
     onClose();
   };
 
-  const handleUpdateStatus = async () => {
-    if (!leadId || !statusForm.status) return;
-    await updateStatus.mutateAsync({
-      id: leadId,
-      payload: {
-        status: statusForm.status,
-        remark: statusForm.remark.trim() || undefined,
-      },
-    });
-    setStatusForm({ status: "", remark: "" });
-  };
-
-  const handleAddRemark = async () => {
-    if (!leadId || !remarkText.trim()) return;
-    await addRemark.mutateAsync({
-      id: leadId,
-      payload: { remark: remarkText.trim() },
-    });
-    setRemarkText("");
-  };
-
-  const handleAssign = async () => {
-    if (!leadId || !assigneeId) return;
-    await assignLead.mutateAsync({
-      id: leadId,
-      payload: { employeeId: assigneeId },
-    });
-    setAssigneeId("");
-  };
-
-  const handleScheduleFollowUp = async () => {
-    if (!leadId || !followUpForm.scheduledAt) return;
-    await scheduleFollowUp.mutateAsync({
-      id: leadId,
-      payload: {
-        scheduledAt: new Date(followUpForm.scheduledAt).toISOString(),
-        remark: followUpForm.remark.trim() || undefined,
-      },
-    });
-    setFollowUpForm({ scheduledAt: "", remark: "" });
-  };
-
-  const handleCompleteFollowUp = async (followUpId: string) => {
-    if (!completeRemark.trim()) return;
-    await completeFollowUp.mutateAsync({
-      followUpId,
-      payload: { remark: completeRemark.trim() },
-    });
-    setCompletingId(null);
-    setCompleteRemark("");
+  const handleNavigateToWorkspace = () => {
+    if (!leadId) return;
+    onClose();
+    navigate(`/leads/${leadId}`);
   };
 
   return (
-    <Modal
-      open={open}
-      onClose={handleClose}
-      title={lead ? lead.name : "Lead Details"}
-      description={
-        lead ? `${lead.phoneCountryCode} ${lead.phone}` : undefined
-      }
-      size="lg"
-    >
-      {isLoading || !lead ? (
-        <div className="flex items-center justify-center py-16">
-          <span className="material-symbols-outlined animate-spin text-2xl text-primary">
-            progress_activity
-          </span>
-        </div>
-      ) : (
-        <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
-          {/* Overview */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-label-sm text-[11px] font-bold ${STATUS_BADGE_CLASSES[lead.status]}`}
-            >
-              {lead.status.replace("_", " ").toUpperCase()}
-            </span>
-            {lead.email && (
-              <span className="font-body-sm text-xs text-on-surface-variant">
-                {lead.email}
-              </span>
-            )}
-            {lead.city && (
-              <span className="font-body-sm text-xs text-on-surface-variant">
-                • {lead.city}
-              </span>
-            )}
-            {lead.industry && (
-              <span className="font-body-sm text-xs text-on-surface-variant">
-                • {lead.industry}
-              </span>
-            )}
+    <>
+      <Modal title="Lead Details" open={open} onClose={onClose} size="md">
+        {isLoading || !lead ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-2">
+            <span className="material-symbols-outlined animate-spin text-2xl text-primary">progress_activity</span>
+            <p className="font-label-sm text-xs text-on-surface-variant font-medium">Loading CRM snapshot...</p>
           </div>
-          {lead.remarks && (
-            <p className="rounded-lg bg-surface-container-low px-3 py-2 font-body-sm text-xs text-on-surface-variant italic">
-              "{lead.remarks}"
-            </p>
-          )}
+        ) : (
+          <div className="space-y-4">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-outline-variant/20 pb-3.5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-headline-sm text-lg font-bold text-on-surface">{lead.name}</h3>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase border ${STATUS_BADGE_CLASSES[lead.status]}`}
+                  >
+                    {lead.status.replace("_", " ")}
+                  </span>
+                </div>
+                <p className="font-body-sm text-xs text-on-surface-variant/80 mt-0.5">
+                  {lead.phoneCountryCode} {lead.phone} {lead.email ? `• ${lead.email}` : ""}
+                </p>
+              </div>
 
-          {/* Update Status */}
-          <SectionCard title="Update Status" icon="sync_alt">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <select
-                value={statusForm.status}
-                onChange={(e) =>
-                  setStatusForm((prev) => ({
-                    ...prev,
-                    status: e.target.value as LeadStatus,
-                  }))
-                }
-                className="flex-1 rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 font-body-sm text-xs text-on-surface outline-none focus:border-primary"
+              <div className="flex items-center gap-1.5">
+                {lead.phone && (
+                  <a
+                    href={`tel:${lead.phoneCountryCode}${lead.phone}`}
+                    className="rounded-lg border border-outline-variant/40 bg-surface-container-lowest p-2 text-on-surface hover:bg-surface-container-low transition-colors"
+                    title="Call Lead"
+                  >
+                    <span className="material-symbols-outlined text-base text-emerald-600 block">call</span>
+                  </a>
+                )}
+                {lead.email && (
+                  <a
+                    href={`mailto:${lead.email}`}
+                    className="rounded-lg border border-outline-variant/40 bg-surface-container-lowest p-2 text-on-surface hover:bg-surface-container-low transition-colors"
+                    title="Email Lead"
+                  >
+                    <span className="material-symbols-outlined text-base text-sky-600 block">mail</span>
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Ownership summary */}
+            <div className="grid grid-cols-3 gap-3 rounded-xl border border-outline-variant/30 bg-surface-container-low/40 p-3.5 text-xs">
+              <InfoField label="Created By" value={creatorName} />
+              <InfoField label="Branch" value={currentBranch ? currentBranch.name : "Unassigned"} />
+              <InfoField
+                label="Representative"
+                value={currentAssignee ? currentAssignee.name : "Unassigned"}
+                highlight
+              />
+            </div>
+
+            <Can permission="lead:assign">
+              <button
+                type="button"
+                onClick={() => setShowAssignModal(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary/20 transition-colors"
               >
-                <option value="">Select new status…</option>
+                <span className="material-symbols-outlined text-sm">person_add</span>
+                {currentAssignee ? "Reassign Lead" : "Assign Lead"}
+              </button>
+            </Can>
+
+            {/* Update section */}
+            <div className="rounded-xl border border-outline-variant/30 p-3.5 space-y-3">
+              <span className="font-label-sm text-[10px] uppercase font-bold text-on-surface-variant/70">
+                Update Lead
+              </span>
+
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value as LeadStatus)}
+                className="w-full rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 text-xs text-on-surface outline-none focus:border-primary"
+              >
+                <option value="">Change status (current: {lead.status})</option>
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                onClick={handleUpdateStatus}
-                disabled={!statusForm.status || updateStatus.isPending}
-                className="rounded-lg bg-primary px-4 py-2 font-label-md text-xs font-bold text-on-primary disabled:opacity-50"
-              >
-                {updateStatus.isPending ? "Updating…" : "Update"}
-              </button>
-            </div>
-            <input
-              type="text"
-              placeholder="Optional remark about this change"
-              value={statusForm.remark}
-              onChange={(e) =>
-                setStatusForm((prev) => ({ ...prev, remark: e.target.value }))
-              }
-              className="w-full rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 font-body-sm text-xs text-on-surface outline-none focus:border-primary"
-            />
-          </SectionCard>
 
-          {/* Add Remark */}
-          <SectionCard title="Add Remark" icon="edit_note">
-            <div className="flex flex-col gap-2 sm:flex-row">
               <input
                 type="text"
-                placeholder="Write a remark…"
+                placeholder="Add a remark or activity note..."
                 value={remarkText}
                 onChange={(e) => setRemarkText(e.target.value)}
-                className="flex-1 rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 font-body-sm text-xs text-on-surface outline-none focus:border-primary"
+                className="w-full rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 text-xs text-on-surface outline-none focus:border-primary"
               />
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between pt-1">
               <button
                 type="button"
-                onClick={handleAddRemark}
-                disabled={!remarkText.trim() || addRemark.isPending}
-                className="rounded-lg bg-primary px-4 py-2 font-label-md text-xs font-bold text-on-primary disabled:opacity-50"
+                onClick={handleNavigateToWorkspace}
+                className="inline-flex items-center gap-1 font-label-sm text-xs font-bold text-primary hover:underline"
               >
-                {addRemark.isPending ? "Saving…" : "Save"}
+                Open Full Workspace
+                <span className="material-symbols-outlined text-sm">open_in_new</span>
               </button>
-            </div>
-          </SectionCard>
 
-          {/* Assign */}
-          <Can permission="lead:assign">
-            <SectionCard title="Assign Lead" icon="assignment_ind">
-              {assignedToId && typeof lead.assignedTo === "object" && (
-                <p className="font-body-sm text-xs text-on-surface-variant">
-                  Currently assigned to{" "}
-                  <span className="font-bold text-on-surface">
-                    {lead.assignedTo.name}
-                  </span>
-                </p>
-              )}
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <select
-                  value={assigneeId}
-                  onChange={(e) => setAssigneeId(e.target.value)}
-                  disabled={employeesLoading}
-                  className="flex-1 rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 font-body-sm text-xs text-on-surface outline-none focus:border-primary disabled:opacity-60"
-                >
-                  <option value="">
-                    {employeesLoading
-                      ? "Loading employees…"
-                      : "Select an employee…"}
-                  </option>
-                  {branchEmployees?.employees
-                    .filter((emp) => emp._id !== assignedToId)
-                    .map((emp) => (
-                      <option key={emp._id} value={emp._id}>
-                        {emp.name} ({emp.email})
-                      </option>
-                    ))}
-                </select>
+              <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={handleAssign}
-                  disabled={!assigneeId || assignLead.isPending}
-                  className="rounded-lg bg-primary px-4 py-2 font-label-md text-xs font-bold text-on-primary disabled:opacity-50"
+                  onClick={onClose}
+                  className="rounded-lg border border-outline-variant/40 px-3.5 py-1.5 text-xs font-bold text-on-surface-variant hover:bg-surface-container-low transition-colors"
                 >
-                  {assignLead.isPending ? "Assigning…" : "Assign"}
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleQuickSave}
+                  disabled={!hasChanges}
+                  className="rounded-lg bg-primary px-4 py-1.5 text-xs font-bold text-on-primary hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  Save Changes
                 </button>
               </div>
-              {branchEmployees && branchEmployees.employees.length === 0 && (
-                <p className="font-body-sm text-[11px] text-on-surface-variant/70 italic">
-                  No active employees in this lead's branch yet.
-                </p>
-              )}
-            </SectionCard>
-          </Can>
-
-          {/* Follow-ups */}
-          <SectionCard title="Follow-ups" icon="event_upcoming">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                type="datetime-local"
-                value={followUpForm.scheduledAt}
-                onChange={(e) =>
-                  setFollowUpForm((prev) => ({
-                    ...prev,
-                    scheduledAt: e.target.value,
-                  }))
-                }
-                className="flex-1 rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 font-body-sm text-xs text-on-surface outline-none focus:border-primary"
-              />
-              <button
-                type="button"
-                onClick={handleScheduleFollowUp}
-                disabled={
-                  !followUpForm.scheduledAt || scheduleFollowUp.isPending
-                }
-                className="rounded-lg bg-primary px-4 py-2 font-label-md text-xs font-bold text-on-primary disabled:opacity-50 whitespace-nowrap"
-              >
-                {scheduleFollowUp.isPending ? "Scheduling…" : "Schedule"}
-              </button>
             </div>
-            <input
-              type="text"
-              placeholder="Optional note for this follow-up"
-              value={followUpForm.remark}
-              onChange={(e) =>
-                setFollowUpForm((prev) => ({
-                  ...prev,
-                  remark: e.target.value,
-                }))
-              }
-              className="w-full rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 font-body-sm text-xs text-on-surface outline-none focus:border-primary"
-            />
+          </div>
+        )}
+      </Modal>
 
-            <div className="space-y-2 pt-1">
-              {followUpsLoading ? (
-                <div className="h-10 animate-pulse rounded-lg bg-surface-container-high" />
-              ) : !followUps || followUps.length === 0 ? (
-                <p className="font-body-sm text-[11px] text-on-surface-variant/70 italic">
-                  No follow-ups scheduled yet.
-                </p>
-              ) : (
-                followUps.map((fu) => {
-                  const fuAssigneeId =
-                    typeof fu.assignedTo === "object"
-                      ? fu.assignedTo._id
-                      : fu.assignedTo;
-                  const canComplete =
-                    fu.status === "PENDING" &&
-                    currentUser?._id === fuAssigneeId;
-
-                  return (
-                    <div
-                      key={fu._id}
-                      className="rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-3 space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-body-sm text-xs font-bold text-on-surface">
-                          {formatDateTime(fu.scheduledAt)}
-                        </span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 font-label-sm text-[10px] font-bold ${FOLLOW_UP_BADGE_CLASSES[fu.status]}`}
-                        >
-                          {fu.status}
-                        </span>
-                      </div>
-                      {fu.remark && (
-                        <p className="font-body-sm text-[11px] text-on-surface-variant">
-                          {fu.remark}
-                        </p>
-                      )}
-                      {canComplete && (
-                        completingId === fu._id ? (
-                          <div className="flex flex-col gap-2 pt-1 sm:flex-row">
-                            <input
-                              type="text"
-                              autoFocus
-                              placeholder="Completion remark…"
-                              value={completeRemark}
-                              onChange={(e) =>
-                                setCompleteRemark(e.target.value)
-                              }
-                              className="flex-1 rounded-lg border border-outline-variant/40 bg-surface-container-low px-2.5 py-1.5 font-body-sm text-[11px] text-on-surface outline-none focus:border-primary"
-                            />
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleCompleteFollowUp(fu._id)}
-                                disabled={
-                                  !completeRemark.trim() ||
-                                  completeFollowUp.isPending
-                                }
-                                className="rounded-lg bg-emerald-600 px-3 py-1.5 font-label-sm text-[11px] font-bold text-white disabled:opacity-50"
-                              >
-                                Confirm
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCompletingId(null);
-                                  setCompleteRemark("");
-                                }}
-                                className="rounded-lg border border-outline-variant/40 px-3 py-1.5 font-label-sm text-[11px] font-bold text-on-surface-variant"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setCompletingId(fu._id)}
-                            className="font-label-sm text-[11px] font-bold text-primary hover:underline"
-                          >
-                            Mark complete
-                          </button>
-                        )
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </SectionCard>
-
-          {/* Activity Timeline */}
-          <SectionCard title="Activity Timeline" icon="history">
-            {activitiesLoading ? (
-              <div className="h-16 animate-pulse rounded-lg bg-surface-container-high" />
-            ) : !activities || activities.length === 0 ? (
-              <p className="font-body-sm text-[11px] text-on-surface-variant/70 italic">
-                No activity recorded yet.
-              </p>
-            ) : (
-              <div className="space-y-3 relative before:absolute before:left-[7px] before:top-1 before:bottom-1 before:w-px before:bg-outline-variant/30">
-                {activities.map((activity) => (
-                  <div key={activity._id} className="relative pl-5">
-                    <span className="absolute left-0 top-1 h-3.5 w-3.5 rounded-full border-2 border-primary bg-surface-container-lowest" />
-                    <p className="font-label-sm text-[11px] font-bold text-on-surface">
-                      {ACTIVITY_LABELS[activity.activityType] ??
-                        activity.activityType}
-                    </p>
-                    <p className="font-body-sm text-[11px] text-on-surface-variant">
-                      {activity.performedBy?.name ?? "Unknown"}
-                      {activity.previousStatus && activity.newStatus && (
-                        <>
-                          {" "}
-                          — {activity.previousStatus} → {activity.newStatus}
-                        </>
-                      )}
-                      {activity.remark && <> · "{activity.remark}"</>}
-                    </p>
-                    <p className="font-body-sm text-[10px] text-on-surface-variant/60">
-                      {formatDateTime(activity.createdAt)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </SectionCard>
-        </div>
+      {lead && (
+        <AssignLeadModal
+          open={showAssignModal}
+          leadId={lead._id}
+          leadName={lead.name}
+          currentBranchId={currentBranch?._id}
+          currentEmployeeId={currentAssignee?._id}
+          onClose={() => setShowAssignModal(false)}
+        />
       )}
-    </Modal>
+    </>
   );
 };
 

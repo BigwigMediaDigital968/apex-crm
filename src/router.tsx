@@ -15,6 +15,7 @@ import UnauthorizedPage from "./pages/UnauthorizedPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import ComingSoonPage from "./pages/ComingSoonPage";
 import AuditLogPage from "./features/logs/pages/AuditLogPage";
+import LeadDetailPage from "./features/leads/pages/LeadDetailPage";
 
 export const router = createBrowserRouter([
   {
@@ -79,12 +80,13 @@ export const router = createBrowserRouter([
             element: <PermissionRoute permission={'lead:view'} />,
             children: [
               { path: "/leads", element: <LeadListPage /> },
+              { path: "/leads/:leadId", element: <LeadDetailPage /> },
             ],
           },
 
           { path: "/profile", element: <ProfilePage /> },
 
-           {
+          {
             element: <PermissionRoute permission={'audit:view'} />,
             children: [
               { path: "/logs", element: <AuditLogPage /> },
@@ -92,7 +94,7 @@ export const router = createBrowserRouter([
           },
 
           { path: "/tasks", element: <ComingSoonPage featureName={"Tasks"} /> },
-          { path: "/attendance", element: <AttendanceDispatcher/> },
+          { path: "/attendance", element: <AttendanceDispatcher /> },
           { path: "/achievements", element: <ComingSoonPage featureName="Achievements" /> },
           { path: "/settings", element: <ComingSoonPage featureName="Settings" /> },
           { path: "/dialer", element: <ComingSoonPage featureName="Dialer" /> },

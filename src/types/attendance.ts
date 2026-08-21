@@ -1,4 +1,3 @@
-import type { Branch } from "./branch";
 import type { Role } from "./auth";
 
 export const ATTENDANCE_STATUS = {

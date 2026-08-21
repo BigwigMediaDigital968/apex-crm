@@ -83,28 +83,28 @@ export const NAV_GROUPS: NavGroup[] = [
        * Do not expose it as a permission-protected feature
        * until permissions such as dialer:view exist.
        */
-      // {
-      //   label: "Dialer",
-      //   icon: "call",
-      //   permissions: [PERMISSIONS.DIALER_VIEW],
-      //   children: [
-      //     {
-      //       label: "Dialer",
-      //       path: "/dialer",
-      //       permissions: [PERMISSIONS.DIALER_VIEW],
-      //     },
-      //     {
-      //       label: "History",
-      //       path: "/dialer/history",
-      //       permissions: [PERMISSIONS.DIALER_HISTORY_VIEW],
-      //     },
-      //     {
-      //       label: "Analytics",
-      //       path: "/dialer/analytics",
-      //       permissions: [PERMISSIONS.DIALER_ANALYTICS_VIEW],
-      //     },
-      //   ],
-      // },
+      {
+        label: "Dialer",
+        icon: "call",
+        permissions: [],
+        children: [
+          {
+            label: "Dialer",
+            path: "/dialer",
+            permissions: [],
+          },
+          {
+            label: "History",
+            path: "/dialer/history",
+            permissions: [],
+          },
+          {
+            label: "Analytics",
+            path: "/dialer/analytics",
+            permissions: [],
+          },
+        ],
+      },
 
       {
         label: "Tasks",

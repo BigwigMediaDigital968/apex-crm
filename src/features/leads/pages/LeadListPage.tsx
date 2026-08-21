@@ -265,7 +265,7 @@ const LeadListPage = () => {
 
               return (
                 <option key={f.label} value={f.value}>
-                  {f.label} 
+                  {f.label}
                   {/* ({count}) */}
                 </option>
               );
@@ -462,7 +462,7 @@ const LeadListPage = () => {
                 visibleLeads.map((lead) => {
                   const isSelected = selectedLeads.includes(lead._id);
                   const branchLabel =
-                    typeof lead.branch === "object" ? lead.branch.name : null;
+                    typeof lead.branch === "object" ? lead.branch?.name : null;
                   const assignee =
                     lead.assignedTo && typeof lead.assignedTo === "object"
                       ? lead.assignedTo
@@ -494,11 +494,11 @@ const LeadListPage = () => {
                             onClick={() => setDetailLeadId(lead._id)}
                             className="font-bold text-sm text-on-surface group-hover:text-primary transition-colors text-left"
                           >
-                            {lead.name}
+                            {lead?.name}
                           </button>
 
                           <p className="text-on-surface-variant/80 font-medium">
-                            {lead.phoneCountryCode} {lead.phone}
+                            {lead?.phoneCountryCode} {lead.phone}
                           </p>
 
                           {lead.email && (
@@ -566,7 +566,7 @@ const LeadListPage = () => {
                           {assignee ? (
                             <>
                               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                                {assignee.name
+                                {assignee?.name
                                   .split(" ")
                                   .map((n) => n[0])
                                   .slice(0, 2)
@@ -576,11 +576,11 @@ const LeadListPage = () => {
 
                               <div>
                                 <p className="font-semibold text-on-surface">
-                                  {assignee.name}
+                                  {assignee?.name}
                                 </p>
 
                                 <p className="text-[10px] text-on-surface-variant/70">
-                                  {assignee.role}
+                                  {assignee?.role}
                                 </p>
                               </div>
                             </>

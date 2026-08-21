@@ -1,9 +1,12 @@
 import type { AddLeadRemarkPayload, AssignLeadPayload, CompleteLeadFollowUpPayload, CreateLeadFollowUpPayload, CreateLeadPayload, Lead, LeadActivity, LeadFollowUp, LeadListQuery, UpdateLeadStatusPayload } from "@/types/lead";
-import type { Pagination } from "@/types/employee";
 import { apiClient } from "./apiClient";
-import type { ApiEnvelope, PaginatedApiEnvelope } from "./apiEnvelope";
+import type { ApiEnvelope } from "./apiEnvelope";
+import type { Pagination } from "@/types/global";
 
-
+export interface LeadListData {
+  leads: Lead[];
+  pagination: Pagination;
+}
 
 export const leadsApi = {
   /**
@@ -13,13 +16,14 @@ export const leadsApi = {
   list: async (
     query: LeadListQuery = {}
   ) => {
-    const { data } = await apiClient.get<PaginatedApiEnvelope<Lead>>(
+    const { data } = await apiClient.get<ApiEnvelope<LeadListData>>(
       "/leads",
       {
         params: query,
       }
     );
-    return { leads: data.data, pagination: data.pagination as Pagination };
+    console.log("leads", data)
+    return data.data;
   },
 
   /**
