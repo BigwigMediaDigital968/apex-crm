@@ -1,7 +1,6 @@
 import type { AttendanceListData, AttendanceListQuery, AttendanceRecord, AttendanceReportQuery, AttendanceSummaryRow, CheckInPayload, CheckOutPayload } from "@/types/attendance";
 import { apiClient } from "./apiClient";
 import type { ApiEnvelope } from "./apiEnvelope";
-import type { Pagination } from "@/types/global";
 
 export const attendanceApi = {
   /**

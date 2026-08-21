@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ROLES } from "@/types/auth";
 import { useAuthStore } from "@/store/auth.store";
-import { useAttendanceRecords, useAttendanceSummary, useCheckIn, useCheckOut } from "../hooks/useAttendance";
-import { ATTENDANCE_STATUS, ATTENDANCE_STATUS_LABELS, ATTENDANCE_WORK_MODE_LABELS, type AttendanceStatus } from "@/types/attendance";
+import { useAttendanceRecords, useCheckIn, useCheckOut } from "../hooks/useAttendance";
+import {  ATTENDANCE_STATUS_LABELS, ATTENDANCE_WORK_MODE_LABELS, type AttendanceStatus } from "@/types/attendance";
 import { useBranch } from "@/features/branches";
-import { daysAgoInput, formatDate, formatMinutes, formatTime, todayInput } from "@/utils/Date";
+import { daysAgoInput, formatDate, formatTime, todayInput } from "@/utils/Date";
 import TeamAttendanceTab from "../components/TeamAttendanceTab";
 
 const STATUS_BADGE_CLASSES: Record<AttendanceStatus, string> = {
@@ -17,9 +17,8 @@ const STATUS_BADGE_CLASSES: Record<AttendanceStatus, string> = {
 
 const EmployeeAttendancePage = () => {
     const user = useAuthStore((state) => state.user);
-    console.log("user", user)
-    const { data: branch, isLoading: branchLoading, } = useBranch(user?.branches[0]);
-    console.log("branch", branch);
+    const { data: branch, } = useBranch(user?.branches[0]);
+    // console.log("branch", branch);
     const isManager = user?.role === ROLES.MANAGER;
     const [activeTab, setActiveTab] = useState<"my_attendance" | "team_attendance">("my_attendance");
     const [page, setPage] = useState(1);
@@ -73,33 +72,6 @@ const EmployeeAttendancePage = () => {
                 alert(`Location permission required for punching: ${error.message}`);
             }
         );
-    };
-
-    const getWorkingMinutes = (log: any, currentTime: number) => {
-        if (!log.checkInAt) return 0;
-
-        if (log.totalWorkingMinutes != null) {
-            return log.totalWorkingMinutes;
-        }
-
-        const checkInTime = new Date(log.checkInAt).getTime();
-
-        return Math.max(
-            0,
-            Math.floor((currentTime - checkInTime) / 60000)
-        );
-    };
-
-
-    const formatWorkingTime = (minutes: number) => {
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-
-        if (hours === 0) {
-            return `${mins} mins`;
-        }
-
-        return `${hours}h ${mins}m`;
     };
 
     const pagination = data?.pagination;
