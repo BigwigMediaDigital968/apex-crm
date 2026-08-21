@@ -22,7 +22,7 @@ export interface BranchAttendanceConfig {
 export interface Branch {
   _id: string;
   name: string;
-  code: string;
+  code?: string;
   description?: string;
   address?: string;
   city?: string;
@@ -34,8 +34,8 @@ export interface Branch {
   createdBy?: string;
   updatedBy?: string;
   attendanceConfig?: BranchAttendanceConfig;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   teamSize?: string;
 }
 

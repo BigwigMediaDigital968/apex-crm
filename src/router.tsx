@@ -6,6 +6,8 @@ import { EmployeeFormPage, EmployeeListPage, UserProfilePage } from "@/features/
 import { BranchDetailPage, BranchFormPage, BranchListPage } from "@/features/branches";
 import { LoginPage, ProfilePage } from "@/features/auth";
 import { LeadListPage } from "@/features/leads";
+import { AttendanceDispatcher } from "@/features/attendance";
+
 
 import GuestRoute from "@/routes/GuestRoute";
 import PermissionRoute from "./routes/PermissionRoute";
@@ -90,7 +92,7 @@ export const router = createBrowserRouter([
           },
 
           { path: "/tasks", element: <ComingSoonPage featureName={"Tasks"} /> },
-          { path: "/attendance", element: <ComingSoonPage featureName="Attendance" /> },
+          { path: "/attendance", element: <AttendanceDispatcher/> },
           { path: "/achievements", element: <ComingSoonPage featureName="Achievements" /> },
           { path: "/settings", element: <ComingSoonPage featureName="Settings" /> },
           { path: "/dialer", element: <ComingSoonPage featureName="Dialer" /> },

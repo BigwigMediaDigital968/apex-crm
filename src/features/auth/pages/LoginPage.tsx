@@ -28,7 +28,7 @@ const LoginPage = () => {
                         </span>
                     </div>
                     <span className="text-xl font-bold tracking-tight text-on-primary">
-                        Marketrixa
+                        CRM
                     </span>
                 </div>
 
@@ -46,7 +46,7 @@ const LoginPage = () => {
 
                 {/* Footer */}
                 <p className="relative z-10 text-xs text-on-primary/60 font-medium">
-                    © {new Date().getFullYear()} Marketrixa Inc. All rights reserved.
+                    © {new Date().getFullYear()} CRM Inc. All rights reserved.
                 </p>
             </div>
 
@@ -59,7 +59,7 @@ const LoginPage = () => {
                             <span className="material-symbols-outlined text-2xl">bolt</span>
                         </div>
                         <span className="text-xl font-bold tracking-tight text-on-surface">
-                            Marketrixa
+                            CRM
                         </span>
                     </div>
 

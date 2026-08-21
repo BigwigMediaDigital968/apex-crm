@@ -8,6 +8,7 @@ import {
   PERMISSIONS,
   type Permission,
 } from "@/types/auth";
+import { useAuthStore } from "@/store/auth.store";
 
 export interface NavChild {
   label: string;
@@ -177,6 +178,8 @@ const Sidebar = () => {
 
   const location = useLocation();
 
+  const user = useAuthStore((s)=>s.user);
+
   const {
     hasAnyPermission,
     hasAllPermissions,
@@ -216,7 +219,13 @@ const Sidebar = () => {
     }
 
     return NAV_GROUPS
-      .map((group) => {
+    .filter((group) => {
+      // Hardcoded role restriction for SYSTEM menu
+      if (group.title === "SYSTEM" && user?.role === 'employee') {
+        return false;
+      }
+      return true;
+    }).map((group) => {
         const items = group.items
           .map((item) => {
             const visibleChildren = item.children?.filter(
