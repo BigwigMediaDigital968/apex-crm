@@ -31,7 +31,7 @@ const EmployeeAttendancePage = () => {
     // Fetch today's date string (YYYY-MM-DD)
 
     // Fetch current user's attendance records for the month
-    const { data, isLoading, } = useAttendanceRecords({
+    const { data, isLoading, isFetching } = useAttendanceRecords({
         ...dateRange,
         employeeId: user?._id,
         page,
@@ -39,12 +39,6 @@ const EmployeeAttendancePage = () => {
     });
     const today = todayInput();
     const todaysRecord = data?.records.find((r) => r.date === today);
-
-    const { data: summary } = useAttendanceSummary({
-        ...dateRange,
-        employeeId: user?._id,
-    });
-    const mySummary = summary?.[0];
 
     // Mutators for Punch In / Out
     const checkInMutation = useCheckIn();
@@ -295,43 +289,7 @@ const EmployeeAttendancePage = () => {
                             </div>
                         </div>
                     </div>
-                    {/* Personal KPIs */}
-                    {mySummary && (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
-                                <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                                    Present Days
-                                </p>
-                                <p className="font-headline-sm text-xl font-extrabold text-emerald-700 mt-1">
-                                    {mySummary.presentDays}
-                                </p>
-                            </div>
-                            <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
-                                <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                                    Late Days
-                                </p>
-                                <p className="font-headline-sm text-xl font-extrabold text-amber-700 mt-1">
-                                    {mySummary.lateDays}
-                                </p>
-                            </div>
-                            <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
-                                <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                                    Absent Days
-                                </p>
-                                <p className="font-headline-sm text-xl font-extrabold text-rose-700 mt-1">
-                                    {mySummary.absentDays}
-                                </p>
-                            </div>
-                            <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm">
-                                <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                                    Attendance %
-                                </p>
-                                <p className="font-headline-sm text-xl font-extrabold text-primary mt-1">
-                                    {mySummary.attendancePercentage.toFixed(1)}%
-                                </p>
-                            </div>
-                        </div>
-                    )}
+
                     {/* Monthly Logs Table */}
                     <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-sm space-y-4">
                         <div className="flex items-center justify-between">
@@ -429,6 +387,30 @@ const EmployeeAttendancePage = () => {
                                 </tbody>
                             </table>
                         </div>
+                        {pagination && pagination.total > 0 && (
+                            <div className="flex items-center justify-between border-t border-outline-variant/30 px-5 py-3.5">
+                                <p className="font-body-sm text-xs text-on-surface-variant">
+                                    Page {pagination.page} of {Math.max(pagination.totalPages, 1)}
+                                    {isFetching && " · refreshing…"}
+                                </p>
+                                <div className="flex items-center gap-1.5">
+                                    <button
+                                        onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                                        disabled={pagination.page <= 1}
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container disabled:opacity-30"
+                                    >
+                                        <span className="material-symbols-outlined text-lg">chevron_left</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setPage((p) => p + 1)}
+                                        disabled={pagination.page >= pagination.totalPages}
+                                        className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container disabled:opacity-30"
+                                    >
+                                        <span className="material-symbols-outlined text-lg">chevron_right</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
