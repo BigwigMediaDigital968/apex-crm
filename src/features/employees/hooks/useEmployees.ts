@@ -15,7 +15,6 @@ import type {
   CreateEmployeeProfilePayload,
   Employee,
   EmployeeListQuery,
-  EmployeeProfile,
   EmployeeProfileListQuery,
   UpdateEmployeeInput,
 } from "@/types/employee";

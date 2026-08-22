@@ -20,7 +20,7 @@ const BranchListPage = () => {
     return branches.filter(
       (branch) =>
         branch.name.toLowerCase().includes(query) ||
-        branch.code.toLowerCase().includes(query) ||
+        branch.code?.toLowerCase().includes(query) ||
         branch.city?.toLowerCase().includes(query)
     );
   }, [branches, searchQuery]);

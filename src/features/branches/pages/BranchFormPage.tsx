@@ -48,7 +48,7 @@ const CODE_PATTERN = /^[A-Z0-9-]+$/;
 
 const toFormInput = (branch: Branch): BranchFormInput => ({
   name: branch.name,
-  code: branch.code,
+  code: branch.code ?? "",
   description: branch.description ?? "",
   address: branch.address ?? "",
   city: branch.city ?? "",

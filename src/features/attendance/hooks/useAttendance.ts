@@ -9,7 +9,6 @@ import { attendanceApi } from "@/services/attendanceApi";
 
 import type {
   AttendanceListQuery,
-  AttendanceQueryParams,
   AttendanceReportQuery,
   CheckInPayload,
   CheckOutPayload,

@@ -1,7 +1,5 @@
 import {
-  ATTENDANCE_STATUS,
   ATTENDANCE_STATUS_LABELS,
-  ATTENDANCE_WORK_MODE,
   ATTENDANCE_WORK_MODE_LABELS,
   type AttendanceListData,
   type AttendanceRecord,
