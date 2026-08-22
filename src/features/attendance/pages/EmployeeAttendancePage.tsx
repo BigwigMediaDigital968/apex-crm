@@ -90,7 +90,7 @@ const EmployeeAttendancePage = () => {
                         })}
                     </p>
                     <h1 className="font-headline-md text-3xl font-bold text-on-surface mt-0.5">
-                        Attendance Hub
+                        Attendance
                     </h1>
                     <p className="font-body-md text-sm text-on-surface-variant">
                         {isManager

@@ -1,14 +1,7 @@
-import { useState } from "react";
-
-interface FollowUp {
-  id: string;
-  initials: string;
-  name: string;
-  topic: string;
-  location: string;
-  time: string;
-  priority: "High" | "Medium" | "Low";
-}
+import { useMemo, useState } from "react";
+import { Link } from "react-router";
+import { useAuthStore } from "@/store/auth.store";
+import { useLeads, useMyFollowUps } from "@/features/leads/hooks/useLeads";
 
 interface CallLog {
   id: string;
@@ -18,26 +11,16 @@ interface CallLog {
   notes: string;
 }
 
-const MOCK_FOLLOW_UPS: FollowUp[] = [
-  {
-    id: "1",
-    initials: "AS",
-    name: "Amit Sharma",
-    topic: "Real Estate Investment",
-    location: "Mumbai",
-    time: "11:30 AM",
-    priority: "High",
-  },
-  {
-    id: "2",
-    initials: "PJ",
-    name: "Priya Jain",
-    topic: "Tech Upgrade Project",
-    location: "Bengaluru",
-    time: "02:45 PM",
-    priority: "Medium",
-  },
-];
+const initialsOf = (name: string) =>
+  name
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+const isFollowUpOverdue = (scheduledAt: string) =>
+  new Date(scheduledAt).getTime() < Date.now();
 
 const MOCK_CALL_LOGS: CallLog[] = [
   {
@@ -67,22 +50,50 @@ const EmployeeDashboardPage = () => {
   const [markedIn, setMarkedIn] = useState(false);
   const [scratchpadText, setScratchpadText] = useState("");
 
+  const currentUser = useAuthStore((s) => s.user);
+  const firstName = currentUser?.name?.split(" ")[0] ?? "there";
+
+  const { data: myLeadsData, isLoading: leadsLoading } = useLeads({
+    assignedTo: currentUser?._id,
+    limit: 100,
+  });
+  const myLeads = useMemo(() => myLeadsData?.leads ?? [], [myLeadsData]);
+  const leadsTotal = myLeadsData?.pagination.total ?? myLeads.length;
+  const newLeadsToday = useMemo(() => {
+    const today = new Date().toDateString();
+    return myLeads.filter((l) => new Date(l.createdAt).toDateString() === today).length;
+  }, [myLeads]);
+
+  const { data: followUps, isLoading: followUpsLoading } = useMyFollowUps();
+  const pendingFollowUps = useMemo(
+    () =>
+      [...(followUps ?? [])].sort(
+        (a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime()
+      ),
+    [followUps]
+  );
+  const overdueFollowUps = useMemo(
+    () => pendingFollowUps.filter((f) => isFollowUpOverdue(f.scheduledAt)).length,
+    [pendingFollowUps]
+  );
+
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
       {/* Top Banner Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
-          <p className="font-label-sm text-xs font-bold uppercase tracking-widest text-primary/80">
-            Wednesday, Oct 25
-          </p>
           <h1 className="font-headline-md text-3xl font-bold text-on-surface">
-            Namaste, Rajesh.{" "}
+            Namaste, {firstName}.{" "}
             <span className="text-on-surface-variant/60 font-normal">
               Ready for the hustle?
             </span>
           </h1>
           <p className="font-body-md text-sm text-on-surface-variant">
-            You're only <span className="font-bold text-on-surface">₹2.2L</span> away from your monthly target. 8 high-priority follow-ups are waiting for you.
+            {pendingFollowUps.length > 0
+              ? `${pendingFollowUps.length} follow-up${pendingFollowUps.length > 1 ? "s" : ""} waiting for you${
+                  overdueFollowUps > 0 ? `, ${overdueFollowUps} overdue` : ""
+                }.`
+              : "No pending follow-ups — you're all caught up."}
           </p>
         </div>
 
@@ -116,21 +127,24 @@ const EmployeeDashboardPage = () => {
       {/* KPI Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* My Leads */}
-        <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm">
+        <Link
+          to="/leads"
+          className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm hover:border-primary/40 transition-colors"
+        >
           <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
             My Leads
           </p>
           <p className="font-headline-md text-3xl font-extrabold text-on-surface mt-1">
-            12
+            {leadsLoading ? "—" : leadsTotal}
           </p>
           <p className="font-label-sm text-xs font-semibold text-primary mt-2 flex items-center gap-1">
             <span className="material-symbols-outlined text-sm">trending_up</span>
-            +2 New today
+            {leadsLoading ? "Loading…" : `+${newLeadsToday} New today`}
           </p>
           <span className="material-symbols-outlined absolute -right-3 -bottom-3 text-7xl text-on-surface-variant/5 pointer-events-none">
             group
           </span>
-        </div>
+        </Link>
 
         {/* Follow-ups */}
         <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm">
@@ -138,12 +152,19 @@ const EmployeeDashboardPage = () => {
             Follow-ups
           </p>
           <p className="font-headline-md text-3xl font-extrabold text-on-surface mt-1">
-            08
+            {followUpsLoading ? "—" : pendingFollowUps.length}
           </p>
-          <p className="font-label-sm text-xs font-bold text-error mt-2 flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">priority_high</span>
-            ! 3 Overdue
-          </p>
+          {!followUpsLoading && overdueFollowUps > 0 ? (
+            <p className="font-label-sm text-xs font-bold text-error mt-2 flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">priority_high</span>
+              ! {overdueFollowUps} Overdue
+            </p>
+          ) : (
+            <p className="font-label-sm text-xs font-semibold text-emerald-600 mt-2 flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">check_circle</span>
+              {followUpsLoading ? "Loading…" : "None overdue"}
+            </p>
+          )}
           <span className="material-symbols-outlined absolute -right-3 -bottom-3 text-7xl text-on-surface-variant/5 pointer-events-none">
             calendar_today
           </span>
@@ -245,102 +266,87 @@ const EmployeeDashboardPage = () => {
                   edit_calendar
                 </span>
                 <h3 className="font-headline-sm text-base font-bold text-on-surface">
-                  Today's Follow-ups
+                  Pending Follow-ups
                 </h3>
               </div>
-              <button className="font-label-md text-xs font-bold text-primary hover:underline">
-                View Calendar
-              </button>
+              <Link to="/leads" className="font-label-md text-xs font-bold text-primary hover:underline">
+                View All Leads
+              </Link>
             </div>
 
             {/* Follow-up Items */}
-            <div className="divide-y divide-outline-variant/20">
-              {MOCK_FOLLOW_UPS.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 first:pt-2 last:pb-0"
-                >
-                  {/* Lead Info */}
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-label-md text-xs font-bold text-primary">
-                      {item.initials}
-                    </div>
-                    <div>
-                      <p className="font-label-md text-sm font-bold text-on-surface">
-                        {item.name}
-                      </p>
-                      <p className="font-body-sm text-xs text-on-surface-variant">
-                        {item.topic} • {item.location}
-                      </p>
-                    </div>
-                  </div>
+            {followUpsLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <div key={i} className="h-16 rounded-xl bg-surface-container-high animate-pulse" />
+                ))}
+              </div>
+            ) : pendingFollowUps.length === 0 ? (
+              <p className="py-6 text-center font-body-sm text-xs text-on-surface-variant/70">
+                Nothing scheduled — you're all caught up.
+              </p>
+            ) : (
+              <div className="divide-y divide-outline-variant/20">
+                {pendingFollowUps.slice(0, 6).map((item) => {
+                  const lead = typeof item.lead === "string" ? null : item.lead;
+                  const overdue = isFollowUpOverdue(item.scheduledAt);
 
-                  {/* Meta & Actions */}
-                  <div className="flex items-center justify-between sm:justify-end gap-6">
-                    <div className="flex items-center gap-6">
-                      <div>
-                        <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60">
-                          Time
-                        </p>
-                        <p className="font-label-md text-xs font-bold text-on-surface">
-                          {item.time}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60">
-                          Priority
-                        </p>
-                        <p
-                          className={`font-label-md text-xs font-bold flex items-center gap-0.5 ${
-                            item.priority === "High"
-                              ? "text-error"
-                              : "text-amber-600"
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-sm">
-                            {item.priority === "High"
-                              ? "priority_high"
-                              : "arrow_upward"}
-                          </span>
-                          {item.priority}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {/* Icon Button with UI/UX Tooltip */}
-                      <div className="relative group">
-                        <button
-                          aria-label="View Call Script & Notes"
-                          className="flex h-9 w-9 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-container-low text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-lg">
-                            description
-                          </span>
-                        </button>
-                        {/* Tooltip */}
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20">
-                          <div className="bg-on-surface text-surface-container-lowest font-label-sm text-[11px] py-1 px-2.5 rounded-lg shadow-md whitespace-nowrap">
-                            View Script & Notes
-                          </div>
-                          {/* Arrow */}
-                          <div className="w-2 h-2 bg-on-surface rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1" />
+                  return (
+                    <div
+                      key={item._id}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 first:pt-2 last:pb-0"
+                    >
+                      {/* Lead Info */}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-label-md text-xs font-bold text-primary">
+                          {lead ? initialsOf(lead.name) : "?"}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-label-md text-sm font-bold text-on-surface truncate">
+                            {lead?.name ?? "Unknown lead"}
+                          </p>
+                          <p className="font-body-sm text-xs text-on-surface-variant truncate">
+                            {lead?.city ?? "—"}
+                            {item.remark ? ` • ${item.remark}` : ""}
+                          </p>
                         </div>
                       </div>
 
-                      {/* Call Now Action */}
-                      <button className="flex items-center gap-1.5 rounded-xl bg-sky-900 hover:bg-sky-950 px-4 py-2 font-label-md text-xs font-bold text-white shadow-sm transition-all">
-                        <span className="material-symbols-outlined text-base">
-                          call
-                        </span>
-                        <span>Call Now</span>
-                      </button>
+                      {/* Meta & Actions */}
+                      <div className="flex items-center justify-between sm:justify-end gap-6">
+                        <div>
+                          <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60">
+                            {overdue ? "Overdue since" : "Scheduled"}
+                          </p>
+                          <p
+                            className={`font-label-md text-xs font-bold ${
+                              overdue ? "text-error" : "text-on-surface"
+                            }`}
+                          >
+                            {new Date(item.scheduledAt).toLocaleString([], {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}
+                          </p>
+                        </div>
+
+                        {lead && (
+                          <a
+                            href={`tel:${lead.phone}`}
+                            className="flex items-center gap-1.5 rounded-xl bg-sky-900 hover:bg-sky-950 px-4 py-2 font-label-md text-xs font-bold text-white shadow-sm transition-all shrink-0"
+                          >
+                            <span className="material-symbols-outlined text-base">
+                              call
+                            </span>
+                            <span>Call Now</span>
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

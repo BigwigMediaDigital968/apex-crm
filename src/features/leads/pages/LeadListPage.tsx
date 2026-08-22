@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCreateLead, useImportLeads, useLeads } from "../hooks/useLeads";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getErrorMessage } from "@/utils/getErrorMessage";
@@ -70,6 +70,14 @@ const LeadListPage = () => {
   const currentUser = useAuthStore((s) => s.user);
   const isEmployee = currentUser?.role === ROLES.EMPLOYEE;
   const isHead = currentUser?.role === ROLES.HEAD;
+  const isAdmin = currentUser?.role === ROLES.ADMIN;
+  // lead.service.ts createLead auto-derives the branch from the caller's
+  // own account for Manager/Employee. Admin must always send an explicit
+  // branchId. Head may also send one, but can leave a lead unassigned to
+  // any branch entirely — it just won't be visible below Head until it's
+  // later assigned to an employee (which backfills the branch then).
+  const needsManualBranchField = isHead || isAdmin;
+  const manualBranchRequired = isAdmin;
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery);
@@ -161,12 +169,39 @@ const LeadListPage = () => {
     remarks: "",
     source: "Website",
     sourceType: "MANUAL",
+    branchId: "",
   });
+
+  // Admin always needs an explicit branch — nothing to pick when there's
+  // only one, so auto-fill it. Head is exempt: leaving it blank is a valid,
+  // deliberate choice for Head (an unassigned lead), not just a default.
+  useEffect(() => {
+    if (!manualBranchRequired || creationMethod !== "manual") return;
+    if (assignableBranches.length !== 1) return;
+    setManualForm((prev) =>
+      prev.branchId === assignableBranches[0]._id
+        ? prev
+        : { ...prev, branchId: assignableBranches[0]._id }
+    );
+  }, [manualBranchRequired, creationMethod, assignableBranches]);
 
   const handleCreateLead = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    createLead.mutate(manualForm, {
+    if (manualBranchRequired && !manualForm.branchId) {
+      alert("Please select a branch.");
+      return;
+    }
+
+    // An empty string means "no branch" for Head — omit the key entirely
+    // rather than sending "", which the backend would reject as an
+    // invalid branch id instead of treating as absent.
+    const payload = {
+      ...manualForm,
+      branchId: manualForm.branchId || undefined,
+    };
+
+    createLead.mutate(payload, {
       onSuccess: () => {
         closeCreateModal();
 
@@ -181,6 +216,7 @@ const LeadListPage = () => {
           remarks: "",
           source: "Website",
           sourceType: "MANUAL",
+          branchId: "",
         });
       },
     });
@@ -244,7 +280,7 @@ const LeadListPage = () => {
             <span>CRM Core Module</span>
           </div>
           <h1 className="font-headline-md text-2xl sm:text-3xl font-extrabold text-on-surface">
-            Lead Management Hub
+            Lead Management
           </h1>
           <p className="font-body-md text-xs sm:text-sm text-on-surface-variant mt-1 max-w-2xl">
             Track customer acquisition, assign incoming prospects, and monitor real-time deal flow.
@@ -1011,6 +1047,46 @@ const LeadListPage = () => {
                       className="cursor-not-allowed w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-xs font-medium text-on-surface outline-none focus:border-primary"
                     />
                   </div>
+
+                  {/* Branch — Admin must always send one explicitly; Head
+                      may pick one too but can also leave it blank (an
+                      unassigned lead, resolved later at assignment time).
+                      Manager/Employee never see this, the backend derives
+                      it from their own account instead. */}
+                  {needsManualBranchField && (
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase text-on-surface-variant mb-1">
+                        Branch{manualBranchRequired ? " *" : " (optional)"}
+                      </label>
+
+                      {manualBranchRequired && assignableBranches.length <= 1 ? (
+                        <div className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-xs font-medium text-on-surface-variant">
+                          {assignableBranches[0]?.name ?? "No branch assigned"}
+                        </div>
+                      ) : (
+                        <select
+                          required={manualBranchRequired}
+                          value={manualForm.branchId ?? ""}
+                          onChange={(e) =>
+                            setManualForm({
+                              ...manualForm,
+                              branchId: e.target.value,
+                            })
+                          }
+                          className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-xs font-medium text-on-surface outline-none focus:border-primary"
+                        >
+                          <option value="">
+                            {manualBranchRequired ? "Select branch" : "No branch (assign later)"}
+                          </option>
+                          {assignableBranches.map((branch) => (
+                            <option key={branch._id} value={branch._id}>
+                              {branch.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  )}
 
                 </div>
 

@@ -120,6 +120,19 @@ const EmployeeFormPage = () => {
 
     const { data: branches, isLoading: branchesLoading } = useBranchesQuery();
 
+    const isHeadActor = currentUser?.role === ROLES.HEAD;
+
+    // Branches the current actor can hand out to an account they're creating.
+    // Head can assign any branch; everyone else (Admin/Manager) can only
+    // assign within their own — they're never shown branches outside their
+    // own scope to pick from.
+    const assignableBranches = useMemo(() => {
+        if (!branches) return [];
+        if (isHeadActor) return branches;
+        const own = new Set(currentUser?.branches ?? []);
+        return branches.filter((b) => own.has(b._id));
+    }, [branches, isHeadActor, currentUser?.branches]);
+
     // Profile is loaded in edit mode via the byUser lookup.
     const { data: existingProfile, isLoading: profileLoading } =
         useEmployeeProfileByUserQuery(id);
@@ -198,6 +211,23 @@ const EmployeeFormPage = () => {
         });
     }, [userForm.role]);
 
+    // Onboarding only: when a non-Head actor (or Head, if the org only has
+    // one branch) has exactly one assignable branch, there's nothing to
+    // pick — auto-assign it so Manager/Employee accounts don't need a
+    // pointless one-option picker. Head with multiple branches still
+    // chooses manually below.
+    useEffect(() => {
+        if (isEditMode) return;
+        const isSingleBranchRole =
+            userForm.role === ROLES.MANAGER || userForm.role === ROLES.EMPLOYEE;
+        if (!isSingleBranchRole || assignableBranches.length !== 1) return;
+        setUserForm((prev) =>
+            prev.branches[0] === assignableBranches[0]._id
+                ? prev
+                : { ...prev, branches: [assignableBranches[0]._id] }
+        );
+    }, [isEditMode, userForm.role, assignableBranches]);
+
     const validateUser = () => {
         const nextErrors: Record<string, string> = {};
         if (userForm.fullName.trim().length < 2)
@@ -207,7 +237,10 @@ const EmployeeFormPage = () => {
         if (!isEditMode && userForm.password.length < 8)
             nextErrors.password = "Password must be at least 8 characters";
         if (!userForm.role) nextErrors.role = "Select a role";
-        if (userForm.branches.length === 0)
+        // Admin branches can be assigned later (e.g. via "Assign a branch
+        // admin" from the Branches page) — every other role needs one up
+        // front since access is scoped by it.
+        if (userForm.role !== ROLES.ADMIN && userForm.branches.length === 0)
             nextErrors.branches = "Assign at least one branch";
         setUserErrors(nextErrors);
         return Object.keys(nextErrors).length === 0;
@@ -470,6 +503,21 @@ const EmployeeFormPage = () => {
         updateBranches.isPending;
     const profileSubmitting =
         createProfile.isPending || updateProfile.isPending;
+
+    // Branch picker behavior for the Account & Access form — only applies
+    // while onboarding (edit mode keeps its existing full picker, since
+    // reassigning an existing account's branches is a deliberate action,
+    // not a default).
+    const isSingleBranchRoleSelected =
+        userForm.role === ROLES.MANAGER || userForm.role === ROLES.EMPLOYEE;
+    const isAdminRoleSelected = userForm.role === ROLES.ADMIN;
+    // Nothing to pick when the actor can only ever hand out one branch —
+    // show it as a fact, not a one-option dropdown.
+    const showAutoBranchLabel =
+        !isEditMode && isSingleBranchRoleSelected && assignableBranches.length <= 1;
+    // Onboarding is restricted to branches the actor themselves can reach;
+    // editing an existing account keeps the full org-wide list.
+    const branchPickerSource = isEditMode ? branches ?? [] : assignableBranches;
 
     return (
         <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
@@ -777,6 +825,11 @@ const EmployeeFormPage = () => {
                                 <div className="space-y-2 pt-2">
                                     <label className="block font-label-md text-xs font-medium text-on-surface-variant">
                                         Assigned Branches
+                                        {!isEditMode && isAdminRoleSelected && (
+                                            <span className="ml-1.5 font-normal normal-case text-on-surface-variant/60">
+                                                (optional — can be assigned later)
+                                            </span>
+                                        )}
                                     </label>
                                     {branchesLoading ? (
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -787,14 +840,20 @@ const EmployeeFormPage = () => {
                                                 />
                                             ))}
                                         </div>
-                                    ) : !branches || branches.length === 0 ? (
+                                    ) : showAutoBranchLabel ? (
+                                        <div className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3.5 py-2.5 font-body-md text-sm text-on-surface-variant">
+                                            {assignableBranches[0]?.name ??
+                                                "No branch assigned to your own account — contact a Head user."}
+                                        </div>
+                                    ) : branchPickerSource.length === 0 ? (
                                         <p className="font-body-sm text-xs text-on-surface-variant/70 italic">
-                                            No active branches yet — create one from
-                                            the Branches page first.
+                                            {isEditMode
+                                                ? "No active branches yet — create one from the Branches page first."
+                                                : "You have no branches assigned to your own account to hand out — contact a Head user."}
                                         </p>
                                     ) : (
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                            {branches.map((branch) => {
+                                            {branchPickerSource.map((branch) => {
                                                 const isChecked =
                                                     userForm.branches.includes(
                                                         branch._id

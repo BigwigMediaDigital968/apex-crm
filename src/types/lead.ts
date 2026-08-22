@@ -161,9 +161,20 @@ export interface CompleteLeadFollowUpPayload {
   remark: string;
 }
 
+/** Slim lead shape the backend populates onto a follow-up's `lead` field
+ * (`.populate("lead", "name phone email city status")`). */
+export interface LeadFollowUpLeadSummary {
+  _id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  city?: string;
+  status: LeadStatus;
+}
+
 export interface LeadFollowUp {
   _id: string;
-  lead: string;
+  lead: string | LeadFollowUpLeadSummary;
   assignedTo: string | LeadUserSummary;
   createdBy: string;
   branch: string;

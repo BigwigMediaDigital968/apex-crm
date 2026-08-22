@@ -364,7 +364,7 @@ export const useCompleteFollowUp = () => {
             const leadId =
                 typeof followUp.lead === "string"
                     ? followUp.lead
-                    : followUp.lead;
+                    : followUp.lead._id;
 
             queryClient.invalidateQueries({
                 queryKey: leadQueryKeys.followUps(leadId),
