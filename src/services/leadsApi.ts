@@ -1,4 +1,4 @@
-import type { AddLeadRemarkPayload, AssignLeadPayload, CompleteLeadFollowUpPayload, CreateLeadFollowUpPayload, CreateLeadPayload, Lead, LeadActivity, LeadFollowUp, LeadListQuery, UpdateLeadStatusPayload } from "@/types/lead";
+import type { AddLeadRemarkPayload, AssignLeadPayload, BulkAssignLeadsPayload, CompleteLeadFollowUpPayload, CreateLeadFollowUpPayload, CreateLeadPayload, Lead, LeadActivity, LeadCallLog, LeadFollowUp, LeadListQuery, UpdateLeadStatusPayload } from "@/types/lead";
 import { apiClient } from "./apiClient";
 import type { ApiEnvelope } from "./apiEnvelope";
 import type { Pagination } from "@/types/global";
@@ -22,7 +22,6 @@ export const leadsApi = {
         params: query,
       }
     );
-    console.log("leads", data)
     return data.data;
   },
 
@@ -62,6 +61,20 @@ export const leadsApi = {
     );
 
     return data.data.lead;
+  },
+
+  bulkAssign: async (payload: BulkAssignLeadsPayload) => {
+    const { data } = await apiClient.patch<
+      ApiEnvelope<{ assignedCount: number; leadIds?: string[] }>
+    >("/leads/bulk-assign", payload);
+    return data.data;
+  },
+
+  getCallLogs: async (id: string): Promise<LeadCallLog[]> => {
+    const { data } = await apiClient.get<{ success: boolean; data: LeadCallLog[] }>(
+      `/leads/${id}/calls`
+    );
+    return data.data;
   },
 
   /**

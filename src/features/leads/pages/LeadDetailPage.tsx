@@ -1,19 +1,16 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router";
 import { Can } from "@/components/Auth/Can";
-import { useAuthStore } from "@/store/auth.store";
-import { useEmployeesQuery } from "@/features/employees";
-import { ROLES } from "@/types/auth";
+import { useEmployeeProfilesQuery } from "@/features/employees";
 import type { LeadStatus } from "@/types/lead";
 import {
     useLead,
     useLeadActivities,
+    useLeadCallLogs,
     useLeadFollowUps,
     useUpdateLeadStatus,
-    useAddLeadRemark,
     useAssignLead,
     useScheduleFollowUp,
-    useCompleteFollowUp,
 } from "../hooks/useLeads";
 
 const STATUS_OPTIONS: { label: string; value: LeadStatus }[] = [
@@ -43,34 +40,26 @@ const STATUS_BADGE_CLASSES: Record<LeadStatus, string> = {
 const LeadDetailPage = () => {
     const { leadId } = useParams<{ leadId: string }>();
     const navigate = useNavigate();
-    const currentUser = useAuthStore((s) => s.user);
-
     const { data: lead, isLoading } = useLead(leadId);
-    const { data: activities, isLoading: activitiesLoading } = useLeadActivities(leadId);
-    const { data: followUps, isLoading: followUpsLoading } = useLeadFollowUps(leadId);
+    const { data: activities } = useLeadActivities(leadId);
+    const { data: callLogs } = useLeadCallLogs(leadId);
+    const { data: followUps } = useLeadFollowUps(leadId);
 
     const updateStatus = useUpdateLeadStatus();
-    const addRemark = useAddLeadRemark();
     const assignLead = useAssignLead();
     const scheduleFollowUp = useScheduleFollowUp();
-    const completeFollowUp = useCompleteFollowUp();
 
     const [statusForm, setStatusForm] = useState<{ status: LeadStatus | ""; remark: string }>({ status: "", remark: "" });
-    const [remarkText, setRemarkText] = useState("");
     const [assigneeId, setAssigneeId] = useState("");
     const [followUpForm, setFollowUpForm] = useState({ scheduledAt: "", remark: "" });
-    const [completingId, setCompletingId] = useState<string | null>(null);
-    const [completeRemark, setCompleteRemark] = useState("");
 
     const branchId = useMemo(() => {
         if (!lead) return null;
         return typeof lead.branch === "object" ? lead.branch?._id : lead.branch;
     }, [lead]);
 
-    const { data: branchEmployees } = useEmployeesQuery({
-        role: ROLES.EMPLOYEE,
+    const { data: branchEmployees } = useEmployeeProfilesQuery({
         branchId: String(branchId ?? ""),
-        isActive: true,
         limit: 100,
     });
 
@@ -180,8 +169,10 @@ const LeadDetailPage = () => {
                                     className="w-full rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 text-xs text-on-surface"
                                 >
                                     <option value="">Select Employee…</option>
-                                    {branchEmployees?.employees.map((emp) => (
-                                        <option key={emp._id} value={emp._id}>{emp.name}</option>
+                                    {branchEmployees?.profiles.map((profile) => (
+                                        <option key={profile._id} value={profile._id}>
+                                            {typeof profile.user === "string" ? profile.employeeCode : profile.user.name}
+                                        </option>
                                     ))}
                                 </select>
                                 <button
@@ -235,6 +226,24 @@ const LeadDetailPage = () => {
                                 </div>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-5 space-y-4">
+                        <h3 className="font-label-md text-xs font-bold uppercase text-primary">Call history</h3>
+                        {callLogs?.length ? callLogs.map((call) => (
+                            <div key={call._id} className="flex items-center justify-between rounded-lg border border-outline-variant/20 p-3 text-xs">
+                                <div>
+                                    <p className="font-bold capitalize text-on-surface">{call.callStatus ?? "Call"}</p>
+                                    <p className="text-on-surface-variant">{call.fromNumber ?? "Unknown"} → {call.toNumber ?? "Unknown"}</p>
+                                </div>
+                                <div className="text-right text-on-surface-variant">
+                                    <p>{call.duration ?? 0}s</p>
+                                    <p>{new Date(call.createdAt).toLocaleString()}</p>
+                                </div>
+                            </div>
+                        )) : (
+                            <p className="text-xs text-on-surface-variant">No calls recorded for this lead.</p>
+                        )}
                     </div>
                 </div>
 

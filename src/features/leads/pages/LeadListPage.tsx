@@ -6,6 +6,7 @@ import type { CreateLeadPayload, Lead, LeadStatus } from "@/types/lead";
 import { useBranchesQuery } from "@/features/branches";
 import { Can } from "@/components/Auth/Can";
 import LeadDetailModal from "../components/Leaddetailmodal";
+import AssignLeadModal from "../components/AssignLeadModal";
 
 const PAGE_SIZE = 15;
 
@@ -71,6 +72,7 @@ const LeadListPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [branchFilter, setBranchFilter] = useState("");
   const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
+  const [isBulkAssignOpen, setIsBulkAssignOpen] = useState(false);
 
   const createLead = useCreateLead();
 
@@ -83,6 +85,7 @@ const LeadListPage = () => {
     page: currentPage,
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
+    status: selectedStatus || undefined,
     source: selectedSource === "All Sources" ? undefined : selectedSource,
     branchId: branchFilter || undefined,
   });
@@ -91,9 +94,7 @@ const LeadListPage = () => {
   const pagination = data?.pagination;
 
   // Client-side status filter — see note above STATUS_FILTERS.
-  const visibleLeads = selectedStatus
-    ? leadsData?.filter((l) => l.status === selectedStatus)
-    : leadsData;
+  const visibleLeads = leadsData;
 
   const { data: branches } = useBranchesQuery();
 
@@ -315,7 +316,7 @@ const LeadListPage = () => {
         )}
       </div>
 
-      {selectedStatus && (
+      {false && selectedStatus && (
         <p className="-mt-2 flex items-center gap-1.5 font-body-sm text-[11px] text-on-surface-variant/70">
           <span className="material-symbols-outlined text-sm">info</span>
           Status filter is applied to leads already loaded on this page only —
@@ -334,14 +335,16 @@ const LeadListPage = () => {
               {selectedLeads.length} Lead{selectedLeads.length > 1 ? "s" : ""} selected
             </span>
             <div className="flex items-center gap-2">
-              <button className="flex items-center gap-1 rounded-lg bg-on-primary/10 px-3 py-1.5 text-xs font-bold hover:bg-on-primary/20 transition-colors">
-                <span className="material-symbols-outlined text-sm">assignment_ind</span>
-                Reassign
-              </button>
-              <button className="flex items-center gap-1 rounded-lg bg-rose-500/80 px-3 py-1.5 text-xs font-bold hover:bg-rose-600 transition-colors">
-                <span className="material-symbols-outlined text-sm">delete</span>
-                Delete Selected
-              </button>
+              <Can permission="lead:assign">
+                <button
+                  type="button"
+                  onClick={() => setIsBulkAssignOpen(true)}
+                  className="flex items-center gap-1 rounded-lg bg-on-primary/10 px-3 py-1.5 text-xs font-bold hover:bg-on-primary/20 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm">assignment_ind</span>
+                  Assign selected
+                </button>
+              </Can>
               <button
                 onClick={() => setSelectedLeads([])}
                 className="ml-2 text-xs hover:underline"
@@ -1121,6 +1124,17 @@ const LeadListPage = () => {
       <LeadDetailModal
         leadId={detailLeadId}
         onClose={() => setDetailLeadId(null)}
+      />
+
+      <AssignLeadModal
+        open={isBulkAssignOpen}
+        leadIds={selectedLeads}
+        leadName="Selected leads"
+        currentBranchId={branchFilter || undefined}
+        onClose={() => {
+          setIsBulkAssignOpen(false);
+          setSelectedLeads([]);
+        }}
       />
 
     </div>

@@ -171,23 +171,7 @@ export const useEmployeeProfileByUserQuery = (userId: string | undefined) =>
   useQuery({
     queryKey: employeeProfileKeys.byUser(userId ?? ""),
     enabled: !!userId,
-    queryFn: async (): Promise<EmployeeProfile | null> => {
-      if (!userId) return null;
-      const first = await employeeApi.listProfiles({ page: 1, limit: 100 });
-      const match = first.profiles.find(
-        (p) => (typeof p.user === "string" ? p.user : p.user._id) === userId
-      );
-      if (match) return match;
-      if (first.pagination.totalPages <= 1) return null;
-      for (let page = 2; page <= first.pagination.totalPages; page++) {
-        const next = await employeeApi.listProfiles({ page, limit: 100 });
-        const found = next.profiles.find(
-          (p) => (typeof p.user === "string" ? p.user : p.user._id) === userId
-        );
-        if (found) return found;
-      }
-      return null;
-    },
+    queryFn: ()=> employeeApi.getProfile(userId as string)
   });
 
 export const useEmployeeProfileQuery = (id: string | undefined) =>

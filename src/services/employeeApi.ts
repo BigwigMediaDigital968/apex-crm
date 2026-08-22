@@ -96,8 +96,8 @@ export const employeeApi = {
    * future PATCH route so callers don't need to change once it ships.
    */
   updateProfile: async (_id: string, payload: CreateEmployeeProfilePayload) => {
-    const { data } = await apiClient.post<ApiEnvelope<EmployeeProfile>>(
-      "/employee",
+    const { data } = await apiClient.patch<ApiEnvelope<EmployeeProfile>>(
+      `/employee/${_id}`,
       payload
     );
     return data.data;

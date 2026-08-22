@@ -30,6 +30,7 @@ import {
     useUpdateEmployeeBranches,
     useUpdateEmployeeProfile,
 } from "../hooks/useEmployees";
+import toast from "react-hot-toast";
 
 // ----------------------------------------------------------------------------
 // Local form types
@@ -383,14 +384,21 @@ const EmployeeFormPage = () => {
         };
 
         try {
+            console.log("herer")
             console.log("profileMode", profileMode)
             if (profileMode === "create") {
+                console.log("herer 2")
                 await createProfile.mutateAsync(payload);
             } else {
+
+                console.log("existingProfile", existingProfile)
+                if (!existingProfile) return toast.error("Unable to Find Employee Profile");
+
                 await updateProfile.mutateAsync({
-                    id: existingProfile?._id ?? id,
+                    id: existingProfile?._id,
                     payload,
                 });
+
             }
         } catch {
             /* toast handled in mutation */
@@ -455,7 +463,7 @@ const EmployeeFormPage = () => {
     }
 
 
-    console.log("existingEmployee",existingEmployee);
+    // console.log("existingEmployee",existingEmployee);
     const userSubmitting =
         createEmployee.isPending ||
         updateEmployee.isPending ||
@@ -512,12 +520,12 @@ const EmployeeFormPage = () => {
                 {
                     isEditMode && (
                         <button
-                    type="button"
-                    onClick={() => setActiveTab("profile")}
-                    className={`py-2 px-4 border-b-2 ${activeTab === "profile" ? "border-primary text-primary" : "border-transparent text-on-surface-variant"}`}
-                >
-                    Details & Salary
-                </button>
+                            type="button"
+                            onClick={() => setActiveTab("profile")}
+                            className={`py-2 px-4 border-b-2 ${activeTab === "profile" ? "border-primary text-primary" : "border-transparent text-on-surface-variant"}`}
+                        >
+                            Details & Salary
+                        </button>
                     )
                 }
             </div>

@@ -12,6 +12,7 @@ import { getErrorMessage } from "@/utils/getErrorMessage";
 import type {
     AddLeadRemarkPayload,
     AssignLeadPayload,
+    BulkAssignLeadsPayload,
     CompleteLeadFollowUpPayload,
     CreateLeadFollowUpPayload,
     CreateLeadPayload,
@@ -44,6 +45,9 @@ export const leadQueryKeys = {
 
     myFollowUps: () =>
         [...leadQueryKeys.all, "my-follow-ups"] as const,
+
+    callLogs: (id: string) =>
+        [...leadQueryKeys.detail(id), "calls"] as const,
 };
 
 
@@ -146,6 +150,21 @@ export const useAssignLead = () => {
 };
 
 
+export const useBulkAssignLeads = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (payload: BulkAssignLeadsPayload) => leadsApi.bulkAssign(payload),
+        onSuccess: (result) => {
+            toast.success(`${result.assignedCount} leads assigned successfully`);
+            queryClient.invalidateQueries({ queryKey: leadQueryKeys.all });
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, "Failed to assign leads"));
+        },
+    });
+};
+
 /* =========================================================
    UPDATE STATUS
    PATCH /leads/:id/status
@@ -239,6 +258,14 @@ export const useLeadActivities = (id?: string) => {
     });
 };
 
+
+export const useLeadCallLogs = (id?: string) => {
+    return useQuery({
+        queryKey: leadQueryKeys.callLogs(id ?? ""),
+        queryFn: () => leadsApi.getCallLogs(id!),
+        enabled: Boolean(id),
+    });
+};
 
 /* =========================================================
    IMPORT LEADS

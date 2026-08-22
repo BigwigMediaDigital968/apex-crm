@@ -1,13 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { useBranchesQuery } from "@/features/branches";
-import { useEmployeesQuery } from "@/features/employees";
-import { ROLES } from "@/types/auth";
-import { useAssignLead } from "../hooks/useLeads";
+import { useEmployeeProfilesQuery } from "@/features/employees";
+import { useAssignLead, useBulkAssignLeads } from "../hooks/useLeads";
 
 interface AssignLeadModalProps {
     open: boolean;
-    leadId: string;
+    leadId?: string;
+    leadIds?: string[];
     leadName: string;
     currentBranchId?: string;
     currentEmployeeId?: string;
@@ -17,6 +17,7 @@ interface AssignLeadModalProps {
 const AssignLeadModal = ({
     open,
     leadId,
+    leadIds,
     leadName,
     currentBranchId,
     currentEmployeeId,
@@ -27,19 +28,51 @@ const AssignLeadModal = ({
     const [employeeId, setEmployeeId] = useState(currentEmployeeId ?? "");
 
     const assignLead = useAssignLead();
-    const { data: branches, isLoading: branchesLoading } = useBranchesQuery();
-    const { data: employeeData, isLoading: employeesLoading } = useEmployeesQuery({
-        role: ROLES.EMPLOYEE,
+    const bulkAssign = useBulkAssignLeads();
+    const isBulk = Boolean(leadIds?.length);
+
+    const {
+        data: branches,
+        isLoading: branchesLoading,
+    } = useBranchesQuery();
+
+    const {
+        data: employeeData,
+        isLoading: employeesLoading,
+    } = useEmployeeProfilesQuery({
         branchId,
-        isActive: true,
         limit: 100,
     });
 
+    useEffect(() => {
+        if (!open) return;
+        setBranchId(currentBranchId ?? "");
+        setEmployeeId("");
+        setSearch("");
+    }, [open, currentBranchId, leadId]);
+
+    useEffect(() => {
+        if (!currentEmployeeId || employeeId || !employeeData) return;
+        const currentProfile = employeeData.profiles.find((profile) =>
+            (typeof profile.user === "string" ? profile.user : profile.user._id) === currentEmployeeId
+        );
+        if (currentProfile) setEmployeeId(currentProfile._id);
+    }, [currentEmployeeId, employeeData, employeeId]);
+
     const filteredEmployees = useMemo(() => {
-        const list = employeeData?.employees ?? [];
+        const list = employeeData?.profiles ?? [];
+
         if (!search.trim()) return list;
+
         const q = search.trim().toLowerCase();
-        return list.filter((e) => e.name.toLowerCase().includes(q));
+
+        return list.filter((employee) => {
+            if (typeof employee.user === "string") {
+                return employee.user.toLowerCase().includes(q);
+            }
+
+            return employee.user.name.toLowerCase().includes(q);
+        });
     }, [employeeData, search]);
 
     const handleBranchChange = (id: string) => {
@@ -49,7 +82,15 @@ const AssignLeadModal = ({
 
     const handleConfirm = async () => {
         if (!employeeId) return;
-        await assignLead.mutateAsync({ id: leadId, payload: { employeeId } });
+
+        if (isBulk && leadIds) {
+            await bulkAssign.mutateAsync({ leadIds, employeeId });
+        } else if (leadId) {
+            await assignLead.mutateAsync({ id: leadId, payload: { employeeId } });
+        } else {
+            return;
+        }
+
         onClose();
     };
 
@@ -59,10 +100,19 @@ const AssignLeadModal = ({
     };
 
     return (
-        <Modal title="Assign Lead" open={open} onClose={handleClose} size="sm">
+        <Modal
+            title="Assign Lead"
+            open={open}
+            onClose={handleClose}
+            size="sm"
+        >
             <div className="space-y-4">
                 <p className="font-body-sm text-xs text-on-surface-variant">
-                    Assigning <span className="font-semibold text-on-surface">{leadName}</span> to a branch representative.
+                    Assigning{" "}
+                    <span className="font-semibold text-on-surface">
+                        {isBulk ? `${leadIds?.length ?? 0} selected leads` : leadName}
+                    </span>{" "}
+                    to a branch representative.
                 </p>
 
                 {/* Branch filter */}
@@ -70,16 +120,20 @@ const AssignLeadModal = ({
                     <label className="font-label-sm text-[10px] uppercase font-bold text-on-surface-variant/70 block mb-1">
                         Branch
                     </label>
+
                     <select
                         value={branchId}
-                        onChange={(e) => handleBranchChange(e.target.value)}
+                        onChange={(e) =>
+                            handleBranchChange(e.target.value)
+                        }
                         disabled={branchesLoading}
                         className="w-full rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary disabled:opacity-50"
                     >
                         <option value="">All branches</option>
-                        {branches?.map((b) => (
-                            <option key={b._id} value={b._id}>
-                                {b.name}
+
+                        {branches?.map((branch) => (
+                            <option key={branch._id} value={branch._id}>
+                                {branch.name}
                             </option>
                         ))}
                     </select>
@@ -90,10 +144,12 @@ const AssignLeadModal = ({
                     <label className="font-label-sm text-[10px] uppercase font-bold text-on-surface-variant/70 block mb-1">
                         Representative
                     </label>
+
                     <div className="relative mb-2">
                         <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-base text-on-surface-variant/50">
                             search
                         </span>
+
                         <input
                             type="text"
                             placeholder="Search by name..."
@@ -115,21 +171,36 @@ const AssignLeadModal = ({
                                 No representatives found.
                             </p>
                         ) : (
-                            filteredEmployees.map((emp) => {
-                                const selected = emp._id === employeeId;
+                            filteredEmployees.map((employee) => {
+                                const selected =
+                                    employee._id === employeeId;
+
+                                const employeeName =
+                                    typeof employee.user === "string"
+                                        ? employee.user
+                                        : employee.user.name;
+
                                 return (
                                     <button
-                                        key={emp._id}
+                                        key={employee._id}
                                         type="button"
-                                        onClick={() => setEmployeeId(emp._id)}
-                                        className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-sm transition-colors ${selected
-                                            ? "bg-primary/10 text-primary font-semibold"
-                                            : "text-on-surface hover:bg-surface-container-low"
-                                            }`}
+                                        onClick={() =>
+                                            setEmployeeId(employee._id)
+                                        }
+                                        className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-sm transition-colors ${
+                                            selected
+                                                ? "bg-primary/10 text-primary font-semibold"
+                                                : "text-on-surface hover:bg-surface-container-low"
+                                        }`}
                                     >
-                                        <span className="truncate">{emp.name}</span>
+                                        <span className="truncate">
+                                            {employeeName}
+                                        </span>
+
                                         {selected && (
-                                            <span className="material-symbols-outlined text-base">check_circle</span>
+                                            <span className="material-symbols-outlined text-base">
+                                                check_circle
+                                            </span>
                                         )}
                                     </button>
                                 );
@@ -147,13 +218,16 @@ const AssignLeadModal = ({
                     >
                         Cancel
                     </button>
+
                     <button
                         type="button"
                         onClick={handleConfirm}
-                        disabled={!employeeId || assignLead.isPending}
+                        disabled={!employeeId || assignLead.isPending || bulkAssign.isPending}
                         className="rounded-lg bg-primary px-4 py-1.5 text-xs font-bold text-on-primary hover:bg-primary/90 disabled:opacity-50 transition-colors"
                     >
-                        {assignLead.isPending ? "Assigning..." : "Confirm Assignment"}
+                        {assignLead.isPending || bulkAssign.isPending
+                            ? "Assigning..."
+                            : "Confirm Assignment"}
                     </button>
                 </div>
             </div>

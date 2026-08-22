@@ -115,6 +115,25 @@ export interface AssignLeadPayload {
   employeeId: string;
 }
 
+export interface BulkAssignLeadsPayload extends AssignLeadPayload {
+  leadIds: string[];
+}
+
+export interface LeadCallLog {
+  _id: string;
+  lead: string;
+  caller?: LeadUserSummary | string;
+  branch: string;
+  callId?: string;
+  fromNumber?: string;
+  toNumber?: string;
+  callStatus?: string;
+  duration?: number;
+  recordingUrl?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface UpdateLeadStatusPayload {
   status:
   | "new"
