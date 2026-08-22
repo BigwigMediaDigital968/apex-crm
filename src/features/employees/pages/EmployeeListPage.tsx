@@ -387,7 +387,7 @@ const EmployeeListPage = () => {
                                 </span>
                               </button>
                             </Can>
-                            <Can permission={'user:delete'}>
+                            <Can permission={'user:status:update'}>
                               <button
                                 onClick={() => setStatusTarget(emp)}
                                 disabled={locked}
@@ -447,7 +447,7 @@ const EmployeeListPage = () => {
       </div>
 
       <EmployeeFormModal
-        key={editTarget?._id ?? "closed"}
+        key={editTarget?._id ?? "employee-form-closed"}
         open={Boolean(editTarget)}
         employee={editTarget}
         assignableRoles={assignableRoles}
@@ -455,7 +455,7 @@ const EmployeeListPage = () => {
       />
 
       <AssignBranchesModal
-        key={branchTarget?._id ?? "closed"}
+        key={branchTarget?._id ?? "assign-branches-closed"}
         open={Boolean(branchTarget)}
         employee={branchTarget}
         onClose={() => setBranchTarget(null)}

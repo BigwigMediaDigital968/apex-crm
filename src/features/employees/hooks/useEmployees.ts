@@ -163,14 +163,22 @@ export const useEmployeeProfilesQuery = (
   });
 
 /**
- * Find the EmployeeProfile that belongs to a given User ID by listing the
- * profiles. We have no backend filter for userId, so we walk the pages until
- * we find a match (most orgs have < 1 page worth of profiles per branch).
+ * Find the EmployeeProfile that belongs to a given User ID. GET /employee/:id
+ * accepts either a profile ID or a user ID (backend does an `$or` lookup), so
+ * this is a direct single request.
+ *
+ * `retry: false` — a 404 here is an expected, valid state (the account
+ * exists but has no HR profile yet, e.g. right after onboarding) rather than
+ * a transient failure, so it shouldn't be retried. Without this, React
+ * Query's default 3 retries with backoff kept the caller's `isLoading` true
+ * for several seconds, leaving pages stuck on a loading spinner before
+ * falling back to the "not found" state.
  */
 export const useEmployeeProfileByUserQuery = (userId: string | undefined) =>
   useQuery({
     queryKey: employeeProfileKeys.byUser(userId ?? ""),
     enabled: !!userId,
+    retry: false,
     queryFn: ()=> employeeApi.getProfile(userId as string)
   });
 
@@ -179,6 +187,7 @@ export const useEmployeeProfileQuery = (id: string | undefined) =>
     queryKey: employeeProfileKeys.detail(id ?? ""),
     queryFn: () => employeeApi.getProfile(id as string),
     enabled: !!id,
+    retry: false,
   });
 
 export const useCreateEmployeeProfile = () => {

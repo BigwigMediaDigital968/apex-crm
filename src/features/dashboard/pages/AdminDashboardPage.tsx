@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router";
+import { TaskOverviewWidget } from "@/features/tasks";
 
 // Mapped permission badges/counters for quick overview
 
@@ -185,8 +186,27 @@ const AdminDashboardPage = () => {
             </span>
           </button>
 
+          {/* Task Management */}
+          <button
+            onClick={() => navigate("/tasks")}
+            className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
+          >
+            <span className="material-symbols-outlined text-2xl text-on-surface-variant group-hover:scale-110 transition-transform">
+              task_alt
+            </span>
+            <span className="font-label-md text-xs font-bold text-on-surface">
+              Task Management
+            </span>
+          </button>
+
         </div>
       </div>
+
+      {/* Task Overview — scoped by the backend to this admin's assigned branches */}
+      <TaskOverviewWidget
+        title="Task Overview"
+        description="Task load across the branches you manage."
+      />
 
       {/* 4. Core Management Section (User Management & Audit Activity) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

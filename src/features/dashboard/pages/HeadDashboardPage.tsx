@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { BranchFormModal, useBranchesQuery } from "@/features/branches";
 import { useEmployeeCountsByBranch, useEmployeesQuery } from "@/features/employees";
+import { TaskOverviewWidget } from "@/features/tasks";
 
 interface RecentLead {
   id: string;
@@ -237,6 +238,12 @@ const HeadDashboardPage = () => {
           </p>
         </div>
       </div>
+
+      {/* Task Overview — scoped by the backend to every branch for Head */}
+      <TaskOverviewWidget
+        title="Task Overview"
+        description="Live task load across every branch in the organization."
+      />
 
       {/* Main Grid Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

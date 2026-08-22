@@ -7,6 +7,7 @@ import { BranchDetailPage, BranchFormPage, BranchListPage } from "@/features/bra
 import { LoginPage, ProfilePage } from "@/features/auth";
 import { LeadListPage } from "@/features/leads";
 import { AttendanceDispatcher } from "@/features/attendance";
+import { TaskListPage, TaskFormPage, TaskDetailPage } from "@/features/tasks";
 
 
 import GuestRoute from "@/routes/GuestRoute";
@@ -16,6 +17,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 import ComingSoonPage from "./pages/ComingSoonPage";
 import AuditLogPage from "./features/logs/pages/AuditLogPage";
 import LeadDetailPage from "./features/leads/pages/LeadDetailPage";
+import { DialerPage } from "./features/dialer";
 
 export const router = createBrowserRouter([
   {
@@ -93,11 +95,28 @@ export const router = createBrowserRouter([
             ],
           },
 
-          { path: "/tasks", element: <ComingSoonPage featureName={"Tasks"} /> },
+          {
+            element: <PermissionRoute permission={'task:view'} />,
+            children: [
+              { path: "/tasks", element: <TaskListPage /> },
+              { path: "/tasks/:id", element: <TaskDetailPage /> },
+            ],
+          },
+          {
+            element: <PermissionRoute permission={'task:create'} />,
+            children: [
+              { path: "/tasks/new", element: <TaskFormPage /> },
+            ],
+          },
           { path: "/attendance", element: <AttendanceDispatcher /> },
           { path: "/achievements", element: <ComingSoonPage featureName="Achievements" /> },
           { path: "/settings", element: <ComingSoonPage featureName="Settings" /> },
-          { path: "/dialer", element: <ComingSoonPage featureName="Dialer" /> },
+          {
+            element: <PermissionRoute permission={'call:initiate'} />,
+            children: [
+              { path: "/dialer", element: <DialerPage /> },
+            ],
+          },
 
           { path: "/dialer/*", element: <ComingSoonPage featureName="Dialer" /> },
 

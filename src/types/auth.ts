@@ -110,6 +110,10 @@ export const PERMISSIONS = {
   LEAD_FOLLOWUP_CREATE: "lead:followup:create",
   LEAD_FOLLOWUP_UPDATE: "lead:followup:update",
 
+  CALL_INITIATE: "call:initiate",
+  CALL_LOG_VIEW: "call-log:view",
+  CALL_RECORDING_LISTEN: "call-recording:listen",
+
   // Customers
   CUSTOMER_VIEW: "customer:view",
   CUSTOMER_CREATE: "customer:create",

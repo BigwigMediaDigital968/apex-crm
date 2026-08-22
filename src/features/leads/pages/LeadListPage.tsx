@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useCreateLead, useImportLeads, useLeads } from "../hooks/useLeads";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import type { CreateLeadPayload, Lead, LeadStatus } from "@/types/lead";
 import { useBranchesQuery } from "@/features/branches";
+import { useEmployeesQuery } from "@/features/employees";
+import { useAuthStore } from "@/store/auth.store";
+import { ROLES } from "@/types/auth";
 import { Can } from "@/components/Auth/Can";
 import LeadDetailModal from "../components/Leaddetailmodal";
 import AssignLeadModal from "../components/AssignLeadModal";
@@ -19,10 +22,11 @@ const SOURCE_OPTIONS = ["All Sources", "Website", "Excel Import"];
 // NOTE: GET /leads?status=... on the backend only accepts a legacy
 // uppercase enum that doesn't match the values leads actually get created
 // with (LEAD_STATUS is lowercase — see lead.validator.ts vs
-// listLeadQuerySchema). Sending status to the API would silently return
-// zero rows. Until that's fixed backend-side, we filter status client-side
-// on the currently loaded page instead of passing it to the API — filtering
-// only reflects leads already fetched for this page.
+// listLeadQuerySchema). Sending status to the API 400s outright ("Invalid
+// option: expected one of NEW|ASSIGNED|..."). Until that's fixed
+// backend-side, status is filtered client-side on the currently loaded page
+// instead of being passed to the API — it only reflects leads already
+// fetched for this page, not the full result set across all pages.
 const STATUS_FILTERS: { label: string; value: LeadStatus | "" }[] = [
   { label: "All Statuses", value: "" },
   { label: "New", value: "new" },
@@ -63,6 +67,10 @@ const STATUS_DOT_CLASSES: Record<LeadStatus, string> = {
 const LeadListPage = () => {
   // Navigation & Filtering States
   const params = new URLSearchParams(window.location.search);
+  const currentUser = useAuthStore((s) => s.user);
+  const isEmployee = currentUser?.role === ROLES.EMPLOYEE;
+  const isHead = currentUser?.role === ROLES.HEAD;
+
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery);
 
@@ -71,6 +79,9 @@ const LeadListPage = () => {
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [branchFilter, setBranchFilter] = useState("");
+  const [assigneeFilter, setAssigneeFilter] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
   const [detailLeadId, setDetailLeadId] = useState<string | null>(null);
   const [isBulkAssignOpen, setIsBulkAssignOpen] = useState(false);
 
@@ -81,22 +92,58 @@ const LeadListPage = () => {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importBranchId, setImportBranchId] = useState("");
 
+  // Jump back to page 1 whenever the filters change — mirrors the same
+  // during-render pattern EmployeeListPage uses to avoid a stale page
+  // number silently returning an empty result set.
+  const filtersKey = `${debouncedSearch}|${selectedSource}|${branchFilter}|${assigneeFilter}|${createdFrom}|${createdTo}`;
+  const [trackedFiltersKey, setTrackedFiltersKey] = useState(filtersKey);
+  if (filtersKey !== trackedFiltersKey) {
+    setTrackedFiltersKey(filtersKey);
+    setCurrentPage(1);
+  }
+
   const { data, isLoading, isFetching, isError, error } = useLeads({
     page: currentPage,
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
-    status: selectedStatus || undefined,
     source: selectedSource === "All Sources" ? undefined : selectedSource,
     branchId: branchFilter || undefined,
+    assignedTo: !isEmployee ? assigneeFilter || undefined : undefined,
+    fromDate: createdFrom ? new Date(createdFrom).toISOString() : undefined,
+    toDate: createdTo ? new Date(createdTo).toISOString() : undefined,
   });
 
   const leadsData: Lead[] = data?.leads ?? [];
   const pagination = data?.pagination;
 
   // Client-side status filter — see note above STATUS_FILTERS.
-  const visibleLeads = leadsData;
+  const visibleLeads = useMemo(
+    () => (selectedStatus ? leadsData.filter((l) => l.status === selectedStatus) : leadsData),
+    [leadsData, selectedStatus]
+  );
 
   const { data: branches } = useBranchesQuery();
+
+  // Employee and Manager are hard-restricted to exactly one branch
+  // (user.service.ts singleBranchRoles) — a branch filter is meaningless
+  // (and, if it listed every branch, exploitable: lead.service.ts listLeads
+  // 403s on a branchId outside the caller's own branches) when there's
+  // nothing else to filter to. Driven by actual accessible-branch count
+  // rather than hardcoded per role, so it also collapses correctly for a
+  // Head/Admin who happens to only have one branch.
+  const assignableBranches = useMemo(() => {
+    if (!branches) return [];
+    if (isHead) return branches;
+    const own = new Set(currentUser?.branches ?? []);
+    return branches.filter((b) => own.has(b._id));
+  }, [branches, isHead, currentUser?.branches]);
+
+  const { data: employeeData } = useEmployeesQuery({
+    role: ROLES.EMPLOYEE,
+    branchId: branchFilter || undefined,
+    isActive: true,
+    limit: 100,
+  });
 
   // Modal Control States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(params.has("new") || false);
@@ -277,15 +324,18 @@ const LeadListPage = () => {
             expand_more
           </span>
         </div>
-        {branches && (
+        {assignableBranches.length > 1 && (
           <div className="relative">
             <select
               value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
+              onChange={(e) => {
+                setBranchFilter(e.target.value);
+                setAssigneeFilter("");
+              }}
               className="appearance-none rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2 pr-9 text-xs font-semibold text-on-surface outline-none focus:border-primary cursor-pointer transition-all"
             >
               <option value="">All Branch</option>
-              {branches.map((branch) => (
+              {assignableBranches.map((branch) => (
                 <option key={branch._id} value={branch._id}>
                   {branch.name}
                 </option>
@@ -298,15 +348,65 @@ const LeadListPage = () => {
           </div>
         )}
 
+        {/* Assigned To — only roles with cross-employee visibility can use
+            this (backend restricts Employee to their own leads regardless). */}
+        {!isEmployee && (
+          <div className="relative">
+            <select
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+              className="appearance-none rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2 pr-9 text-xs font-semibold text-on-surface outline-none focus:border-primary cursor-pointer transition-all"
+            >
+              <option value="">All Assignees</option>
+              {employeeData?.employees.map((employee) => (
+                <option key={employee._id} value={employee._id}>
+                  {employee.name}
+                </option>
+              ))}
+            </select>
+
+            <span className="material-symbols-outlined pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-lg text-on-surface-variant">
+              expand_more
+            </span>
+          </div>
+        )}
+
+        {/* Created date range */}
+        <div className="flex items-center gap-1.5">
+          <input
+            type="date"
+            value={createdFrom}
+            onChange={(e) => setCreatedFrom(e.target.value)}
+            title="Created from"
+            className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-2.5 py-2 text-xs font-semibold text-on-surface outline-none focus:border-primary"
+          />
+          <span className="text-xs text-on-surface-variant/60">to</span>
+          <input
+            type="date"
+            value={createdTo}
+            onChange={(e) => setCreatedTo(e.target.value)}
+            title="Created to"
+            className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-2.5 py-2 text-xs font-semibold text-on-surface outline-none focus:border-primary"
+          />
+        </div>
 
         {/* Clear Filters Button (If active) */}
-        {(searchQuery || selectedStatus || selectedSource !== "All Sources" || branchFilter) && (
+        {(searchQuery ||
+          selectedStatus ||
+          selectedSource !== "All Sources" ||
+          branchFilter ||
+          assigneeFilter ||
+          createdFrom ||
+          createdTo) && (
           <button
             onClick={() => {
               setSearchQuery("");
               setSelectedStatus("");
               setSelectedSource("All Sources");
               setBranchFilter("");
+              setAssigneeFilter("");
+              setCreatedFrom("");
+              setCreatedTo("");
             }}
             className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:underline px-2 py-1"
           >
@@ -316,10 +416,10 @@ const LeadListPage = () => {
         )}
       </div>
 
-      {false && selectedStatus && (
+      {selectedStatus && (
         <p className="-mt-2 flex items-center gap-1.5 font-body-sm text-[11px] text-on-surface-variant/70">
           <span className="material-symbols-outlined text-sm">info</span>
-          Status filter is applied to leads already loaded on this page only —
+          Status filter only applies to leads already loaded on this page —
           it isn't sent to the server, so results on other pages aren't
           included.
         </p>
@@ -1075,7 +1175,7 @@ const LeadListPage = () => {
                       Select branch
                     </option>
 
-                    {branches?.map((branch) => (
+                    {assignableBranches.map((branch) => (
                       <option
                         key={branch._id}
                         value={branch._id}

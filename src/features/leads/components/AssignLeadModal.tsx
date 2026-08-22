@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { useBranchesQuery } from "@/features/branches";
 import { useEmployeeProfilesQuery } from "@/features/employees";
+import { useAuthStore } from "@/store/auth.store";
+import { ROLES } from "@/types/auth";
 import { useAssignLead, useBulkAssignLeads } from "../hooks/useLeads";
 
 interface AssignLeadModalProps {
@@ -31,10 +33,28 @@ const AssignLeadModal = ({
     const bulkAssign = useBulkAssignLeads();
     const isBulk = Boolean(leadIds?.length);
 
+    const currentUser = useAuthStore((s) => s.user);
+    const isHead = currentUser?.role === ROLES.HEAD;
+
     const {
         data: branches,
         isLoading: branchesLoading,
     } = useBranchesQuery();
+
+    // Manager/Employee are hard-restricted to exactly one branch
+    // (user.service.ts singleBranchRoles) — narrowing "which branch" is
+    // meaningless when there's only one possible answer, and the employee
+    // list below is already scoped server-side to the caller's own
+    // branch(es) regardless of this dropdown's value. Driven by actual
+    // accessible-branch count rather than hardcoded per role.
+    const assignableBranches = useMemo(() => {
+        if (!branches) return [];
+        if (isHead) return branches;
+        const own = new Set(currentUser?.branches ?? []);
+        return branches.filter((b) => own.has(b._id));
+    }, [branches, isHead, currentUser?.branches]);
+
+    const showBranchFilter = assignableBranches.length > 1;
 
     const {
         data: employeeData,
@@ -46,10 +66,12 @@ const AssignLeadModal = ({
 
     useEffect(() => {
         if (!open) return;
-        setBranchId(currentBranchId ?? "");
+        setBranchId(
+            currentBranchId ?? (assignableBranches.length === 1 ? assignableBranches[0]._id : "")
+        );
         setEmployeeId("");
         setSearch("");
-    }, [open, currentBranchId, leadId]);
+    }, [open, currentBranchId, leadId, assignableBranches]);
 
     useEffect(() => {
         if (!currentEmployeeId || employeeId || !employeeData) return;
@@ -115,29 +137,34 @@ const AssignLeadModal = ({
                     to a branch representative.
                 </p>
 
-                {/* Branch filter */}
-                <div>
-                    <label className="font-label-sm text-[10px] uppercase font-bold text-on-surface-variant/70 block mb-1">
-                        Branch
-                    </label>
+                {/* Branch filter — hidden when the caller only has one
+                    accessible branch (Manager/Employee always; Head/Admin
+                    when the org only has one), since there's nothing to
+                    narrow down. */}
+                {showBranchFilter && (
+                    <div>
+                        <label className="font-label-sm text-[10px] uppercase font-bold text-on-surface-variant/70 block mb-1">
+                            Branch
+                        </label>
 
-                    <select
-                        value={branchId}
-                        onChange={(e) =>
-                            handleBranchChange(e.target.value)
-                        }
-                        disabled={branchesLoading}
-                        className="w-full rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary disabled:opacity-50"
-                    >
-                        <option value="">All branches</option>
+                        <select
+                            value={branchId}
+                            onChange={(e) =>
+                                handleBranchChange(e.target.value)
+                            }
+                            disabled={branchesLoading}
+                            className="w-full rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary disabled:opacity-50"
+                        >
+                            <option value="">All branches</option>
 
-                        {branches?.map((branch) => (
-                            <option key={branch._id} value={branch._id}>
-                                {branch.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                            {assignableBranches.map((branch) => (
+                                <option key={branch._id} value={branch._id}>
+                                    {branch.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
 
                 {/* Employee search */}
                 <div>
