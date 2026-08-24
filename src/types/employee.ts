@@ -172,7 +172,7 @@ export interface EmployeeProfileManagerRef {
 
 export interface EmployeeProfile {
   _id: string;
-  user: EmployeeProfileUserRef | string;
+  user: EmployeeProfileUserRef;
   employeeCode: string;
   branch: EmployeeProfileBranchRef | string;
   reportingManager?: EmployeeProfileManagerRef | string;

@@ -89,9 +89,9 @@ const AssignLeadModal = ({
         const q = search.trim().toLowerCase();
 
         return list.filter((employee) => {
-            if (typeof employee.user === "string") {
-                return employee.user.toLowerCase().includes(q);
-            }
+            // if (typeof employee.user === "string") {
+            //     return employee.user.toLowerCase().includes(q);
+            // }
 
             return employee.user.name.toLowerCase().includes(q);
         });

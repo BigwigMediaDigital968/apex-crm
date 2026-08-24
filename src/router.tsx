@@ -18,6 +18,7 @@ import ComingSoonPage from "./pages/ComingSoonPage";
 import AuditLogPage from "./features/logs/pages/AuditLogPage";
 import LeadDetailPage from "./features/leads/pages/LeadDetailPage";
 import { DialerPage } from "./features/dialer";
+import { PerformanceDispatcher } from "./features/performance";
 
 export const router = createBrowserRouter([
   {
@@ -109,6 +110,7 @@ export const router = createBrowserRouter([
             ],
           },
           { path: "/attendance", element: <AttendanceDispatcher /> },
+          { path: "/performance", element: <PerformanceDispatcher /> },
           { path: "/achievements", element: <ComingSoonPage featureName="Achievements" /> },
           { path: "/settings", element: <ComingSoonPage featureName="Settings" /> },
           {
