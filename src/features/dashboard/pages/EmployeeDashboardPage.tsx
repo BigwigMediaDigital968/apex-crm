@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useAuthStore } from "@/store/auth.store";
 import { useLeads, useMyFollowUps } from "@/features/leads/hooks/useLeads";
+import { useAttendanceRecords, useCheckIn, useCheckOut } from "@/features/attendance/hooks/useAttendance";
+import { todayInput } from "@/utils/Date";
 
 interface CallLog {
   id: string;
@@ -77,6 +79,55 @@ const EmployeeDashboardPage = () => {
     [pendingFollowUps]
   );
 
+  const today = todayInput();
+
+
+  const { data, isLoading:isAttendanceLoading, isFetching } = useAttendanceRecords({
+    date: today,
+    employeeId: currentUser?._id,
+    page: 1,
+    limit: 10,
+  });
+  const todaysRecord = data?.records.find((r) => r.date === today);
+
+  // Mutators for Punch In / Out
+  const checkInMutation = useCheckIn();
+  const checkOutMutation = useCheckOut();
+
+  const isCheckedIn = Boolean(todaysRecord?.checkInAt && !todaysRecord?.checkOutAt);
+  const isCheckedOut = Boolean(todaysRecord?.checkOutAt);
+
+  const handlePunchAction = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const payload = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+
+        if (isCheckedIn) {
+          checkOutMutation.mutate(payload);
+        } else {
+          checkInMutation.mutate(payload);
+        }
+      },
+      (error) => {
+        alert(`Location permission required for punching: ${error.message}`);
+      }
+    );
+  };
+
+  const status = isCheckedOut
+  ? { label: "Checked Out", color: "bg-blue-500", text: "text-blue-600" }
+  : isCheckedIn
+    ? { label: "Marked In", color: "bg-emerald-500", text: "text-emerald-600" }
+    : { label: "Not Marked Yet", color: "bg-error", text: "text-error" };
+
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
       {/* Top Banner Header */}
@@ -90,9 +141,8 @@ const EmployeeDashboardPage = () => {
           </h1>
           <p className="font-body-md text-sm text-on-surface-variant">
             {pendingFollowUps.length > 0
-              ? `${pendingFollowUps.length} follow-up${pendingFollowUps.length > 1 ? "s" : ""} waiting for you${
-                  overdueFollowUps > 0 ? `, ${overdueFollowUps} overdue` : ""
-                }.`
+              ? `${pendingFollowUps.length} follow-up${pendingFollowUps.length > 1 ? "s" : ""} waiting for you${overdueFollowUps > 0 ? `, ${overdueFollowUps} overdue` : ""
+              }.`
               : "No pending follow-ups — you're all caught up."}
           </p>
         </div>
@@ -103,24 +153,45 @@ const EmployeeDashboardPage = () => {
             <p className="font-label-md text-xs text-on-surface-variant">
               Daily Attendance
             </p>
-            <p className="font-label-sm text-xs font-semibold text-error flex items-center gap-1.5 mt-0.5">
-              <span className={`h-2 w-2 rounded-full ${markedIn ? "bg-emerald-500" : "bg-error"}`} />
-              {markedIn ? "Marked In" : "Not Marked Yet"}
-            </p>
+            <p className={`mt-0.5 flex items-center gap-1.5 text-xs font-semibold ${status.text}`}>
+  <span className={`h-2 w-2 rounded-full ${status.color}`} />
+  {status.label}
+</p>
           </div>
-          <button
-            onClick={() => setMarkedIn((prev) => !prev)}
-            className={`flex items-center gap-2 rounded-xl px-4 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm transition-all ${
-              markedIn
-                ? "bg-emerald-600 hover:bg-emerald-700"
-                : "bg-primary hover:bg-primary/90"
-            }`}
-          >
-            <span className="material-symbols-outlined text-base">
-              {markedIn ? "check_circle" : "fingerprint"}
-            </span>
-            <span>{markedIn ? "Checked In" : "Mark In"}</span>
-          </button>
+          <div className="w-full lg:w-auto">
+            <button
+              type="button"
+              disabled={
+                checkInMutation.isPending ||
+                checkOutMutation.isPending ||
+                isCheckedOut || isAttendanceLoading
+              }
+              onClick={handlePunchAction}
+              className={`w-full lg:w-auto flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-label-md text-xs font-bold text-on-primary shadow-sm transition-all ${isCheckedOut
+                ? "bg-surface-container-high text-on-surface-variant cursor-not-allowed"
+                : isCheckedIn
+                  ? "bg-rose-600 hover:bg-rose-700 text-white"
+                  : "bg-primary hover:bg-primary/90 text-white"
+                }`}
+            >
+              <span className="material-symbols-outlined text-lg">
+                {isCheckedOut
+                  ? "verified"
+                  : isCheckedIn
+                    ? "logout"
+                    : "fingerprint"}
+              </span>
+              <span>
+                {checkInMutation.isPending || checkOutMutation.isPending
+                  ? "Processing Location..."
+                  : isCheckedOut
+                    ? "Day Completed"
+                    : isCheckedIn
+                      ? "Check Out Now"
+                      : "Check In Now"}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -209,10 +280,10 @@ const EmployeeDashboardPage = () => {
 
       {/* Main Grid: Left Column (Target & Follow-ups), Right Column (Scratchpad & Call Logs) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Span (2 Columns) */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* Monthly Sales Target Card */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-primary/95 to-primary/80 p-6 sm:p-8 text-on-primary shadow-md">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -319,9 +390,8 @@ const EmployeeDashboardPage = () => {
                             {overdue ? "Overdue since" : "Scheduled"}
                           </p>
                           <p
-                            className={`font-label-md text-xs font-bold ${
-                              overdue ? "text-error" : "text-on-surface"
-                            }`}
+                            className={`font-label-md text-xs font-bold ${overdue ? "text-error" : "text-on-surface"
+                              }`}
                           >
                             {new Date(item.scheduledAt).toLocaleString([], {
                               dateStyle: "medium",
@@ -352,7 +422,7 @@ const EmployeeDashboardPage = () => {
 
         {/* Right Span (1 Column) */}
         <div className="space-y-6">
-          
+
           {/* Scratchpad Card */}
           <div className="rounded-2xl bg-sky-50/70 border border-sky-100 p-5 space-y-3">
             <div className="flex items-center justify-between">
@@ -386,18 +456,17 @@ const EmployeeDashboardPage = () => {
                 <div key={log.id} className="flex gap-3">
                   {/* Call Status Icon */}
                   <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                      log.type === "missed"
-                        ? "bg-error/10 text-error"
-                        : "bg-sky-500/10 text-sky-700"
-                    }`}
+                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${log.type === "missed"
+                      ? "bg-error/10 text-error"
+                      : "bg-sky-500/10 text-sky-700"
+                      }`}
                   >
                     <span className="material-symbols-outlined text-base">
                       {log.type === "missed"
                         ? "call_missed"
                         : log.type === "outgoing"
-                        ? "call_made"
-                        : "call_received"}
+                          ? "call_made"
+                          : "call_received"}
                     </span>
                   </div>
 
