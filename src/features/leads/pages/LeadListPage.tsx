@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCreateLead, useImportLeads, useLeads } from "../hooks/useLeads";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getErrorMessage } from "@/utils/getErrorMessage";
-import type { CreateLeadPayload, Lead, LeadStatus } from "@/types/lead";
+import { LEAD_STATUS, type CreateLeadPayload, type Lead, type LeadStatus } from "@/types/lead";
 import { useBranchesQuery } from "@/features/branches";
 import { useEmployeesQuery } from "@/features/employees";
 import { useAuthStore } from "@/store/auth.store";
@@ -10,6 +10,7 @@ import { ROLES } from "@/types/auth";
 import { Can } from "@/components/Auth/Can";
 import LeadDetailModal from "../components/Leaddetailmodal";
 import AssignLeadModal from "../components/AssignLeadModal";
+import { useSearchParams } from "react-router";
 
 const PAGE_SIZE = 15;
 
@@ -66,7 +67,8 @@ const STATUS_DOT_CLASSES: Record<LeadStatus, string> = {
 
 const LeadListPage = () => {
   // Navigation & Filtering States
-  const params = new URLSearchParams(window.location.search);
+  const [searchParams] = useSearchParams();
+  const viewMode = searchParams.get('view');
   const currentUser = useAuthStore((s) => s.user);
   const isEmployee = currentUser?.role === ROLES.EMPLOYEE;
   const isHead = currentUser?.role === ROLES.HEAD;
@@ -78,6 +80,9 @@ const LeadListPage = () => {
   // later assigned to an employee (which backfills the branch then).
   const needsManualBranchField = isHead || isAdmin;
   const manualBranchRequired = isAdmin;
+
+  const isMineView = viewMode === "mine";
+  const isFollowupsView = viewMode === "followups";
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery);
@@ -115,8 +120,15 @@ const LeadListPage = () => {
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
     source: selectedSource === "All Sources" ? undefined : selectedSource,
+    ...((selectedStatus !== "" || isFollowupsView) && {
+    status: isFollowupsView?'FOLLOW_UP':selectedStatus,
+  }),
     branchId: branchFilter || undefined,
-    assignedTo: !isEmployee ? assigneeFilter || undefined : undefined,
+    assignedTo: isMineView
+      ? currentUser?._id
+      : !isEmployee
+        ? assigneeFilter || undefined
+        : undefined,
     fromDate: createdFrom ? new Date(createdFrom).toISOString() : undefined,
     toDate: createdTo ? new Date(createdTo).toISOString() : undefined,
   });
@@ -126,8 +138,8 @@ const LeadListPage = () => {
 
   // Client-side status filter — see note above STATUS_FILTERS.
   const visibleLeads = useMemo(
-    () => (selectedStatus ? leadsData.filter((l) => l.status === selectedStatus) : leadsData),
-    [leadsData, selectedStatus]
+    () => (leadsData),
+    [leadsData]
   );
 
   const { data: branches } = useBranchesQuery();
@@ -154,7 +166,7 @@ const LeadListPage = () => {
   });
 
   // Modal Control States
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(params.has("new") || false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(searchParams.has("new") || false);
   const [creationMethod, setCreationMethod] = useState<"choose" | "manual" | "sheet">("choose");
 
   // Manual Form State
@@ -434,22 +446,22 @@ const LeadListPage = () => {
           assigneeFilter ||
           createdFrom ||
           createdTo) && (
-          <button
-            onClick={() => {
-              setSearchQuery("");
-              setSelectedStatus("");
-              setSelectedSource("All Sources");
-              setBranchFilter("");
-              setAssigneeFilter("");
-              setCreatedFrom("");
-              setCreatedTo("");
-            }}
-            className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:underline px-2 py-1"
-          >
-            <span className="material-symbols-outlined text-sm">filter_alt_off</span>
-            <span>Reset Filters</span>
-          </button>
-        )}
+            <button
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedStatus("");
+                setSelectedSource("All Sources");
+                setBranchFilter("");
+                setAssigneeFilter("");
+                setCreatedFrom("");
+                setCreatedTo("");
+              }}
+              className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:underline px-2 py-1"
+            >
+              <span className="material-symbols-outlined text-sm">filter_alt_off</span>
+              <span>Reset Filters</span>
+            </button>
+          )}
       </div>
 
       {selectedStatus && (
