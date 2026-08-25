@@ -68,11 +68,11 @@ export const NAV_GROUPS: NavGroup[] = [
             path: `${ROUTES.leads}?view=followups`,
             permissions: [PERMISSIONS.LEAD_FOLLOWUP_VIEW],
           },
-          {
-            label: "Hot Leads",
-            path: `${ROUTES.leads}?view=hot`,
-            permissions: [PERMISSIONS.LEAD_VIEW],
-          },
+          // {
+          //   label: "Hot Leads",
+          //   path: `${ROUTES.leads}?view=hot`,
+          //   permissions: [PERMISSIONS.LEAD_VIEW],
+          // },
         ],
       },
 
@@ -83,15 +83,15 @@ export const NAV_GROUPS: NavGroup[] = [
        * Do not expose it as a permission-protected feature
        * until permissions such as dialer:view exist.
        */
-      {
-        label: "Dialer",
-        icon: "call",
-        permissions: [PERMISSIONS.CALL_INITIATE],
-        children: [
-          { label: "Dialer", path: "/dialer", permissions: [PERMISSIONS.CALL_INITIATE] },
-          { label: "History", path: "/dialer/history", permissions: [PERMISSIONS.CALL_LOG_VIEW] },
-        ],
-      },
+      // {
+      //   label: "Dialer",
+      //   icon: "call",
+      //   permissions: [PERMISSIONS.CALL_INITIATE],
+      //   children: [
+      //     { label: "Dialer", path: "/dialer", permissions: [PERMISSIONS.CALL_INITIATE] },
+      //     { label: "History", path: "/dialer/history", permissions: [PERMISSIONS.CALL_LOG_VIEW] },
+      //   ],
+      // },
 
       {
         label: "Tasks",
@@ -302,16 +302,14 @@ const Sidebar = () => {
       >
         {/* Brand Header */}
         <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5 shrink-0">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/15 backdrop-blur-md">
-            <span className="material-symbols-outlined text-xl text-on-primary">
-              bolt
-            </span>
+          <div className="flex h-16 shrink-0 items-center justify-center rounded-lg">
+            <img src="/brand-logo.png" className="h-10 w-auto grayscale-100 brightness-0 invert-100" />
+
           </div>
 
           {!collapsed && (
-            <span className="text-xl font-bold tracking-tight whitespace-nowrap text-on-primary">
-              Marketrixa
-            </span>
+            <img src="/brand-name.png" className="h-8 w-auto grayscale-100 brightness-0 invert-100" />
+
           )}
         </div>
 
@@ -410,8 +408,8 @@ const Sidebar = () => {
                           : undefined
                       }
                       className={`w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${isChildActive
-                          ? "text-white font-semibold"
-                          : "text-on-primary/75 hover:bg-white/10 hover:text-white"
+                        ? "text-white font-semibold"
+                        : "text-on-primary/75 hover:bg-white/10 hover:text-white"
                         }`}
                     >
                       <div className="flex items-center gap-3.5">
@@ -429,8 +427,8 @@ const Sidebar = () => {
                       {!collapsed && (
                         <span
                           className={`material-symbols-outlined text-lg transition-transform duration-200 ${isExpanded
-                              ? "rotate-180"
-                              : ""
+                            ? "rotate-180"
+                            : ""
                             }`}
                         >
                           expand_more

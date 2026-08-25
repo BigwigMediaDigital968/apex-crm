@@ -22,14 +22,7 @@ const LoginPage = () => {
 
                 {/* Brand Header */}
                 <div className="relative z-10 flex items-center gap-3">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 backdrop-blur-md shadow-sm">
-                        <span className="material-symbols-outlined text-2xl text-on-primary">
-                            bolt
-                        </span>
-                    </div>
-                    <span className="text-xl font-bold tracking-tight text-on-primary">
-                        CRM
-                    </span>
+                    <img src="/logo.png" className="h-20 w-auto grayscale-100 brightness-0 invert-100"/>
                 </div>
 
                 {/* Hero Section */}
