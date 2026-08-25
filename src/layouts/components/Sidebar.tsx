@@ -113,7 +113,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "show_chart",
         permissions: [PERMISSIONS.PERFORMANCE_VIEW],
       },
-
+      {
+        label: "Revenue",
+        path: "/revenue",
+        icon: "payments",
+        permissions: [PERMISSIONS.REVENUE_VIEW],
+      },
       {
         label: "Achievements",
         path: "/achievements",

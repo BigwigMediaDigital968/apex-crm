@@ -58,10 +58,10 @@ export interface Lead {
   externalId?: string;
 
   /** Populated on list/get responses; falls back to a raw id elsewhere. */
-  branch: BranchRef | string;
+  branch: BranchRef | any;
 
   /** Populated on list/get responses; undefined when unassigned. */
-  assignedTo?: LeadUserSummary | string;
+  assignedTo?: LeadUserSummary | any;
 
   assignedBy?: string;
 

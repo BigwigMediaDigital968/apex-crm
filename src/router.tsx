@@ -19,6 +19,7 @@ import AuditLogPage from "./features/logs/pages/AuditLogPage";
 import LeadDetailPage from "./features/leads/pages/LeadDetailPage";
 import { DialerPage } from "./features/dialer";
 import { PerformanceDispatcher } from "./features/performance";
+import { CreateRevenuePage, RevenuePage } from "./features/revenue";
 
 export const router = createBrowserRouter([
   {
@@ -58,6 +59,13 @@ export const router = createBrowserRouter([
             element: <PermissionRoute permission={'user:view'} />,
             children: [
               { path: "/employees/:id/profile", element: <UserProfilePage /> },
+            ],
+          },
+          {
+            element: <PermissionRoute permission={'revenue:view'} />,
+            children: [
+              { path: "/revenue", element: <RevenuePage /> },
+              { path: "/revenue/create", element: <CreateRevenuePage /> },
             ],
           },
           {

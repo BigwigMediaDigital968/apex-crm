@@ -121,8 +121,8 @@ const LeadListPage = () => {
     search: debouncedSearch || undefined,
     source: selectedSource === "All Sources" ? undefined : selectedSource,
     ...((selectedStatus !== "" || isFollowupsView) && {
-    status: isFollowupsView?'follow_up':selectedStatus,
-  }),
+      status: isFollowupsView ? 'follow_up' : selectedStatus,
+    }),
     branchId: branchFilter || undefined,
     assignedTo: isMineView
       ? currentUser?._id
