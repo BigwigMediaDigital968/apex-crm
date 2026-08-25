@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCreateLead, useImportLeads, useLeads } from "../hooks/useLeads";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getErrorMessage } from "@/utils/getErrorMessage";
-import { LEAD_STATUS, type CreateLeadPayload, type Lead, type LeadStatus } from "@/types/lead";
+import {  type CreateLeadPayload, type Lead, type LeadStatus } from "@/types/lead";
 import { useBranchesQuery } from "@/features/branches";
 import { useEmployeesQuery } from "@/features/employees";
 import { useAuthStore } from "@/store/auth.store";
@@ -719,7 +719,7 @@ const LeadListPage = () => {
                               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
                                 {assignee?.name
                                   .split(" ")
-                                  .map((n) => n[0])
+                                  .map((n:any) => n[0])
                                   .slice(0, 2)
                                   .join("")
                                   .toUpperCase()}
