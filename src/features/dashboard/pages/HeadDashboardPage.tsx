@@ -4,7 +4,6 @@ import { BranchFormModal, useBranchesQuery } from "@/features/branches";
 import { useEmployeeCountsByBranch, useEmployeesQuery } from "@/features/employees";
 import { TaskOverviewWidget } from "@/features/tasks";
 import { useLeads } from "@/features/leads";
-import { useRevenueReportQuery } from "@/features/revenue/hooks/useRevenue";
 
 interface RecentLead {
   id: string;

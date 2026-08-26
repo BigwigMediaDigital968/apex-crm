@@ -49,7 +49,6 @@ const MOCK_CALL_LOGS: CallLog[] = [
 ];
 
 const EmployeeDashboardPage = () => {
-  const [markedIn, setMarkedIn] = useState(false);
   const [scratchpadText, setScratchpadText] = useState("");
 
   const currentUser = useAuthStore((s) => s.user);
@@ -164,7 +163,7 @@ const EmployeeDashboardPage = () => {
               disabled={
                 checkInMutation.isPending ||
                 checkOutMutation.isPending ||
-                isCheckedOut || isAttendanceLoading
+                isCheckedOut || isAttendanceLoading || isFetching
               }
               onClick={handlePunchAction}
               className={`w-full lg:w-auto flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-label-md text-xs font-bold text-on-primary shadow-sm transition-all ${isCheckedOut
