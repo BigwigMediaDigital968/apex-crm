@@ -3,6 +3,8 @@ import { Link } from "react-router";
 import { BranchFormModal, useBranchesQuery } from "@/features/branches";
 import { useEmployeeCountsByBranch, useEmployeesQuery } from "@/features/employees";
 import { TaskOverviewWidget } from "@/features/tasks";
+import { useLeads } from "@/features/leads";
+import { useRevenueReportQuery } from "@/features/revenue/hooks/useRevenue";
 
 interface RecentLead {
   id: string;
@@ -55,6 +57,18 @@ const HeadDashboardPage = () => {
   const totalEmployees = employeesData?.pagination.total;
   const totalBranches = branches?.length;
 
+  const { data: leadData, isLoading: leadLoading } = useLeads({
+    limit: 1,
+  });
+
+  const totalLeads = leadData?.pagination?.total;
+
+  // const { data, isLoading, isError } = useRevenueReportQuery(
+  //   {
+      
+  //   }
+  // );
+
   const topBranches = useMemo(
     () => (branches ?? []).slice(0, 5),
     [branches]
@@ -83,11 +97,10 @@ const HeadDashboardPage = () => {
             <button
               key={tf}
               onClick={() => setSelectedTimeframe(tf)}
-              className={`px-3 py-1.5 rounded-lg font-label-md text-xs transition-all ${
-                selectedTimeframe === tf
-                  ? "bg-primary font-bold text-on-primary shadow-sm"
-                  : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
-              }`}
+              className={`px-3 py-1.5 rounded-lg font-label-md text-xs transition-all ${selectedTimeframe === tf
+                ? "bg-primary font-bold text-on-primary shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container"
+                }`}
             >
               {tf}
             </button>
@@ -126,7 +139,7 @@ const HeadDashboardPage = () => {
           <div className="relative group">
             <Link
               to={'/leads?new'}
-            className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container-high transition-all"
+              className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container-high transition-all"
             >
               <span className="material-symbols-outlined text-lg">
                 person_search
@@ -177,13 +190,23 @@ const HeadDashboardPage = () => {
               </span>
             </span>
           </div>
-          <p className="font-headline-md text-3xl font-extrabold text-on-surface">
-            1,284
-          </p>
-          <p className="font-label-sm text-xs font-semibold text-on-surface-variant/60 flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">info</span>
-            Sample data
-          </p>
+          {leadLoading ? (
+            <div className="h-9 w-16 rounded-lg bg-surface-container-high animate-pulse" />
+          ) : (
+            <p className="font-headline-md text-3xl font-extrabold text-on-surface">
+              {totalLeads ?? 0}
+            </p>
+          )}
+          <Link
+            to="/leads"
+            className="group inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors duration-200 hover:text-primary/80"
+          >
+            <span className="material-symbols-outlined text-sm">group</span>
+            <span>View All Leads</span>
+            <span className="material-symbols-outlined text-sm transition-transform duration-200 group-hover:translate-x-0.5">
+              chevron_right
+            </span>
+          </Link>
         </div>
 
         {/* Total Employees */}
@@ -205,10 +228,16 @@ const HeadDashboardPage = () => {
               {totalEmployees ?? 0}
             </p>
           )}
-          <p className="font-label-sm text-xs font-semibold text-primary flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">group</span>
-            Across all branches
-          </p>
+          <Link 
+      to="/workforce" 
+      className="group inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors duration-200 hover:text-primary/80"
+    >
+      <span className="material-symbols-outlined text-sm">badge</span>
+      <span>View All Workforce</span>
+      <span className="material-symbols-outlined text-sm transition-transform duration-200 group-hover:translate-x-0.5">
+        chevron_right
+      </span>
+    </Link>
         </div>
 
         {/* Total Branches */}
@@ -230,12 +259,16 @@ const HeadDashboardPage = () => {
               {String(totalBranches ?? 0).padStart(2, "0")}
             </p>
           )}
-          <p className="font-body-sm text-xs text-on-surface-variant flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm text-emerald-600">
-              check_circle
+          <Link
+            to="/branches"
+            className="group inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors duration-200 hover:text-primary/80"
+          >
+            <span className="material-symbols-outlined text-sm">domain</span>
+            <span>View All Branches</span>
+            <span className="material-symbols-outlined text-sm transition-transform duration-200 group-hover:translate-x-0.5">
+              chevron_right
             </span>
-            All operational
-          </p>
+          </Link>
         </div>
       </div>
 
