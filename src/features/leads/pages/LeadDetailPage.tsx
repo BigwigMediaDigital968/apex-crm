@@ -254,13 +254,13 @@ const LeadDetailPage = () => {
 
                 <div className="flex gap-2 shrink-0">
                     {lead.phone && (
-                        <a
-                            href={`tel:${lead.phoneCountryCode}${lead.phone}`}
+                        <Link
+                            to={`/dialer?leadId=${lead._id}`}
                             className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all"
                         >
                             <span className="material-symbols-outlined text-sm">call</span>
                             Call Lead
-                        </a>
+                        </Link>
                     )}
                 </div>
             </div>

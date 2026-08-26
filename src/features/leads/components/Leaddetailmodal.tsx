@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import Modal from "@/components/ui/Modal";
 import { Can } from "@/components/Auth/Can";
 import type { LeadStatus } from "@/types/lead";
@@ -117,13 +117,13 @@ const LeadDetailModal = ({ leadId, onClose }: LeadDetailModalProps) => {
 
               <div className="flex items-center gap-1.5">
                 {lead.phone && (
-                  <a
-                    href={`tel:${lead.phoneCountryCode}${lead.phone}`}
+                  <Link
+                    to={`/dialer?leadId=${lead._id}`}
                     className="rounded-lg border border-outline-variant/40 bg-surface-container-lowest p-2 text-on-surface hover:bg-surface-container-low transition-colors"
                     title="Call Lead"
                   >
                     <span className="material-symbols-outlined text-base text-emerald-600 block">call</span>
-                  </a>
+                  </Link>
                 )}
                 {lead.email && (
                   <a
