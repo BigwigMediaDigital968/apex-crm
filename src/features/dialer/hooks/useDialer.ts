@@ -25,6 +25,13 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
     }
   };
 
+  const cleanupAudioElements = () => {
+    const remoteAudio = document.getElementById("stringee-remote-audio") as HTMLAudioElement;
+    const localAudio = document.getElementById("stringee-local-audio") as HTMLAudioElement;
+    if (remoteAudio) remoteAudio.srcObject = null;
+    if (localAudio) localAudio.srcObject = null;
+  };
+
   const makeCall = useCallback(
     (targetNumber: string, customData?: Record<string, any>) => {
       if (!clientRef.current) {
@@ -32,7 +39,6 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
         return;
       }
 
-      // Format number to clean digits with country code
       const cleanNumber = targetNumber.replace(/[^\d+]/g, "");
       setToNumber(cleanNumber);
       setCallState("calling");
@@ -44,12 +50,11 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
         return;
       }
 
-      // Pass Hotline Number in +E.164 format
       const call = new StringeeCall(
         clientRef.current,
-        "+917971730788", // Mandatory leading '+' format
+        "+917971730788",
         cleanNumber,
-        false,
+        false
       );
 
       if (customData) {
@@ -66,66 +71,64 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
         }
       });
 
-      call.on("addremotestream", (stream: MediaStream) => {
-        console.log("[Dialer] Remote stream received");
-        const remoteAudio = document.getElementById(
-          "stringee-remote-audio",
-        ) as HTMLAudioElement;
-        if (remoteAudio && stream) {
-          remoteAudio.srcObject = stream;
-          remoteAudio
-            .play()
-            .catch((err) => console.warn("[Audio] Play error:", err));
-        }
-      });
-
-      // Local microphone stream
+      // 1. Local microphone stream event
       call.on("addlocalstream", (stream: MediaStream) => {
         console.log("[Dialer] Local stream added");
-        const localAudio = document.getElementById(
-          "stringee-local-audio",
-        ) as HTMLAudioElement;
+        const localAudio = document.getElementById("stringee-local-audio") as HTMLAudioElement;
         if (localAudio && stream) {
           localAudio.srcObject = stream;
         }
       });
 
-      // Remote caller stream
+      // 2. Remote audio stream event
       call.on("addremotestream", (stream: MediaStream) => {
         console.log("[Dialer] Remote stream received");
-        const remoteAudio = document.getElementById(
-          "stringee-remote-audio",
-        ) as HTMLAudioElement;
+        const remoteAudio = document.getElementById("stringee-remote-audio") as HTMLAudioElement;
         if (remoteAudio && stream) {
           remoteAudio.srcObject = stream;
-          remoteAudio
-            .play()
-            .catch((err) => console.warn("[Audio] Play error:", err));
+          remoteAudio.play().catch((err) => console.warn("[Audio] Play error:", err));
         }
       });
 
+      // 3. Signaling State Listener (Call Connection Phases)
       call.on("signalingstate", (state: any) => {
         console.log("[Dialer] Signaling state:", state);
         const code = state.code;
-        // 1: Ringing, 3: Connected, 5: Ended, 6: Busy
+        // 1: Ringing, 3: Connected, 4: Busy, 5: Ended, 6: Answered elsewhere
         if (code === 1) {
           setCallState("ringing");
         } else if (code === 3) {
           setCallState("active");
           startTimer();
-        } else if (code === 5 || code === 6) {
+        } else if (code === 4 || code === 5 || code === 6) {
           setCallState("ended");
           stopTimer();
+          cleanupAudioElements();
         }
       });
 
+      // 4. Media State Listener (WebRTC Audio Packet Status)
+      call.on("mediastate", (state: any) => {
+        console.log("[Dialer] Media state:", state);
+        if (state.code === 2) {
+          console.warn("[Dialer] Media connection disconnected");
+        }
+      });
+
+      // 5. Info/DTMF Listener
+      call.on("info", (info: any) => {
+        console.log("[Dialer] Call Info Received:", info);
+      });
+
+      // 6. Error Listener
       call.on("error", (err: any) => {
         console.error("[Dialer] Call error:", err);
         setCallState("failed");
         stopTimer();
+        cleanupAudioElements();
       });
     },
-    [clientRef],
+    [clientRef]
   );
 
   const hangup = useCallback(() => {
@@ -136,6 +139,7 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
     }
     setCallState("ended");
     stopTimer();
+    cleanupAudioElements();
   }, []);
 
   const reset = useCallback(() => {
@@ -144,6 +148,7 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
     setDurationSec(0);
     setToNumber("");
     stopTimer();
+    cleanupAudioElements();
   }, []);
 
   return { callState, durationSec, toNumber, makeCall, hangup, reset };

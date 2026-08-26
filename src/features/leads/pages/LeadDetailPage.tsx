@@ -16,6 +16,7 @@ import {
     useScheduleFollowUp,
     useCompleteFollowUp,
 } from "../hooks/useLeads";
+import { LeadCallHistory } from "@/features/dialer/components/LeadCallHistory";
 
 const STATUS_OPTIONS: { label: string; value: LeadStatus }[] = [
     { label: "New", value: "new" },
@@ -677,6 +678,15 @@ const LeadDetailPage = () => {
                     )}
                 </SectionCard>
             </div>
+            <div className="col-span-4">
+                {
+                    leadId && (
+                        <LeadCallHistory leadId={leadId} />
+
+                    )
+                }
+            </div>
+
 
             <div className="pt-2">
                 <Link to="/leads" className="font-label-md text-xs font-bold text-primary hover:underline">

@@ -25,7 +25,7 @@ const Dialer = () => {
   // Automatically fill input keypad when redirecting from lead page
   useEffect(() => {
     if (paramLead?.phone) {
-      setInput(paramLead.phone);
+      setInput('91'+paramLead.phone);
     }
   }, [paramLead]);
 
@@ -40,7 +40,12 @@ const Dialer = () => {
 
   const handleCall = () => {
     if (!input.trim() || status !== "connected") return;
+    // makeCall(input.trim(), {
+    //   userId: user?._id,
+    //   branchId: user?.branches?.[0],
+    // });
     makeCall(input.trim(), {
+      leadId: paramLead?._id || null,
       userId: user?._id,
       branchId: user?.branches?.[0],
     });
@@ -54,7 +59,7 @@ const Dialer = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/20 pb-4">
         <div>
           <h1 className="font-headline-md text-2xl font-black text-on-surface tracking-tight">
-            Cloud Workstation Dialer
+            Dialer
           </h1>
           <p className="font-body-sm text-xs text-on-surface-variant mt-0.5">
             Real-time outbound voice communication powered by Stringee

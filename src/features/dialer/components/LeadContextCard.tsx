@@ -1,7 +1,8 @@
 // src/features/dialer/components/LeadContextCard.tsx
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { useLead, useLeads } from "@/features/leads/hooks/useLeads"; // adjust path
+import { useLead, useLeads } from "@/features/leads/hooks/useLeads";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import type { Lead } from "@/types/lead";
 
 interface LeadContextCardProps {
@@ -14,88 +15,187 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
   onSelectLeadPhone,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const paramLeadId = searchParams.get("leadId") || searchParams.get("phone"); // support ?leadId= or legacy param
+  const paramLeadId = searchParams.get("leadId") || "";
 
+  // ============================================================
+  // Branch A — leadId present in URL: fetch directly by id
+  // ============================================================
+  const { data: directLead, isLoading: isDirectLeadLoading } = useLead(
+    paramLeadId || undefined,
+  );
+
+  // ============================================================
+  // Branch B — no leadId: searchable select to pick a lead
+  // ============================================================
   const [searchQuery, setSearchQuery] = useState("");
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const debouncedSearch = useDebouncedValue(searchQuery.trim(), 300);
+  const pickerRef = useRef<HTMLDivElement | null>(null);
 
-  // 1. Query Lead directly by ID if param exists in URL
-  const { data: directLead, isLoading: isDirectLeadLoading } = useLead(paramLeadId || "");
-
-  console.log("directLead", directLead)
-
-  // 2. Query Leads by search term or typed keypad phone number
-  const activeSearch = searchQuery.trim() || phoneNumber.replace(/\D/g, "");
   const { data: searchData, isLoading: isSearchLoading } = useLeads({
     page: 1,
-    limit: 5,
-    search: activeSearch.length >= 3 ? activeSearch : undefined,
+    limit: 8,
+    search: debouncedSearch.length >= 1 ? debouncedSearch : undefined,
   });
 
-  const matchedLead = useMemo(() => {
-    if (paramLeadId && directLead) return directLead;
-    if (searchData?.leads?.length) return searchData.leads[0] as Lead;
-    return null;
-  }, [paramLeadId, directLead, searchData]);
+  // Click-outside closes the picker dropdown
+  useEffect(() => {
+    if (!isPickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(e.target as Node)
+      ) {
+        setIsPickerOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isPickerOpen]);
 
-  const handleClearSelectedLead = () => {
-    if (paramLeadId) {
-      searchParams.delete("leadId");
-      searchParams.delete("phone");
-      setSearchParams(searchParams);
-    }
+  const handlePickLead = (lead: Lead) => {
+    // Write leadId back to URL so the rest of the page unifies on it.
+    const next = new URLSearchParams(searchParams);
+    next.set("leadId", lead._id);
+    if (next.get("phone")) next.delete("phone");
+    setSearchParams(next, { replace: true });
+
+    // Reset picker UI
     setSearchQuery("");
-  };
+    setIsPickerOpen(false);
 
-  const handleSelectLead = (lead: Lead) => {
     if (onSelectLeadPhone && lead.phone) {
       onSelectLeadPhone(lead.phone);
     }
   };
 
+  const handleClearSelectedLead = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("leadId");
+    next.delete("phone");
+    setSearchParams(next, { replace: true });
+    setSearchQuery("");
+    setIsPickerOpen(false);
+  };
+
+  // Active lead is whichever branch fired
+  const matchedLead: Lead | null = paramLeadId ? directLead ?? null : null;
+  const isFetching = paramLeadId ? isDirectLeadLoading : isSearchLoading;
+
+  // Search-results list — used inside the picker dropdown only.
+  const pickerResults = useMemo(
+    () => searchData?.leads ?? [],
+    [searchData],
+  );
+
   return (
     <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-sm space-y-4">
-      {/* Panel Header & Search Input */}
+      {/* Panel Header */}
       <div className="space-y-3 border-b border-outline-variant/20 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">person_search</span>
+            <span className="material-symbols-outlined text-primary">
+              person_search
+            </span>
             <h3 className="font-headline-sm text-base font-bold text-on-surface">
               CRM Lead Intelligence
             </h3>
           </div>
-          {(isDirectLeadLoading || isSearchLoading) && (
+          {isFetching && (
             <span className="text-[10px] font-semibold text-primary animate-pulse">
-              Fetching Lead Data...
+              {paramLeadId ? "Fetching Lead Data..." : "Searching..."}
             </span>
           )}
         </div>
 
-        {/* Lead Search Input Bar */}
-        <div className="relative">
-          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant">
-            search
-          </span>
-          <input
-            type="text"
-            placeholder="Search lead by name, phone, or email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-outline-variant/30 bg-surface-container-low pl-9 pr-8 py-2 text-xs text-on-surface outline-none focus:border-primary transition-all"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface"
-            >
-              <span className="material-symbols-outlined text-sm">close</span>
-            </button>
-          )}
-        </div>
+        {/* ============================================================
+            If no leadId in URL — show the searchable lead select.
+            Selecting a lead writes ?leadId=… and the rest of the page
+            switches to the "direct linked" view above.
+        ============================================================ */}
+        {!paramLeadId && (
+          <div ref={pickerRef} className="relative">
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant">
+                search
+              </span>
+              <input
+                type="text"
+                placeholder="Search a lead by name, phone, or email..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsPickerOpen(true);
+                }}
+                onFocus={() => setIsPickerOpen(true)}
+                className="w-full rounded-xl border border-outline-variant/30 bg-surface-container-low pl-9 pr-3 py-2 text-xs text-on-surface outline-none focus:border-primary transition-all"
+              />
+              {phoneNumber && (
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-on-surface-variant/70 uppercase tracking-wider">
+                  Dialed: {phoneNumber}
+                </span>
+              )}
+            </div>
+
+            {isPickerOpen && (
+              <div className="absolute z-30 mt-1.5 w-full max-h-72 overflow-y-auto rounded-xl border border-outline-variant/30 bg-surface-container-lowest shadow-lg divide-y divide-outline-variant/20">
+                {isSearchLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <span className="material-symbols-outlined animate-spin text-lg text-primary">
+                      progress_activity
+                    </span>
+                  </div>
+                ) : pickerResults.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-center space-y-1">
+                    <span className="material-symbols-outlined text-3xl text-on-surface-variant/40">
+                      contact_search
+                    </span>
+                    <p className="text-[11px] font-semibold text-on-surface-variant">
+                      {debouncedSearch
+                        ? `No lead matches "${debouncedSearch}"`
+                        : "Start typing to search leads"}
+                    </p>
+                  </div>
+                ) : (
+                  pickerResults.map((l: Lead) => (
+                    <button
+                      key={l._id}
+                      type="button"
+                      // mousedown prevents blur from closing the dropdown
+                      // before click registers — lets users pick in one motion.
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => handlePickLead(l)}
+                      className="flex w-full items-center justify-between px-3 py-2.5 text-left hover:bg-surface-container-low transition-colors"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-bold text-on-surface">
+                          {l.name}
+                        </span>
+                        <span className="block truncate text-[10px] text-on-surface-variant/70">
+                          {l.phoneCountryCode || "+91"} {l.phone}
+                          {l.email ? ` · ${l.email}` : ""}
+                        </span>
+                      </span>
+                      <span className="ml-2 inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-primary">
+                        <span className="material-symbols-outlined text-base">
+                          arrow_forward
+                        </span>
+                        Link
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Selected Lead Active View */}
-      {matchedLead ? (
+      {/* ============================================================
+          Active lead panel — only renders when a leadId is in the URL
+          (either pre-loaded or just selected above).
+      ============================================================ */}
+      {paramLeadId && matchedLead ? (
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 relative">
             <div className="space-y-1">
@@ -103,11 +203,9 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
                 <h4 className="font-headline-sm text-lg font-extrabold text-on-surface">
                   {matchedLead.name}
                 </h4>
-                {paramLeadId && (
-                  <span className="text-[9px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                    Direct Linked
-                  </span>
-                )}
+                <span className="text-[9px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                  Direct Linked
+                </span>
               </div>
 
               <p className="text-xs text-on-surface-variant flex items-center gap-1">
@@ -125,17 +223,22 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
 
             <div className="flex flex-col items-end gap-2">
               <span className="px-3 py-1 rounded-full text-xs font-bold capitalize bg-primary/10 text-primary border border-primary/20">
-                {matchedLead.status ? matchedLead.status.replace("_", " ") : "Lead"}
+                {matchedLead.status
+                  ? matchedLead.status.replace("_", " ")
+                  : "Lead"}
               </span>
 
-              {/* Action to auto-fill phone into keypad */}
               {onSelectLeadPhone && (
                 <button
                   type="button"
-                  onClick={() => handleSelectLead(matchedLead)}
+                  onClick={() =>
+                    matchedLead.phone && onSelectLeadPhone(matchedLead.phone)
+                  }
                   className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline"
                 >
-                  <span className="material-symbols-outlined text-xs">dialpad</span>
+                  <span className="material-symbols-outlined text-xs">
+                    dialpad
+                  </span>
                   Load Number
                 </button>
               )}
@@ -152,7 +255,6 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
                 {matchedLead.source || "N/A"}
               </p>
             </div>
-
             <div className="p-3 rounded-xl bg-surface-container-low/60 border border-outline-variant/20">
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
                 City
@@ -161,7 +263,6 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
                 {matchedLead.city || "N/A"}
               </p>
             </div>
-
             <div className="p-3 rounded-xl bg-surface-container-low/60 border border-outline-variant/20">
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
                 Industry
@@ -172,7 +273,6 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
             </div>
           </div>
 
-          {/* Remarks */}
           {matchedLead.remarks && (
             <div className="p-3 rounded-xl bg-surface-container-low/60 border border-outline-variant/20 space-y-1">
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
@@ -184,54 +284,22 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
             </div>
           )}
 
-          {paramLeadId && (
-            <button
-              type="button"
-              onClick={handleClearSelectedLead}
-              className="text-xs font-bold text-rose-600 hover:underline"
-            >
-              Clear linked lead selection
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleClearSelectedLead}
+            className="text-xs font-bold text-rose-600 hover:underline"
+          >
+            Clear linked lead selection
+          </button>
         </div>
-      ) : (
-        /* Search Suggestions / Empty State */
-        <div className="space-y-3">
-          {searchData?.leads && searchData.leads.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
-                Matching Search Results
-              </p>
-              {searchData.leads.map((l: Lead) => (
-                <div
-                  key={l._id}
-                  onClick={() => handleSelectLead(l)}
-                  className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low hover:bg-surface-container-high cursor-pointer border border-outline-variant/20 transition-all"
-                >
-                  <div>
-                    <p className="text-xs font-bold text-on-surface">{l.name}</p>
-                    <p className="text-[11px] text-on-surface-variant">{l.phone}</p>
-                  </div>
-                  <span className="material-symbols-outlined text-primary text-base">
-                    call
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-10 text-center space-y-2 border-2 border-dashed border-outline-variant/30 rounded-xl">
-              <span className="material-symbols-outlined text-4xl text-on-surface-variant/40">
-                contact_search
-              </span>
-              <p className="font-label-md text-xs font-semibold text-on-surface-variant">
-                {searchQuery || phoneNumber
-                  ? "No matching CRM lead found"
-                  : "Search or enter a lead ID parameter in URL to fetch record"}
-              </p>
-            </div>
-          )}
+      ) : paramLeadId && isDirectLeadLoading ? (
+        /* leadId in URL but still resolving */
+        <div className="flex items-center justify-center py-10">
+          <span className="material-symbols-outlined animate-spin text-2xl text-primary">
+            progress_activity
+          </span>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };
