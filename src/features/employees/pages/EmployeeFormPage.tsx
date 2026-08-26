@@ -29,6 +29,7 @@ import {
     useUpdateEmployee,
     useUpdateEmployeeBranches,
     useUpdateEmployeeProfile,
+    useUpdateEmployeeStatus,
 } from "../hooks/useEmployees";
 import toast from "react-hot-toast";
 
@@ -140,6 +141,7 @@ const EmployeeFormPage = () => {
     const createEmployee = useCreateEmployee();
     const updateEmployee = useUpdateEmployee();
     const updateBranches = useUpdateEmployeeBranches();
+    const updateUserStatus = useUpdateEmployeeStatus();
     const createProfile = useCreateEmployeeProfile();
     const updateProfile = useUpdateEmployeeProfile();
 
@@ -181,7 +183,7 @@ const EmployeeFormPage = () => {
             officialEmail: existingEmployee.email,
             password: "",
             role: existingEmployee.role,
-            branches: existingEmployee.branches.map((b: any) => b), //it need to be changed when updated
+            branches: existingEmployee.branches.map((b: any) => b._id), //it need to be changed when updated
             isActive: existingEmployee.isActive,
         });
     }, [isEditMode, existingEmployee]);
@@ -254,7 +256,7 @@ const EmployeeFormPage = () => {
         try {
             if (isEditMode && id) {
                 const originalBranchIds = (
-                    existingEmployee?.branches ?? []
+                    existingEmployee?.branches.map((b) => b._id) ?? []
                 )
                     .map((b: any) => b._id)
                     .sort();
@@ -263,16 +265,36 @@ const EmployeeFormPage = () => {
                     JSON.stringify(originalBranchIds) !==
                     JSON.stringify(nextBranchIds);
 
+                console.log("originalBranchIds", {
+                    name: userForm.fullName.trim(),
+                    email: userForm.officialEmail.trim().toLowerCase(),
+                    role: userForm.role,
+                    isActive: userForm.isActive,
+                },)
+
                 await updateEmployee.mutateAsync({
                     id,
                     payload: {
                         name: userForm.fullName.trim(),
                         email: userForm.officialEmail.trim().toLowerCase(),
                         role: userForm.role,
-                        ...(branchesChanged && { branches: userForm.branches }),
-                        isActive: userForm.isActive,
                     },
                 });
+                if (branchesChanged) {
+                    await updateBranches.mutateAsync(
+                        {
+                            id,
+                            branches: userForm.branches
+                        }
+                    )
+                }
+                if (existingEmployee?.isActive !== userForm.isActive) {
+                    await updateUserStatus.mutateAsync({
+                        id,
+                        isActive: userForm.isActive
+                    })
+                }
+
             } else {
                 await createEmployee.mutateAsync({
                     name: userForm.fullName.trim(),
@@ -500,7 +522,7 @@ const EmployeeFormPage = () => {
     const userSubmitting =
         createEmployee.isPending ||
         updateEmployee.isPending ||
-        updateBranches.isPending;
+        updateBranches.isPending || updateUserStatus.isPending;
     const profileSubmitting =
         createProfile.isPending || updateProfile.isPending;
 
