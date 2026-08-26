@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ROLES } from "@/types/auth";
 import { useAuthStore } from "@/store/auth.store";
 import { useAttendanceRecords, useCheckIn, useCheckOut } from "../hooks/useAttendance";
-import {  ATTENDANCE_STATUS_LABELS, ATTENDANCE_WORK_MODE_LABELS, type AttendanceStatus } from "@/types/attendance";
+import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_WORK_MODE_LABELS, type AttendanceStatus } from "@/types/attendance";
 import { useBranch } from "@/features/branches";
 import { daysAgoInput, formatDate, formatTime, todayInput } from "@/utils/Date";
 import TeamAttendanceTab from "../components/TeamAttendanceTab";
+import { getAttendanceErrorMessage, getCurrentAttendanceLocation, type WorkMode } from "@/services/attendanceLocation";
+import toast from "react-hot-toast";
 
 const STATUS_BADGE_CLASSES: Record<AttendanceStatus, string> = {
     present: "bg-emerald-500/10 text-emerald-700",
@@ -15,10 +17,32 @@ const STATUS_BADGE_CLASSES: Record<AttendanceStatus, string> = {
     on_leave: "bg-indigo-500/10 text-indigo-700",
 };
 
+// Helper function to calculate distance between two coordinates in meters (Haversine formula)
+const calculateDistanceInMeters = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+) => {
+    const R = 6371e3; // Earth radius in meters
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+};
+
+
+
 const EmployeeAttendancePage = () => {
     const user = useAuthStore((state) => state.user);
     const { data: branch, } = useBranch(user?.branches[0]);
-    // console.log("branch", branch);
     const isManager = user?.role === ROLES.MANAGER;
     const [activeTab, setActiveTab] = useState<"my_attendance" | "team_attendance">("my_attendance");
     const [page, setPage] = useState(1);
@@ -26,6 +50,11 @@ const EmployeeAttendancePage = () => {
         () => ({ dateFrom: daysAgoInput(29), dateTo: todayInput() }),
         []
     );
+
+    const [workMode, setWorkMode] = useState<"WFO" | "WFH">("WFH");
+    const [autoDetectedMode, setAutoDetectedMode] = useState<"WFO" | "WFH" | null>(null);
+    const [isAutoDetected, setIsAutoDetected] = useState(false);
+
 
     // Fetch today's date string (YYYY-MM-DD)
 
@@ -49,7 +78,44 @@ const EmployeeAttendancePage = () => {
     const isCheckedOut = Boolean(todaysRecord?.checkOutAt);
 
     // Geo Location Trigger Helper
-    const handlePunchAction = () => {
+    // const handlePunchAction = () => {
+    //     if (!navigator.geolocation) {
+    //         alert("Geolocation is not supported by your browser.");
+    //         return;
+    //     }
+
+    //     navigator.geolocation.getCurrentPosition(
+    //         (position) => {
+    //             const payload = {
+    //                 latitude: position.coords.latitude,
+    //                 longitude: position.coords.longitude,
+    //             };
+
+    //             if (isCheckedIn) {
+    //                 checkOutMutation.mutate(payload);
+    //             } else {
+    //                 checkInMutation.mutate(payload);
+    //             }
+    //         },
+    //         (error) => {
+    //             alert(`Location permission required for punching: ${error.message}`);
+    //         }
+    //     );
+    // };
+
+
+
+    // Add state for work mode selection inside your component:
+    // const [workMode, setWorkMode] = useState<"WFO" | "WFH">("WFO");
+    // const [isAutoDetected, setIsAutoDetected] = useState(false);
+
+    useEffect(() => {
+        if (branch?.attendanceConfig?.location) {
+            detectWorkMode();
+        }
+    }, [branch]);
+
+    const detectWorkMode = () => {
         if (!navigator.geolocation) {
             alert("Geolocation is not supported by your browser.");
             return;
@@ -57,21 +123,153 @@ const EmployeeAttendancePage = () => {
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                const payload = {
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                };
+                const { latitude, longitude } = position.coords;
 
-                if (isCheckedIn) {
-                    checkOutMutation.mutate(payload);
-                } else {
-                    checkInMutation.mutate(payload);
+                const branchLat = branch?.attendanceConfig?.location?.latitude;
+                const branchLng = branch?.attendanceConfig?.location?.longitude;
+                const radius =
+                    branch?.attendanceConfig?.location?.radiusMeters || 200;
+
+                if (branchLat == null || branchLng == null) {
+                    setIsAutoDetected(false);
+                    return;
                 }
+
+                const distance = calculateDistanceInMeters(
+                    latitude,
+                    longitude,
+                    branchLat,
+                    branchLng
+                );
+
+                const detectedMode: "WFO" | "WFH" =
+                    distance <= radius ? "WFO" : "WFH";
+
+                setAutoDetectedMode(detectedMode);
+                setWorkMode(detectedMode);
+                setIsAutoDetected(true);
+
+                // console.log({
+                //     latitude,
+                //     longitude,
+                //     distance,
+                //     radius,
+                //     detectedMode,
+                // });
             },
             (error) => {
-                alert(`Location permission required for punching: ${error.message}`);
+                console.error("Location detection failed:", error);
+                setIsAutoDetected(false);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0,
             }
         );
+    };
+
+    const handlePunchAction = async () => {
+        if (
+            checkInMutation.isPending ||
+            checkOutMutation.isPending
+        ) {
+            return;
+        }
+
+        try {
+            const location =
+                await getCurrentAttendanceLocation({
+                    latitude:
+                        branch?.attendanceConfig?.location?.latitude,
+
+                    longitude:
+                        branch?.attendanceConfig?.location?.longitude,
+
+                    radiusMeters:
+                        branch?.attendanceConfig?.location?.radiusMeters ??
+                        200,
+                });
+
+
+            /*
+             * Use user's selected mode.
+             *
+             * If you want GPS to always decide,
+             * use detectedMode instead.
+             */
+            const selectedMode: WorkMode = workMode;
+
+            // console.log("Attendance location:", {
+            //     latitude: location.latitude,
+            //     longitude: location.longitude,
+            //     accuracy: location.accuracy,
+            //     distance: location.distanceFromOffice,
+            //     detectedMode,
+            //     selectedMode,
+            // });
+
+            const payload = {
+                latitude: location.latitude,
+                longitude: location.longitude,
+                workMode: selectedMode,
+            };
+
+            if (isCheckedIn) {
+                checkOutMutation.mutate(payload, {
+                    onSuccess: () => {
+                        // console.log(
+                        //     "Check-out successful",
+                        //     response
+                        // );
+
+                        toast.success("Check-out successful");
+                    },
+
+                    onError: (error) => {
+
+                        console.log("here")
+                        toast.error(
+                            getAttendanceErrorMessage(error)
+                        );
+                    },
+                });
+
+                return;
+            }
+
+            checkInMutation.mutate(payload, {
+                onSuccess: () => {
+
+                    toast.success("Check-in successful")
+                    // console.log(
+                    //     "Check-in successful",
+                    //     response
+                    // );
+                },
+
+                onError: (error) => {
+                    toast.error(
+                        getAttendanceErrorMessage(error)
+                    );
+                },
+            });
+        } catch (error) {
+            /*
+             * Geolocation errors
+             */
+            if (
+                error instanceof Error &&
+                "code" in error
+            ) {
+                toast.error(error.message);
+                return;
+            }
+
+            toast.error(
+                "Unable to determine your location. Please try again."
+            );
+        }
     };
 
     const pagination = data?.pagination;
@@ -134,8 +332,8 @@ const EmployeeAttendancePage = () => {
                         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
 
                             {/* Terminal Meta Details */}
-                            <div className="space-y-2">
-                                <div className="flex items-center gap-2">
+                            <div className="space-y-3">
+                                <div className="flex flex-wrap items-center gap-2">
                                     <span
                                         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${isCheckedIn
                                             ? "bg-emerald-500/10 text-emerald-700"
@@ -160,7 +358,7 @@ const EmployeeAttendancePage = () => {
                                     </span>
 
                                     <span className="font-label-sm text-xs font-semibold text-on-surface-variant">
-                                        • Shift: {branch?.attendanceConfig?.workingHours?.startTime} - {branch?.attendanceConfig?.workingHours?.endTime}
+                                        • Shift: {branch?.attendanceConfig?.workingHours?.startTime || "09:00"} - {branch?.attendanceConfig?.workingHours?.endTime || "18:00"}
                                     </span>
                                 </div>
 
@@ -175,11 +373,67 @@ const EmployeeAttendancePage = () => {
                                 <p className="font-body-sm text-xs text-on-surface-variant">
                                     {todaysRecord?.checkInAt
                                         ? `Checked in at ${new Date(todaysRecord.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                                        : "Make sure you are within your designated branch geofence boundary to check in."}
+                                        : "Work mode auto-detects based on location. You can manually toggle override before punch-in."}
                                 </p>
+
+                                {/* Work Mode Toggle Pill (WFH vs WFO) */}
+                                {!isCheckedIn && !isCheckedOut && (
+                                    <div className="pt-1 space-y-2">
+
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">
+                                                Work Mode:
+                                            </span>
+
+                                            {isAutoDetected && autoDetectedMode && (
+                                                <span className="text-[10px] font-semibold text-emerald-600">
+                                                    Auto detected: {autoDetectedMode === "WFO" ? "Office" : "Home"}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="inline-flex rounded-xl bg-surface-container-low p-1 border border-outline-variant/30">
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setWorkMode("WFO");
+                                                    setIsAutoDetected(false);
+                                                }}
+                                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${workMode === "WFO"
+                                                    ? "bg-surface-container-lowest text-primary shadow-sm"
+                                                    : "text-on-surface-variant hover:text-on-surface"
+                                                    }`}
+                                            >
+                                                <span className="material-symbols-outlined text-sm">
+                                                    corporate_fare
+                                                </span>
+                                                Office (WFO)
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setWorkMode("WFH");
+                                                    setIsAutoDetected(false);
+                                                }}
+                                                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${workMode === "WFH"
+                                                    ? "bg-surface-container-lowest text-primary shadow-sm"
+                                                    : "text-on-surface-variant hover:text-on-surface"
+                                                    }`}
+                                            >
+                                                <span className="material-symbols-outlined text-sm">
+                                                    home_work
+                                                </span>
+                                                Home (WFH)
+                                            </button>
+
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Conditional Action Button */}
+                            {/* Action Button */}
                             <div className="w-full lg:w-auto">
                                 <button
                                     type="button"
@@ -189,7 +443,7 @@ const EmployeeAttendancePage = () => {
                                         isCheckedOut
                                     }
                                     onClick={handlePunchAction}
-                                    className={`w-full lg:w-auto flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-label-md text-xs font-bold text-on-primary shadow-sm transition-all ${isCheckedOut
+                                    className={`w-full lg:w-auto flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-label-md text-xs font-bold transition-all shadow-sm ${isCheckedOut
                                         ? "bg-surface-container-high text-on-surface-variant cursor-not-allowed"
                                         : isCheckedIn
                                             ? "bg-rose-600 hover:bg-rose-700 text-white"
@@ -205,18 +459,18 @@ const EmployeeAttendancePage = () => {
                                     </span>
                                     <span>
                                         {checkInMutation.isPending || checkOutMutation.isPending
-                                            ? "Processing Location..."
+                                            ? "Verifying Location..."
                                             : isCheckedOut
                                                 ? "Day Completed"
                                                 : isCheckedIn
                                                     ? "Check Out Now"
-                                                    : "Check In Now"}
+                                                    : `Check In (${workMode})`}
                                     </span>
                                 </button>
                             </div>
                         </div>
 
-                        {/* Quick Metrics Banner inside Terminal */}
+                        {/* Quick Metrics Banner */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-outline-variant/20">
                             <div>
                                 <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
@@ -242,12 +496,10 @@ const EmployeeAttendancePage = () => {
 
                             <div>
                                 <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                                    Working Hours
+                                    Work Mode
                                 </p>
                                 <p className="font-label-md text-sm font-bold text-on-surface mt-0.5">
-                                    {todaysRecord?.totalWorkingMinutes
-                                        ? `${Math.floor(todaysRecord.totalWorkingMinutes / 60)}h ${todaysRecord.totalWorkingMinutes % 60}m`
-                                        : "0h 0m"}
+                                    {todaysRecord?.workMode || workMode}
                                 </p>
                             </div>
 
