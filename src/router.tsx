@@ -17,7 +17,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 import ComingSoonPage from "./pages/ComingSoonPage";
 import AuditLogPage from "./features/logs/pages/AuditLogPage";
 import LeadDetailPage from "./features/leads/pages/LeadDetailPage";
-import { DialerPage } from "./features/dialer";
+import { CallHistoryPage, DialerPage } from "./features/dialer";
 import { PerformanceDispatcher } from "./features/performance";
 import { CreateRevenuePage, RevenuePage } from "./features/revenue";
 
@@ -125,6 +125,7 @@ export const router = createBrowserRouter([
             element: <PermissionRoute permission={'call:initiate'} />,
             children: [
               { path: "/dialer", element: <DialerPage /> },
+              { path: "/dialer/history", element: <CallHistoryPage /> }
             ],
           },
 

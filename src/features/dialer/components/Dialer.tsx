@@ -7,6 +7,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { useLead } from "@/features/leads/hooks/useLeads";
 import { KeypadConsole } from "./KeypadConsole";
 import { LeadContextCard } from "./LeadContextCard";
+import { RecentCallLogsTable } from "./RecentCallLogsTable";
 
 const Dialer = () => {
   const user = useAuthStore((s) => s.user);
@@ -117,6 +118,12 @@ const Dialer = () => {
             onSelectLeadPhone={(phone) => setInput(phone)}
           />
         </div>
+      </div>
+      <div>
+        <RecentCallLogsTable
+          limit={10}
+          onRedial={(phone) => setInput(phone)}
+        />
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 // src/features/dialer/components/LeadCallHistory.tsx
 import React from "react";
-import { useLeadCallHistory, type CallLogItem } from "../hooks/useLeadCallHistory";
+import { useLeadCallHistory } from "../hooks/useCallHistory";
 
 interface LeadCallHistoryProps {
   leadId: string;
@@ -48,7 +48,7 @@ export const LeadCallHistory: React.FC<LeadCallHistoryProps> = ({ leadId }) => {
         <p className="text-xs text-gray-400 py-2">No calls logged yet for this lead.</p>
       ) : (
         <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
-          {calls.map((call: CallLogItem) => (
+          {calls.map((call) => (
             <div key={call._id} className="py-3 text-xs space-y-1.5">
               <div className="flex justify-between items-center">
                 <span className="font-medium text-gray-700">
