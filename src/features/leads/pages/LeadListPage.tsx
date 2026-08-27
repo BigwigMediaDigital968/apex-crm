@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCreateLead, useImportLeads, useLeads } from "../hooks/useLeads";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getErrorMessage } from "@/utils/getErrorMessage";
-import {  type CreateLeadPayload, type Lead, type LeadStatus } from "@/types/lead";
+import { type CreateLeadPayload, type Lead, type LeadStatus } from "@/types/lead";
 import { useBranchesQuery } from "@/features/branches";
 import { useEmployeesQuery } from "@/features/employees";
 import { useAuthStore } from "@/store/auth.store";
@@ -719,7 +719,7 @@ const LeadListPage = () => {
                               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
                                 {assignee?.name
                                   .split(" ")
-                                  .map((n:any) => n[0])
+                                  .map((n: any) => n[0])
                                   .slice(0, 2)
                                   .join("")
                                   .toUpperCase()}
@@ -1172,7 +1172,28 @@ const LeadListPage = () => {
             {creationMethod === "sheet" && (
               <div className="space-y-4">
 
-                {/* File Upload */}
+                {/* Sample Excel File Helper Banner */}
+                <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base text-emerald-600">
+                      info
+                    </span>
+                    <span className="text-xs font-medium text-on-surface">
+                      Not sure how to structure your sheet?
+                    </span>
+                  </div>
+
+                  <a
+                    href="/templates/leads_import_sample.xlsx" // Path to sample file in public folder
+                    download="leads_import_sample.xlsx"
+                    className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
+                  >
+                    <span className="material-symbols-outlined text-sm">download</span>
+                    Download Excel Template
+                  </a>
+                </div>
+
+                {/* File Upload Dropzone */}
                 <label
                   htmlFor="lead-import-file"
                   className="block border-2 border-dashed border-outline-variant/60 rounded-2xl bg-surface-container-low/30 p-8 text-center space-y-3 hover:border-primary transition-colors cursor-pointer"
@@ -1189,14 +1210,14 @@ const LeadListPage = () => {
                     </p>
 
                     <p className="text-[11px] text-on-surface-variant/70 mt-0.5">
-                      Supports .CSV, .XLSX, or .XLS (Max size: 5MB)
+                      Supports .XLSX, .XLS, or .CSV (Max size: 5MB)
                     </p>
                   </div>
 
                   <input
                     id="lead-import-file"
                     type="file"
-                    accept=".csv,.xlsx,.xls"
+                    accept=".xlsx,.xls,.csv"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
