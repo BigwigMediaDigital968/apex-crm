@@ -52,7 +52,7 @@ export const contestApi = {
     /** GET /contests/my-branch — active contests for the current user's branch. */
     myBranch: async (): Promise<Contest[]> => {
         const { data } = await apiClient.get<ApiEnvelope<Contest[]>>(
-            "/contests/my-branch"
+            "/contest/my-branch"
         );
         return data.data;
     },
