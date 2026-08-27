@@ -125,6 +125,11 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "military_tech",
         permissions: [PERMISSIONS.ACHIEVEMENT_VIEW],
       },
+      {
+        label: "Contests",
+        path: "/contests",
+        icon: "military_tech",
+      },
     ],
   },
 
@@ -245,6 +250,9 @@ const Sidebar = () => {
              * doesn't have access, allow it only when one of
              * its children is accessible.
              */
+            if(item.path === "/contests" && user?.role !== 'head'){
+              return  null;
+            }
             if (
               !itemHasAccess &&
               !visibleChildren?.length

@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useAuthStore } from "@/store/auth.store";
 import { useLeads, useMyFollowUps } from "@/features/leads/hooks/useLeads";
-import { useAttendanceRecords, useCheckIn, useCheckOut } from "@/features/attendance/hooks/useAttendance";
+import { useAttendanceRecords, } from "@/features/attendance/hooks/useAttendance";
 import { todayInput } from "@/utils/Date";
+import { DailyAttendanceCard } from "../components/DailyAttendanceCard";
 
 interface CallLog {
   id: string;
@@ -81,7 +82,7 @@ const EmployeeDashboardPage = () => {
   const today = todayInput();
 
 
-  const { data, isLoading:isAttendanceLoading, isFetching } = useAttendanceRecords({
+  const { data, isLoading: isAttendanceLoading, isFetching } = useAttendanceRecords({
     date: today,
     employeeId: currentUser?._id,
     page: 1,
@@ -90,42 +91,6 @@ const EmployeeDashboardPage = () => {
   const todaysRecord = data?.records.find((r) => r.date === today);
 
   // Mutators for Punch In / Out
-  const checkInMutation = useCheckIn();
-  const checkOutMutation = useCheckOut();
-
-  const isCheckedIn = Boolean(todaysRecord?.checkInAt && !todaysRecord?.checkOutAt);
-  const isCheckedOut = Boolean(todaysRecord?.checkOutAt);
-
-  const handlePunchAction = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const payload = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
-
-        if (isCheckedIn) {
-          checkOutMutation.mutate(payload);
-        } else {
-          checkInMutation.mutate(payload);
-        }
-      },
-      (error) => {
-        alert(`Location permission required for punching: ${error.message}`);
-      }
-    );
-  };
-
-  const status = isCheckedOut
-  ? { label: "Checked Out", color: "bg-blue-500", text: "text-blue-600" }
-  : isCheckedIn
-    ? { label: "Marked In", color: "bg-emerald-500", text: "text-emerald-600" }
-    : { label: "Not Marked Yet", color: "bg-error", text: "text-error" };
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
@@ -147,7 +112,7 @@ const EmployeeDashboardPage = () => {
         </div>
 
         {/* Daily Attendance Card */}
-        <div className="flex items-center justify-between gap-6 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm shrink-0 self-start">
+        {/* <div className="flex items-center justify-between gap-6 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm shrink-0 self-start">
           <div>
             <p className="font-label-md text-xs text-on-surface-variant">
               Daily Attendance
@@ -191,6 +156,14 @@ const EmployeeDashboardPage = () => {
               </span>
             </button>
           </div>
+          
+        </div> */}
+
+        <div>
+          <DailyAttendanceCard
+            attendanceData={todaysRecord}
+            isAttendanceLoading={isAttendanceLoading || isFetching}
+          />
         </div>
       </div>
 

@@ -32,12 +32,12 @@ const UserProfilePage = () => {
 
   // Helper safe resolvers for populated references
   const getUserObj = () =>
-    profile && typeof profile.user === "object" ? profile.user : null;
+    profile && typeof profile?.user === "object" ? profile?.user : null;
   const getBranchObj = () =>
-    profile && typeof profile.branch === "object" ? profile.branch : null;
+    profile && typeof profile?.branch === "object" ? profile?.branch : null;
   const getManagerObj = () =>
-    profile && typeof profile.reportingManager === "object"
-      ? profile.reportingManager
+    profile && typeof profile?.reportingManager === "object"
+      ? profile?.reportingManager
       : null;
 
   const userObj = getUserObj();
@@ -51,7 +51,7 @@ const UserProfilePage = () => {
       <div className="flex min-h-screen items-center justify-center bg-surface">
         <div className="flex items-center gap-2 font-body-md text-on-surface-variant">
           <span className="material-symbols-outlined animate-spin">sync</span>
-          Loading employee profile...
+          Loading employee profile?...
         </div>
       </div>
     );
@@ -211,10 +211,10 @@ const UserProfilePage = () => {
             }`}
         >
           <span
-            className={`h-2 w-2 rounded-full ${profile.employmentStatus === "active" ? "bg-emerald-500" : "bg-error"
+            className={`h-2 w-2 rounded-full ${profile?.employmentStatus === "active" ? "bg-emerald-500" : "bg-error"
               }`}
           />
-          {profile.employmentStatus}
+          {profile?.employmentStatus}
         </span>
       </div>
 
@@ -234,14 +234,14 @@ const UserProfilePage = () => {
                   {userObj?.name || "Employee Profile"}
                 </h1>
                 <span className="rounded-lg bg-surface-container-high px-2.5 py-1 font-mono text-xs font-bold text-on-surface">
-                  #{profile.employeeCode}
+                  #{profile?.employeeCode}
                 </span>
               </div>
               <p className="font-body-md text-xs text-on-surface-variant mt-0.5">
-                {profile.designation || "No Designation"} • {profile.department || "General"}
+                {profile?.designation || "No Designation"} • {profile?.department || "General"}
               </p>
               <p className="font-body-sm text-xs text-on-surface-variant/70 mt-1">
-                {userObj?.email} • {profile.personalPhone || "Phone not available"}
+                {userObj?.email} • {profile?.personalPhone || "Phone not available"}
               </p>
             </div>
           </div>
@@ -260,7 +260,7 @@ const UserProfilePage = () => {
                 Type
               </span>
               <span className="font-bold text-xs text-on-surface capitalize">
-                {profile.employmentType?.toLowerCase().replace("_", " ")}
+                {profile?.employmentType?.toLowerCase().replace("_", " ")}
               </span>
             </div>
             <div className="rounded-xl bg-surface-container-low p-3 text-center min-w-24 flex-1 md:flex-initial">
@@ -268,7 +268,7 @@ const UserProfilePage = () => {
                 Joined
               </span>
               <span className="font-bold text-xs text-on-surface">
-                {new Date(profile.joiningDate).toLocaleDateString("en-IN", {
+                { profile?.joiningDate && new Date(profile?.joiningDate).toLocaleDateString("en-IN", {
                   month: "short",
                   year: "numeric",
                 })}
@@ -282,7 +282,7 @@ const UserProfilePage = () => {
           {[
             { id: "overview", label: "Overview & Work", icon: "badge", permission: [PERMISSIONS.USER_VIEW, PERMISSIONS.EMPLOYEE_VIEW] },
             { id: "personal", label: "Personal & Emergency", icon: "person", permission: [PERMISSIONS.USER_VIEW, PERMISSIONS.EMPLOYEE_VIEW] },
-            { id: "documents", label: `Documents (${profile.documents?.length || 0})`, icon: "folder_open", permission: [PERMISSIONS.EMPLOYEE_DOCUMENT_VIEW] },
+            { id: "documents", label: `Documents (${profile?.documents?.length || 0})`, icon: "folder_open", permission: [PERMISSIONS.EMPLOYEE_DOCUMENT_VIEW] },
             { id: "payroll", label: "Salary & Banking", icon: "payments", permission: [PERMISSIONS.EMPLOYEE_SALARY_VIEW] },
           ].map((tab) => (
             <Can permission={tab.permission} key={tab.id}>
@@ -313,15 +313,15 @@ const UserProfilePage = () => {
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
                 <span className="text-on-surface-variant font-medium">Employee Code</span>
-                <p className="font-bold text-on-surface font-mono mt-0.5">{profile.employeeCode}</p>
+                <p className="font-bold text-on-surface font-mono mt-0.5">{profile?.employeeCode}</p>
               </div>
               <div>
                 <span className="text-on-surface-variant font-medium">Department</span>
-                <p className="font-bold text-on-surface mt-0.5">{profile.department || "N/A"}</p>
+                <p className="font-bold text-on-surface mt-0.5">{profile?.department || "N/A"}</p>
               </div>
               <div>
                 <span className="text-on-surface-variant font-medium">Designation</span>
-                <p className="font-bold text-on-surface mt-0.5">{profile.designation || "N/A"}</p>
+                <p className="font-bold text-on-surface mt-0.5">{profile?.designation || "N/A"}</p>
               </div>
               <div>
                 <span className="text-on-surface-variant font-medium">Reporting Manager</span>
@@ -330,7 +330,7 @@ const UserProfilePage = () => {
               <div>
                 <span className="text-on-surface-variant font-medium">Joining Date</span>
                 <p className="font-bold text-on-surface mt-0.5">
-                  {new Date(profile.joiningDate).toLocaleDateString("en-IN", {
+                  {profile?.joiningDate && new Date(profile?.joiningDate).toLocaleDateString("en-IN", {
                     day: "numeric",
                     month: "long",
                     year: "numeric",
@@ -340,8 +340,8 @@ const UserProfilePage = () => {
               <div>
                 <span className="text-on-surface-variant font-medium">Probation End Date</span>
                 <p className="font-bold text-on-surface mt-0.5">
-                  {profile.probationEndDate
-                    ? new Date(profile.probationEndDate).toLocaleDateString("en-IN", {
+                  {profile?.probationEndDate
+                    ? new Date(profile?.probationEndDate).toLocaleDateString("en-IN", {
                       day: "numeric",
                       month: "long",
                       year: "numeric",
@@ -372,21 +372,21 @@ const UserProfilePage = () => {
               <div>
                 <span className="text-on-surface-variant font-medium">Record Created At</span>
                 <p className="font-medium text-on-surface mt-0.5">
-                  {new Date(profile.createdAt).toLocaleDateString("en-IN")}
+                  { profile?.createdAt && new Date(profile?.createdAt).toLocaleDateString("en-IN")}
                 </p>
               </div>
               <div>
                 <span className="text-on-surface-variant font-medium">Last Updated</span>
                 <p className="font-medium text-on-surface mt-0.5">
-                  {new Date(profile.updatedAt).toLocaleDateString("en-IN")}
+                  { profile?.updatedAt && new Date(profile?.updatedAt).toLocaleDateString("en-IN")}
                 </p>
               </div>
             </div>
-            {profile.notes && (
+            {profile?.notes && (
               <div className="mt-4 pt-3 border-t border-outline-variant/20">
                 <span className="text-on-surface-variant font-medium text-xs">Notes:</span>
                 <p className="text-xs text-on-surface mt-1 bg-surface-container-low p-2.5 rounded-xl italic">
-                  "{profile.notes}"
+                  "{profile?.notes}"
                 </p>
               </div>
             )}
@@ -406,29 +406,29 @@ const UserProfilePage = () => {
               <div>
                 <span className="text-on-surface-variant font-medium">Date of Birth</span>
                 <p className="font-bold text-on-surface mt-0.5">
-                  {profile.dateOfBirth
-                    ? new Date(profile.dateOfBirth).toLocaleDateString("en-IN")
+                  {profile?.dateOfBirth
+                    ? new Date(profile?.dateOfBirth).toLocaleDateString("en-IN")
                     : "Not provided"}
                 </p>
               </div>
               <div>
                 <span className="text-on-surface-variant font-medium">Gender</span>
                 <p className="font-bold text-on-surface capitalize mt-0.5">
-                  {profile.gender?.toLowerCase() || "Not specified"}
+                  {profile?.gender?.toLowerCase() || "Not specified"}
                 </p>
               </div>
               <div>
                 <span className="text-on-surface-variant font-medium">Personal Phone</span>
-                <p className="font-bold text-on-surface mt-0.5">{profile.personalPhone || "N/A"}</p>
+                <p className="font-bold text-on-surface mt-0.5">{profile?.personalPhone || "N/A"}</p>
               </div>
               <div>
                 <span className="text-on-surface-variant font-medium">Alternate Phone</span>
-                <p className="font-bold text-on-surface mt-0.5">{profile.alternatePhone || "N/A"}</p>
+                <p className="font-bold text-on-surface mt-0.5">{profile?.alternatePhone || "N/A"}</p>
               </div>
               <div className="col-span-2">
                 <span className="text-on-surface-variant font-medium">Address</span>
                 <p className="font-semibold text-on-surface mt-0.5">
-                  {[profile.address, profile.city, profile.state, profile.postalCode, profile.country]
+                  {[profile?.address, profile?.city, profile?.state, profile?.postalCode, profile?.country]
                     .filter(Boolean)
                     .join(", ") || "Address details not available."}
                 </p>
@@ -446,19 +446,19 @@ const UserProfilePage = () => {
               <div>
                 <span className="text-on-surface-variant font-medium">Contact Name</span>
                 <p className="font-bold text-on-surface mt-0.5">
-                  {profile.emergencyContactName || "Not assigned"}
+                  {profile?.emergencyContactName || "Not assigned"}
                 </p>
               </div>
               <div>
                 <span className="text-on-surface-variant font-medium">Relationship</span>
                 <p className="font-bold text-on-surface mt-0.5">
-                  {profile.emergencyContactRelation || "N/A"}
+                  {profile?.emergencyContactRelation || "N/A"}
                 </p>
               </div>
               <div className="col-span-2">
                 <span className="text-on-surface-variant font-medium">Emergency Phone</span>
                 <p className="font-bold text-on-surface mt-0.5">
-                  {profile.emergencyContactPhone || "N/A"}
+                  {profile?.emergencyContactPhone || "N/A"}
                 </p>
               </div>
             </div>
@@ -473,9 +473,9 @@ const UserProfilePage = () => {
               <span className="material-symbols-outlined text-primary text-base">folder</span>
               Attached Documents
             </h3>
-            {profile.documents && profile.documents.length > 0 ? (
+            {profile?.documents && profile?.documents.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {profile.documents.map((doc, idx) => (
+                {profile?.documents.map((doc, idx) => (
                   <div
                     key={doc?._id || idx}
                     className="flex items-center justify-between rounded-xl border border-outline-variant/30 bg-surface-container-low p-3.5"
@@ -505,7 +505,7 @@ const UserProfilePage = () => {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-on-surface-variant italic py-4">No documents uploaded for this profile.</p>
+              <p className="text-xs text-on-surface-variant italic py-4">No documents uploaded for this profile?.</p>
             )}
           </div>
         )}
@@ -526,19 +526,19 @@ const UserProfilePage = () => {
                 <div className="rounded-xl bg-surface-container-low p-3">
                   <span className="text-on-surface-variant font-medium block">Gross Salary</span>
                   <p className="font-mono text-sm font-bold text-on-surface mt-0.5">
-                    ₹{profile.salary?.grossSalary?.toLocaleString("en-IN") || "0"}
+                    ₹{profile?.salary?.grossSalary?.toLocaleString("en-IN") || "0"}
                   </p>
                 </div>
                 <div className="rounded-xl bg-emerald-500/10 p-3">
                   <span className="text-emerald-700 font-medium block">Net Take-Home</span>
                   <p className="font-mono text-sm font-bold text-emerald-800 mt-0.5">
-                    ₹{profile.salary?.netSalary?.toLocaleString("en-IN") || "0"}
+                    ₹{profile?.salary?.netSalary?.toLocaleString("en-IN") || "0"}
                   </p>
                 </div>
                 <div className="rounded-xl bg-surface-container-low p-3">
                   <span className="text-on-surface-variant font-medium block">Basic Salary</span>
                   <p className="font-mono text-sm font-bold text-on-surface mt-0.5">
-                    ₹{profile.salary?.basic?.toLocaleString("en-IN") || "0"}
+                    ₹{profile?.salary?.basic?.toLocaleString("en-IN") || "0"}
                   </p>
                 </div>
               </div>
@@ -561,27 +561,27 @@ const UserProfilePage = () => {
                     <div className="space-y-1.5 text-xs">
                       <div className="flex justify-between">
                         <span className="text-on-surface-variant">Basic</span>
-                        <span className="font-mono font-medium">₹{profile.salary?.basic?.toLocaleString("en-IN") || "0"}</span>
+                        <span className="font-mono font-medium">₹{profile?.salary?.basic?.toLocaleString("en-IN") || "0"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-on-surface-variant">HRA</span>
-                        <span className="font-mono font-medium">₹{profile.salary?.hra?.toLocaleString("en-IN") || "0"}</span>
+                        <span className="font-mono font-medium">₹{profile?.salary?.hra?.toLocaleString("en-IN") || "0"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-on-surface-variant">Conveyance</span>
-                        <span className="font-mono font-medium">₹{profile.salary?.conveyance?.toLocaleString("en-IN") || "0"}</span>
+                        <span className="font-mono font-medium">₹{profile?.salary?.conveyance?.toLocaleString("en-IN") || "0"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-on-surface-variant">Medical Allowance</span>
-                        <span className="font-mono font-medium">₹{profile.salary?.medicalAllowance?.toLocaleString("en-IN") || "0"}</span>
+                        <span className="font-mono font-medium">₹{profile?.salary?.medicalAllowance?.toLocaleString("en-IN") || "0"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-on-surface-variant">Special Allowance</span>
-                        <span className="font-mono font-medium">₹{profile.salary?.specialAllowance?.toLocaleString("en-IN") || "0"}</span>
+                        <span className="font-mono font-medium">₹{profile?.salary?.specialAllowance?.toLocaleString("en-IN") || "0"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-on-surface-variant">Other Allowance</span>
-                        <span className="font-mono font-medium">₹{profile.salary?.otherAllowance?.toLocaleString("en-IN") || "0"}</span>
+                        <span className="font-mono font-medium">₹{profile?.salary?.otherAllowance?.toLocaleString("en-IN") || "0"}</span>
                       </div>
                     </div>
                   </div>
@@ -594,19 +594,19 @@ const UserProfilePage = () => {
                     <div className="space-y-1.5 text-xs">
                       <div className="flex justify-between">
                         <span className="text-on-surface-variant">PF Deduction</span>
-                        <span className="font-mono font-medium text-error">-₹{profile.salary?.pfDeduction?.toLocaleString("en-IN") || "0"}</span>
+                        <span className="font-mono font-medium text-error">-₹{profile?.salary?.pfDeduction?.toLocaleString("en-IN") || "0"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-on-surface-variant">ESI Deduction</span>
-                        <span className="font-mono font-medium text-error">-₹{profile.salary?.esiDeduction?.toLocaleString("en-IN") || "0"}</span>
+                        <span className="font-mono font-medium text-error">-₹{profile?.salary?.esiDeduction?.toLocaleString("en-IN") || "0"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-on-surface-variant">Professional Tax</span>
-                        <span className="font-mono font-medium text-error">-₹{profile.salary?.professionalTax?.toLocaleString("en-IN") || "0"}</span>
+                        <span className="font-mono font-medium text-error">-₹{profile?.salary?.professionalTax?.toLocaleString("en-IN") || "0"}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-on-surface-variant">Other Deductions</span>
-                        <span className="font-mono font-medium text-error">-₹{profile.salary?.otherDeduction?.toLocaleString("en-IN") || "0"}</span>
+                        <span className="font-mono font-medium text-error">-₹{profile?.salary?.otherDeduction?.toLocaleString("en-IN") || "0"}</span>
                       </div>
                     </div>
                   </div>
@@ -623,24 +623,24 @@ const UserProfilePage = () => {
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <span className="text-on-surface-variant font-medium">Bank Name</span>
-                  <p className="font-bold text-on-surface mt-0.5">{profile.bankDetails?.bankName || "N/A"}</p>
+                  <p className="font-bold text-on-surface mt-0.5">{profile?.bankDetails?.bankName || "N/A"}</p>
                 </div>
                 <div>
                   <span className="text-on-surface-variant font-medium">Account Number</span>
                   <p className="font-mono font-bold text-on-surface mt-0.5">
-                    {profile.bankDetails?.accountNumber || "N/A"}
+                    {profile?.bankDetails?.accountNumber || "N/A"}
                   </p>
                 </div>
                 <div>
                   <span className="text-on-surface-variant font-medium">IFSC Code</span>
                   <p className="font-mono font-bold text-on-surface uppercase mt-0.5">
-                    {profile.bankDetails?.ifscCode || "N/A"}
+                    {profile?.bankDetails?.ifscCode || "N/A"}
                   </p>
                 </div>
                 <div>
                   <span className="text-on-surface-variant font-medium">Account Holder</span>
                   <p className="font-bold text-on-surface mt-0.5">
-                    {profile.bankDetails?.accountHolderName || "N/A"}
+                    {profile?.bankDetails?.accountHolderName || "N/A"}
                   </p>
                 </div>
               </div>

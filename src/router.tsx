@@ -20,6 +20,9 @@ import LeadDetailPage from "./features/leads/pages/LeadDetailPage";
 import { CallHistoryPage, DialerPage } from "./features/dialer";
 import { PerformanceDispatcher } from "./features/performance";
 import { CreateRevenuePage, RevenuePage } from "./features/revenue";
+import { ContestListPage } from "./features/contests";
+import ContestDetailsPage from "./features/contests/pages/ContestDetailsPage";
+import ContestFormPage from "./features/contests/pages/ContestFormPage";
 
 export const router = createBrowserRouter([
   {
@@ -128,6 +131,16 @@ export const router = createBrowserRouter([
               { path: "/dialer/history", element: <CallHistoryPage /> }
             ],
           },
+          // {
+          //   element: <PermissionRoute permission={[]} />,
+          //   children: [
+          //     { path: "/contests", element: <ContestListPage /> },
+          //   ]
+          // },
+          { path: "/contests", element: <ContestListPage /> },
+          { path: "/contest/new", element: <ContestFormPage /> },
+          { path: "/contest/:id", element: <ContestDetailsPage /> },
+          { path: "/contest/:id/edit", element: <ContestFormPage /> },
 
           { path: "/dialer/*", element: <ComingSoonPage featureName="Dialer" /> },
 
