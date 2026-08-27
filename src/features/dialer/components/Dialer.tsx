@@ -25,7 +25,7 @@ const Dialer = () => {
   // Automatically fill input keypad when redirecting from lead page
   useEffect(() => {
     if (paramLead?.phone) {
-      setInput('91'+paramLead.phone);
+      setInput('91' + paramLead.phone);
     }
   }, [paramLead]);
 
@@ -53,7 +53,9 @@ const Dialer = () => {
 
   return (
     <div className="space-y-6">
-      <audio id="stringee-remote-audio" autoPlay />
+      {/* <audio id="stringee-remote-audio" autoPlay /> */}
+      <audio id="stringee-remote-audio" autoPlay playsInline />
+      <audio id="stringee-local-audio" autoPlay playsInline muted />
 
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/20 pb-4">
@@ -68,22 +70,20 @@ const Dialer = () => {
 
         <div className="flex items-center gap-2">
           <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
-              status === "connected"
-                ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
-                : status === "connecting"
-                  ? "bg-amber-500/10 text-amber-700 border-amber-500/20"
-                  : "bg-rose-500/10 text-rose-700 border-rose-500/20"
-            }`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${status === "connected"
+              ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+              : status === "connecting"
+                ? "bg-amber-500/10 text-amber-700 border-amber-500/20"
+                : "bg-rose-500/10 text-rose-700 border-rose-500/20"
+              }`}
           >
             <span
-              className={`h-2 w-2 rounded-full ${
-                status === "connected"
-                  ? "bg-emerald-500 animate-pulse"
-                  : status === "connecting"
-                    ? "bg-amber-500 animate-ping"
-                    : "bg-rose-500"
-              }`}
+              className={`h-2 w-2 rounded-full ${status === "connected"
+                ? "bg-emerald-500 animate-pulse"
+                : status === "connecting"
+                  ? "bg-amber-500 animate-ping"
+                  : "bg-rose-500"
+                }`}
             />
             {status === "connecting" && "Connecting WebRTC…"}
             {status === "connected" && "Service Online"}
