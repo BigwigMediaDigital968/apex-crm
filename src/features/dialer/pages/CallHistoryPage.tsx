@@ -2,6 +2,7 @@
 import type { CallLogEntry, GetCallLogsQueryParams } from "@/services/dialerApi";
 import React, { useState } from "react";
 import { useCallLogs } from "../hooks/useCallHistory";
+import { useAuthStore } from "@/store/auth.store";
 
 const formatDuration = (seconds: number) => {
     if (!seconds) return "--";
@@ -26,13 +27,15 @@ const getStatusBadge = (status: CallLogEntry["callStatus"]) => {
 };
 
 const CallHistoryPage: React.FC = () => {
+    const user = useAuthStore((s)=>s.user);
     const [queryParams, setQueryParams] = useState<GetCallLogsQueryParams>({
         page: 1,
         limit: 10,
         search: "",
         status: "",
         leadId: "",
-        branchId: "",
+        branchId: user && user.role === "manager"? user.branches[0] :"",
+        userId: user && user.role === 'employee'? user._id :""
     });
 
     const { logs, pagination, loading, error, refetch } = useCallLogs(queryParams);
