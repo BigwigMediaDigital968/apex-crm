@@ -1,6 +1,7 @@
 // src/features/dialer/components/ActiveCallPopup.tsx
 import { useNavigate, useLocation } from "react-router";
 import { useCallStore } from "@/store/call.store";
+import { PhoneCall } from "lucide-react";
 
 export const ActiveCallPopup = () => {
   const { callState, toNumber, durationSec, callRef, setCallState, activeLead } =
@@ -67,9 +68,7 @@ export const ActiveCallPopup = () => {
             </div>
           ) : (
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <span className="material-symbols-outlined text-xl">
-                call_in_progress
-              </span>
+              <PhoneCall className="text-xl" />
             </div>
           )}
 

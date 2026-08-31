@@ -1,5 +1,5 @@
 // src/features/dialer/hooks/useDialer.ts
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
 import { useCallStore } from "@/store/call.store";
 
 interface UseDialerProps {
@@ -19,6 +19,7 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
     resetCallStore,
   } = useCallStore();
 
+  const [isMuted, setIsMuted] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const stopTimer = useCallback(() => {
@@ -38,8 +39,13 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
 
   const cleanupAudioElements = () => {
     try {
-      const remoteAudio = document.getElementById("stringee-remote-audio") as HTMLAudioElement;
-      const localAudio = document.getElementById("stringee-local-audio") as HTMLAudioElement;
+      const remoteAudio = document.getElementById(
+        "stringee-remote-audio"
+      ) as HTMLAudioElement;
+      const localAudio = document.getElementById(
+        "stringee-local-audio"
+      ) as HTMLAudioElement;
+
       if (remoteAudio) {
         remoteAudio.pause();
         remoteAudio.srcObject = null;
@@ -78,6 +84,7 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
       const cleanNumber = targetNumber.replace(/[^\d+]/g, "");
       setToNumber(cleanNumber);
       setCallState("calling");
+      setIsMuted(false);
 
       const StringeeCall = (window as any).StringeeCall;
       if (!StringeeCall) {
@@ -94,30 +101,40 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
       );
 
       if (customData) {
-        call.customData = typeof customData === "object" ? JSON.stringify(customData) : customData;
+        call.customData =
+          typeof customData === "object"
+            ? JSON.stringify(customData)
+            : customData;
       }
 
       setCallRef(call);
 
       // --- WebRTC Media Event Handlers ---
       call.on("addlocalstream", (stream: MediaStream) => {
-        const localAudio = document.getElementById("stringee-local-audio") as HTMLAudioElement;
+        const localAudio = document.getElementById(
+          "stringee-local-audio"
+        ) as HTMLAudioElement;
         if (localAudio && stream) {
           localAudio.srcObject = stream;
         }
       });
 
       call.on("addremotestream", (stream: MediaStream) => {
-        const remoteAudio = document.getElementById("stringee-remote-audio") as HTMLAudioElement;
+        const remoteAudio = document.getElementById(
+          "stringee-remote-audio"
+        ) as HTMLAudioElement;
         if (remoteAudio && stream) {
           remoteAudio.srcObject = stream;
-          remoteAudio.play().catch((err) => console.warn("[Audio] Autoplay error:", err));
+          remoteAudio
+            .play()
+            .catch((err) =>
+              console.warn("[Dialer] Autoplay error, resuming stream:", err)
+            );
         }
       });
 
-      // --- Signaling state listener (Handles remote user hanging up) ---
+      // --- Signaling state listener ---
       call.on("signalingstate", (state: any) => {
-        console.log("[Dialer] Signaling state changed:", state);
         const code = state.code;
 
         // 1: Ringing, 3: Connected/Answered, 4: Busy, 5: Ended/Cut by Remote, 6: Answered Elsewhere
@@ -127,21 +144,29 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
           setCallState("active");
           startTimer();
         } else if (code === 4 || code === 5 || code === 6) {
-          console.log("[Dialer] Call terminated by signaling state:", code);
           setCallState("ended");
           stopTimer();
           cleanupAudioElements();
         }
       });
 
+
+      // --- Fixed Media state listener ---
       call.on("mediastate", (state: any) => {
-        console.log("[Dialer] Media state changed:", state);
-        if (state.code === 2) {
-          console.warn("[Dialer] Media connection disconnected");
+        // state.code 1 = Connected (Media streams linked)
+        // state.code 2 = Disconnected (Media lost)
+        if (state.code === 1) {
+          const remoteAudio = document.getElementById(
+            "stringee-remote-audio"
+          ) as HTMLAudioElement;
+          if (remoteAudio && remoteAudio.paused) {
+            remoteAudio.play().catch(() => { });
+          }
+        } else if (state.code === 2) {
+          setCallState("ended");
+          stopTimer();
+          cleanupAudioElements();
         }
-        setCallState("ended");
-        stopTimer();
-        cleanupAudioElements();
       });
 
       call.on("error", (err: any) => {
@@ -164,27 +189,52 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
     [clientRef, setCallState, setToNumber, setCallRef, startTimer, stopTimer]
   );
 
+  // Mute / Unmute handler
+  const toggleMute = useCallback(() => {
+    if (!storeCallRef) return;
+    const targetMuteState = !isMuted;
+    storeCallRef.mute(targetMuteState);
+    setIsMuted(targetMuteState);
+  }, [storeCallRef, isMuted]);
+
   // Safe hangup function
+  // Safe hangup function inside useDialer.ts
   const hangup = useCallback(() => {
-    if (storeCallRef) {
+    const isClientConnected = clientRef.current && clientRef.current.hasConnected;
+
+    if (storeCallRef && isClientConnected) {
       try {
+        // Check if call object still exists internally before invoking hangup
         storeCallRef.hangup((res: any) => {
           console.log("[Dialer] Hangup response:", res);
         });
       } catch (err) {
-        console.warn("[Dialer] Safe hangup exception caught:", err);
+        console.warn("[Dialer] Exception during call hangup:", err);
       }
     }
+
+    // Ensure UI and timers clean up gracefully regardless of SDK errors
+    setCallRef(null);
     setCallState("ended");
     stopTimer();
     cleanupAudioElements();
-  }, [storeCallRef, setCallState, stopTimer]);
+  }, [storeCallRef, clientRef, setCallRef, setCallState, stopTimer]);
 
   const reset = useCallback(() => {
     resetCallStore();
+    setIsMuted(false);
     stopTimer();
     cleanupAudioElements();
   }, [resetCallStore, stopTimer]);
 
-  return { callState, durationSec, toNumber, makeCall, hangup, reset };
+  return {
+    callState,
+    durationSec,
+    toNumber,
+    isMuted,
+    makeCall,
+    toggleMute,
+    hangup,
+    reset,
+  };
 };

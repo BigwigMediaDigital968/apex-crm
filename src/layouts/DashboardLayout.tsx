@@ -14,15 +14,17 @@ const DashboardLayout = () => {
       <Header />
       <ActiveContestPopup />
 
-      <audio id="stringee-remote-audio" autoPlay playsInline />
-      <audio id="stringee-local-audio" autoPlay playsInline muted />
+      {/* Hidden WebRTC Audio elements bound to Stringee stream events */}
+      <audio id="stringee-remote-audio" autoPlay playsInline className="hidden" />
+      <audio id="stringee-local-audio" autoPlay playsInline muted className="hidden" />
 
       {/* Floating Call Bar for navigate-away active calls */}
       <ActiveCallPopup />
 
       <main
-        className={`pt-16 min-h-screen transition-all duration-300 ${collapsed ? "lg:pl-20" : "lg:pl-72"
-          }`}
+        className={`pt-16 min-h-screen transition-all duration-300 ${
+          collapsed ? "lg:pl-20" : "lg:pl-72"
+        }`}
       >
         <div className="p-lg">
           <Outlet />

@@ -1,5 +1,6 @@
 // src/features/dialer/components/KeypadConsole.tsx
 import React, { useState } from "react";
+import { useCallStore } from "@/store/call.store";
 
 interface KeypadConsoleProps {
   input: string;
@@ -49,6 +50,7 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
   onReset,
 }) => {
   const [isMuted, setIsMuted] = useState(false);
+  const callRef = useCallStore((s) => s.callRef);
 
   const handleKeyPress = (digit: string) => {
     if (isBusy) return;
@@ -58,6 +60,14 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
   const handleBackspace = () => {
     if (isBusy) return;
     setInput((prev) => prev.slice(0, -1));
+  };
+
+  const handleToggleMute = () => {
+    if (!callRef) return;
+    const nextMute = !isMuted;
+    setIsMuted(nextMute);
+    // Call Stringee SDK mute method
+    callRef.mute(nextMute);
   };
 
   return (
@@ -81,7 +91,9 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
                   onClick={handleBackspace}
                   className="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-all"
                 >
-                  <span className="material-symbols-outlined text-xl">backspace</span>
+                  <span className="material-symbols-outlined text-xl">
+                    backspace
+                  </span>
                 </button>
               )}
             </div>
@@ -95,7 +107,9 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
               {toNumber}
             </p>
             <p className="font-mono text-sm font-semibold text-primary">
-              {callState === "active" ? formatDuration(durationSec) : "Connecting..."}
+              {callState === "active"
+                ? formatDuration(durationSec)
+                : "Connecting..."}
             </p>
           </div>
         )}
@@ -139,7 +153,7 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setIsMuted(!isMuted)}
+                onClick={handleToggleMute}
                 className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-bold transition-all ${
                   isMuted
                     ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
@@ -156,7 +170,9 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
                 type="button"
                 className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-outline-variant/30 hover:bg-surface-container-high text-xs font-bold transition-all"
               >
-                <span className="material-symbols-outlined text-lg">volume_up</span>
+                <span className="material-symbols-outlined text-lg">
+                  volume_up
+                </span>
                 Speaker
               </button>
             </div>
@@ -166,7 +182,9 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
               onClick={onHangup}
               className="w-full flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-3.5 font-label-md text-sm font-bold text-white hover:bg-rose-700 shadow-md transition-all"
             >
-              <span className="material-symbols-outlined text-xl">call_end</span>
+              <span className="material-symbols-outlined text-xl">
+                call_end
+              </span>
               End Call
             </button>
           </div>

@@ -86,8 +86,23 @@ export const useStringeeClient = () => {
   }, []);
 
   useEffect(() => {
+    if (!clientRef.current) {
+      const StringeeClient = (window as any).StringeeClient;
+      if (!StringeeClient) return;
+
+      const client = new StringeeClient();
+      clientRef.current = client;
+
+      client.on("connect", () => setStatus("connected"));
+      client.on("authen", (res: any) => {
+        if (res.r === 0) setStatus("connected");
+      });
+      client.on("disconnect", () => setStatus("disconnected"));
+    }
+
+    // Do NOT disconnect on unmount if a call is currently in progress
     return () => {
-      clientRef.current?.disconnect?.();
+      // Only cleanup listeners, don't kill the socket connection abruptly
     };
   }, []);
 
