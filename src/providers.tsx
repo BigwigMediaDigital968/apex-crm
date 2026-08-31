@@ -1,7 +1,6 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/services/queryClient";
 import { Toaster } from "react-hot-toast"
-import { ActiveCallPopup } from "./features/dialer/components/ActiveCallPopup";
 
 type Props = {
   children: React.ReactNode;
