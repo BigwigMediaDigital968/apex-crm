@@ -1,4 +1,5 @@
 // src/store/call.store.ts
+import type { Lead } from "@/types/lead";
 import { create } from "zustand";
 
 export type CallState = "idle" | "calling" | "ringing" | "active" | "ended" | "failed";
@@ -8,12 +9,15 @@ interface CallStoreState {
     durationSec: number;
     toNumber: string;
     callRef: any | null;
+    activeLead: Lead | null; // <-- Added here
 
     setCallState: (state: CallState) => void;
     setDurationSec: (updater: number | ((prev: number) => number)) => void;
     setToNumber: (num: string) => void;
     setCallRef: (call: any) => void;
     resetCallStore: () => void;
+        setActiveLead: (lead: Lead | null) => void; // <-- Added here
+
 }
 
 export const useCallStore = create<CallStoreState>((set) => ({
@@ -21,6 +25,7 @@ export const useCallStore = create<CallStoreState>((set) => ({
     durationSec: 0,
     toNumber: "",
     callRef: null,
+    activeLead: null, // <-- Default
 
     setCallState: (callState) => set({ callState }),
     setDurationSec: (updater) =>
@@ -29,6 +34,7 @@ export const useCallStore = create<CallStoreState>((set) => ({
         })),
     setToNumber: (toNumber) => set({ toNumber }),
     setCallRef: (callRef) => set({ callRef }),
+    setActiveLead: (activeLead) => set({ activeLead }), // <-- Setter
 
     resetCallStore: () =>
         set({

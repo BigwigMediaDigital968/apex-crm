@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { useLead, useLeads } from "@/features/leads/hooks/useLeads";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useCallStore } from "@/store/call.store";
 import type { Lead } from "@/types/lead";
 
 interface LeadContextCardProps {
@@ -17,16 +18,22 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
   const [searchParams, setSearchParams] = useSearchParams();
   const paramLeadId = searchParams.get("leadId") || "";
 
-  // ============================================================
-  // Branch A — leadId present in URL: fetch directly by id
-  // ============================================================
+  const activeLead = useCallStore((s) => s.activeLead);
+  const setActiveLead = useCallStore((s) => s.setActiveLead);
+
+  // Fetch lead if leadId is in URL parameters
   const { data: directLead, isLoading: isDirectLeadLoading } = useLead(
-    paramLeadId || undefined,
+    paramLeadId || undefined
   );
 
-  // ============================================================
-  // Branch B — no leadId: searchable select to pick a lead
-  // ============================================================
+  // Sync loaded direct lead with call store
+  useEffect(() => {
+    if (directLead) {
+      setActiveLead(directLead);
+    }
+  }, [directLead, setActiveLead]);
+
+  // Searchable lead picker
   const [searchQuery, setSearchQuery] = useState("");
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 300);
@@ -38,14 +45,10 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
     search: debouncedSearch.length >= 1 ? debouncedSearch : undefined,
   });
 
-  // Click-outside closes the picker dropdown
   useEffect(() => {
     if (!isPickerOpen) return;
     const handler = (e: MouseEvent) => {
-      if (
-        pickerRef.current &&
-        !pickerRef.current.contains(e.target as Node)
-      ) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
         setIsPickerOpen(false);
       }
     };
@@ -54,13 +57,15 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
   }, [isPickerOpen]);
 
   const handlePickLead = (lead: Lead) => {
-    // Write leadId back to URL so the rest of the page unifies on it.
+    // Save to global call store
+    setActiveLead(lead);
+
+    // Sync to URL parameters
     const next = new URLSearchParams(searchParams);
     next.set("leadId", lead._id);
     if (next.get("phone")) next.delete("phone");
     setSearchParams(next, { replace: true });
 
-    // Reset picker UI
     setSearchQuery("");
     setIsPickerOpen(false);
 
@@ -70,6 +75,7 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
   };
 
   const handleClearSelectedLead = () => {
+    setActiveLead(null);
     const next = new URLSearchParams(searchParams);
     next.delete("leadId");
     next.delete("phone");
@@ -78,19 +84,18 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
     setIsPickerOpen(false);
   };
 
-  // Active lead is whichever branch fired
-  const matchedLead: Lead | null = paramLeadId ? directLead ?? null : null;
+  // Combine direct fetched lead or stored lead
+  const matchedLead: Lead | null = directLead || activeLead;
   const isFetching = paramLeadId ? isDirectLeadLoading : isSearchLoading;
 
-  // Search-results list — used inside the picker dropdown only.
   const pickerResults = useMemo(
     () => searchData?.leads ?? [],
-    [searchData],
+    [searchData]
   );
 
   return (
     <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-sm space-y-4">
-      {/* Panel Header */}
+      {/* Header */}
       <div className="space-y-3 border-b border-outline-variant/20 pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -108,12 +113,8 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
           )}
         </div>
 
-        {/* ============================================================
-            If no leadId in URL — show the searchable lead select.
-            Selecting a lead writes ?leadId=… and the rest of the page
-            switches to the "direct linked" view above.
-        ============================================================ */}
-        {!paramLeadId && (
+        {/* Search input when no lead is active */}
+        {!matchedLead && (
           <div ref={pickerRef} className="relative">
             <div className="relative">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant">
@@ -161,8 +162,6 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
                     <button
                       key={l._id}
                       type="button"
-                      // mousedown prevents blur from closing the dropdown
-                      // before click registers — lets users pick in one motion.
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handlePickLead(l)}
                       className="flex w-full items-center justify-between px-3 py-2.5 text-left hover:bg-surface-container-low transition-colors"
@@ -191,11 +190,8 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
         )}
       </div>
 
-      {/* ============================================================
-          Active lead panel — only renders when a leadId is in the URL
-          (either pre-loaded or just selected above).
-      ============================================================ */}
-      {paramLeadId && matchedLead ? (
+      {/* Active Lead Display Card */}
+      {matchedLead ? (
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-4 p-4 rounded-xl bg-surface-container-low border border-outline-variant/20 relative">
             <div className="space-y-1">
@@ -245,7 +241,6 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
             </div>
           </div>
 
-          {/* Quick Metrics Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="p-3 rounded-xl bg-surface-container-low/60 border border-outline-variant/20">
               <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
@@ -293,7 +288,6 @@ export const LeadContextCard: React.FC<LeadContextCardProps> = ({
           </button>
         </div>
       ) : paramLeadId && isDirectLeadLoading ? (
-        /* leadId in URL but still resolving */
         <div className="flex items-center justify-center py-10">
           <span className="material-symbols-outlined animate-spin text-2xl text-primary">
             progress_activity
