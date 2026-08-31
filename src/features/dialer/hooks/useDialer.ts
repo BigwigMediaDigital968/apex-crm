@@ -1,193 +1,72 @@
-// import { useState, useRef, useCallback } from "react";
-
-// interface UseDialerProps {
-//   clientRef: React.MutableRefObject<any>;
-// }
-
-// export const useDialer = ({ clientRef }: UseDialerProps) => {
-//   const [callState, setCallState] = useState<string>("idle");
-//   const [durationSec, setDurationSec] = useState<number>(0);
-//   const [toNumber, setToNumber] = useState<string>("");
-//   const callRef = useRef<any>(null);
-//   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-//   const startTimer = () => {
-//     setDurationSec(0);
-//     timerRef.current = setInterval(() => {
-//       setDurationSec((prev) => prev + 1);
-//     }, 1000);
-//   };
-
-//   const stopTimer = () => {
-//     if (timerRef.current) {
-//       clearInterval(timerRef.current);
-//       timerRef.current = null;
-//     }
-//   };
-
-//   const cleanupAudioElements = () => {
-//     const remoteAudio = document.getElementById("stringee-remote-audio") as HTMLAudioElement;
-//     const localAudio = document.getElementById("stringee-local-audio") as HTMLAudioElement;
-//     if (remoteAudio) remoteAudio.srcObject = null;
-//     if (localAudio) localAudio.srcObject = null;
-//   };
-
-//   const makeCall = useCallback(
-//     (targetNumber: string, customData?: Record<string, any>) => {
-//       if (!clientRef.current) {
-//         console.error("[Dialer] StringeeClient is not connected");
-//         return;
-//       }
-
-//       const cleanNumber = targetNumber.replace(/[^\d+]/g, "");
-//       setToNumber(cleanNumber);
-//       setCallState("calling");
-
-//       const StringeeCall = (window as any).StringeeCall;
-//       if (!StringeeCall) {
-//         console.error("[Dialer] StringeeCall SDK not found");
-//         setCallState("failed");
-//         return;
-//       }
-
-//       const call = new StringeeCall(
-//         clientRef.current,
-//         "+917971730788",
-//         cleanNumber,
-//         false
-//       );
-
-//       if (customData) {
-//         call.customData = JSON.stringify(customData);
-//       }
-
-//       callRef.current = call;
-
-//       call.makeCall((res: any) => {
-//         console.log("[Dialer] makeCall response:", res);
-//         if (res?.r !== 0) {
-//           console.error("[Dialer] Call initiation failed:", res?.message);
-//           setCallState("failed");
-//         }
-//       });
-
-//       // 1. Local microphone stream event
-//       call.on("addlocalstream", (stream: MediaStream) => {
-//         console.log("[Dialer] Local stream added");
-//         const localAudio = document.getElementById("stringee-local-audio") as HTMLAudioElement;
-//         if (localAudio && stream) {
-//           localAudio.srcObject = stream;
-//         }
-//       });
-
-//       // 2. Remote audio stream event
-//       call.on("addremotestream", (stream: MediaStream) => {
-//         console.log("[Dialer] Remote stream received");
-//         const remoteAudio = document.getElementById("stringee-remote-audio") as HTMLAudioElement;
-//         if (remoteAudio && stream) {
-//           remoteAudio.srcObject = stream;
-//           remoteAudio.play().catch((err) => console.warn("[Audio] Play error:", err));
-//         }
-//       });
-
-//       // 3. Signaling State Listener (Call Connection Phases)
-//       call.on("signalingstate", (state: any) => {
-//         console.log("[Dialer] Signaling state:", state);
-//         const code = state.code;
-//         // 1: Ringing, 3: Connected, 4: Busy, 5: Ended, 6: Answered elsewhere
-//         if (code === 1) {
-//           setCallState("ringing");
-//         } else if (code === 3) {
-//           setCallState("active");
-//           startTimer();
-//         } else if (code === 4 || code === 5 || code === 6) {
-//           setCallState("ended");
-//           stopTimer();
-//           cleanupAudioElements();
-//         }
-//       });
-
-//       // 4. Media State Listener (WebRTC Audio Packet Status)
-//       call.on("mediastate", (state: any) => {
-//         console.log("[Dialer] Media state:", state);
-//         if (state.code === 2) {
-//           console.warn("[Dialer] Media connection disconnected");
-//         }
-//       });
-
-//       // 5. Info/DTMF Listener
-//       call.on("info", (info: any) => {
-//         console.log("[Dialer] Call Info Received:", info);
-//       });
-
-//       // 6. Error Listener
-//       call.on("error", (err: any) => {
-//         console.error("[Dialer] Call error:", err);
-//         setCallState("failed");
-//         stopTimer();
-//         cleanupAudioElements();
-//       });
-//     },
-//     [clientRef]
-//   );
-
-//   const hangup = useCallback(() => {
-//     if (callRef.current) {
-//       callRef.current.hangup((res: any) => {
-//         console.log("[Dialer] Hangup response:", res);
-//       });
-//     }
-//     setCallState("ended");
-//     stopTimer();
-//     cleanupAudioElements();
-//   }, []);
-
-//   const reset = useCallback(() => {
-//     callRef.current = null;
-//     setCallState("idle");
-//     setDurationSec(0);
-//     setToNumber("");
-//     stopTimer();
-//     cleanupAudioElements();
-//   }, []);
-
-//   return { callState, durationSec, toNumber, makeCall, hangup, reset };
-// };
-
-import { useState, useRef, useCallback } from "react";
+// src/features/dialer/hooks/useDialer.ts
+import { useRef, useCallback, useEffect } from "react";
+import { useCallStore } from "@/store/call.store";
 
 interface UseDialerProps {
   clientRef: React.MutableRefObject<any>;
 }
 
 export const useDialer = ({ clientRef }: UseDialerProps) => {
-  const [callState, setCallState] = useState<string>("idle");
-  const [durationSec, setDurationSec] = useState<number>(0);
-  const [toNumber, setToNumber] = useState<string>("");
-  const callRef = useRef<any>(null);
+  const {
+    callState,
+    durationSec,
+    toNumber,
+    callRef: storeCallRef,
+    setCallState,
+    setDurationSec,
+    setToNumber,
+    setCallRef,
+    resetCallStore,
+  } = useCallStore();
+
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const startTimer = () => {
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const startTimer = useCallback(() => {
     stopTimer();
     setDurationSec(0);
     timerRef.current = setInterval(() => {
       setDurationSec((prev) => prev + 1);
     }, 1000);
-  };
+  }, [setDurationSec, stopTimer]);
 
-  const stopTimer = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+  const cleanupAudioElements = () => {
+    try {
+      const remoteAudio = document.getElementById("stringee-remote-audio") as HTMLAudioElement;
+      const localAudio = document.getElementById("stringee-local-audio") as HTMLAudioElement;
+      if (remoteAudio) {
+        remoteAudio.pause();
+        remoteAudio.srcObject = null;
+      }
+      if (localAudio) {
+        localAudio.pause();
+        localAudio.srcObject = null;
+      }
+    } catch (e) {
+      console.warn("[Dialer] Audio cleanup error:", e);
     }
   };
 
-  const cleanupAudioElements = () => {
-    const remoteAudio = document.getElementById("stringee-remote-audio") as HTMLAudioElement;
-    const localAudio = document.getElementById("stringee-local-audio") as HTMLAudioElement;
-    if (remoteAudio) remoteAudio.srcObject = null;
-    if (localAudio) localAudio.srcObject = null;
-  };
+  // Keep duration timer active during page routes
+  useEffect(() => {
+    if (callState === "active" && !timerRef.current) {
+      timerRef.current = setInterval(() => {
+        setDurationSec((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [callState, setDurationSec]);
 
   const makeCall = useCallback(
     (targetNumber: string, customData?: Record<string, any>) => {
@@ -214,14 +93,13 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
         false
       );
 
-      // Attach custom payload cleanly for Stringee Answer URL webhook
       if (customData) {
         call.customData = typeof customData === "object" ? JSON.stringify(customData) : customData;
       }
 
-      callRef.current = call;
+      setCallRef(call);
 
-      // Event handlers setup prior to invoking call execution
+      // --- WebRTC Media Event Handlers ---
       call.on("addlocalstream", (stream: MediaStream) => {
         const localAudio = document.getElementById("stringee-local-audio") as HTMLAudioElement;
         if (localAudio && stream) {
@@ -237,15 +115,19 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
         }
       });
 
+      // --- Signaling state listener (Handles remote user hanging up) ---
       call.on("signalingstate", (state: any) => {
+        console.log("[Dialer] Signaling state changed:", state);
         const code = state.code;
-        // 1: Ringing, 3: Connected, 4: Busy, 5: Ended, 6: Answered elsewhere
+
+        // 1: Ringing, 3: Connected/Answered, 4: Busy, 5: Ended/Cut by Remote, 6: Answered Elsewhere
         if (code === 1) {
           setCallState("ringing");
         } else if (code === 3) {
           setCallState("active");
           startTimer();
         } else if (code === 4 || code === 5 || code === 6) {
+          console.log("[Dialer] Call terminated by signaling state:", code);
           setCallState("ended");
           stopTimer();
           cleanupAudioElements();
@@ -253,9 +135,13 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
       });
 
       call.on("mediastate", (state: any) => {
+        console.log("[Dialer] Media state changed:", state);
         if (state.code === 2) {
           console.warn("[Dialer] Media connection disconnected");
         }
+        setCallState("ended");
+        stopTimer();
+        cleanupAudioElements();
       });
 
       call.on("error", (err: any) => {
@@ -265,7 +151,7 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
         cleanupAudioElements();
       });
 
-      // Execute Call Request
+      // Execute Call
       call.makeCall((res: any) => {
         if (res?.r !== 0) {
           console.error("[Dialer] Call initiation failed:", res?.message);
@@ -275,28 +161,30 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
         }
       });
     },
-    [clientRef]
+    [clientRef, setCallState, setToNumber, setCallRef, startTimer, stopTimer]
   );
 
+  // Safe hangup function
   const hangup = useCallback(() => {
-    if (callRef.current) {
-      callRef.current.hangup((res: any) => {
-        console.log("[Dialer] Hangup response:", res);
-      });
+    if (storeCallRef) {
+      try {
+        storeCallRef.hangup((res: any) => {
+          console.log("[Dialer] Hangup response:", res);
+        });
+      } catch (err) {
+        console.warn("[Dialer] Safe hangup exception caught:", err);
+      }
     }
     setCallState("ended");
     stopTimer();
     cleanupAudioElements();
-  }, []);
+  }, [storeCallRef, setCallState, stopTimer]);
 
   const reset = useCallback(() => {
-    callRef.current = null;
-    setCallState("idle");
-    setDurationSec(0);
-    setToNumber("");
+    resetCallStore();
     stopTimer();
     cleanupAudioElements();
-  }, []);
+  }, [resetCallStore, stopTimer]);
 
   return { callState, durationSec, toNumber, makeCall, hangup, reset };
 };

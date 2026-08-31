@@ -14,7 +14,7 @@ const Dialer = () => {
   const [searchParams] = useSearchParams();
   const paramLeadId = searchParams.get("leadId") || searchParams.get("phone");
 
-  const { clientRef, status, error, connect, disconnect } = useStringeeClient();
+  const { clientRef, status, error, connect } = useStringeeClient();
   const { callState, durationSec, toNumber, makeCall, hangup, reset } =
     useDialer({ clientRef });
 
@@ -26,25 +26,24 @@ const Dialer = () => {
   // Automatically fill input keypad when redirecting from lead page
   useEffect(() => {
     if (paramLead?.phone) {
-      setInput('91' + paramLead.phone);
+      const cleanPhone = paramLead.phone.startsWith("91")
+        ? paramLead.phone
+        : `91${paramLead.phone}`;
+      setInput(cleanPhone);
     }
   }, [paramLead]);
 
+  // Connect WebRTC client on mount, but DO NOT disconnect on route unmount
+  // so the active call session stays alive in the background store.
   useEffect(() => {
     connect();
-    return () => disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [connect]);
 
   const isBusy =
     callState !== "idle" && callState !== "ended" && callState !== "failed";
 
   const handleCall = () => {
     if (!input.trim() || status !== "connected") return;
-    // makeCall(input.trim(), {
-    //   userId: user?._id,
-    //   branchId: user?.branches?.[0],
-    // });
     makeCall(input.trim(), {
       leadId: paramLead?._id || null,
       userId: user?._id,
@@ -54,10 +53,6 @@ const Dialer = () => {
 
   return (
     <div className="space-y-6">
-      {/* <audio id="stringee-remote-audio" autoPlay /> */}
-      <audio id="stringee-remote-audio" autoPlay playsInline />
-      <audio id="stringee-local-audio" autoPlay playsInline muted />
-
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/20 pb-4">
         <div>
@@ -71,20 +66,22 @@ const Dialer = () => {
 
         <div className="flex items-center gap-2">
           <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${status === "connected"
-              ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
-              : status === "connecting"
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+              status === "connected"
+                ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+                : status === "connecting"
                 ? "bg-amber-500/10 text-amber-700 border-amber-500/20"
                 : "bg-rose-500/10 text-rose-700 border-rose-500/20"
-              }`}
+            }`}
           >
             <span
-              className={`h-2 w-2 rounded-full ${status === "connected"
-                ? "bg-emerald-500 animate-pulse"
-                : status === "connecting"
+              className={`h-2 w-2 rounded-full ${
+                status === "connected"
+                  ? "bg-emerald-500 animate-pulse"
+                  : status === "connecting"
                   ? "bg-amber-500 animate-ping"
                   : "bg-rose-500"
-                }`}
+              }`}
             />
             {status === "connecting" && "Connecting WebRTC…"}
             {status === "connected" && "Service Online"}
@@ -119,6 +116,7 @@ const Dialer = () => {
           />
         </div>
       </div>
+
       <div>
         <RecentCallLogsTable
           limit={10}
