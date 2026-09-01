@@ -72,6 +72,7 @@ export const PERMISSIONS = {
   // Attendance Config
   ATTENDANCE_CONFIG_VIEW: "attendance-config:view",
   ATTENDANCE_CONFIG_UPDATE: "attendance-config:update",
+  LATE_CHECKIN_APPROVE: "attendance:approve",
 
   // Attendance
   ATTENDANCE_VIEW: "attendance:view",
