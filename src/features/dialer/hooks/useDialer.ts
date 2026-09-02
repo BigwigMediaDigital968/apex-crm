@@ -59,6 +59,29 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
     }
   };
 
+  const changeSpeakerDevice = useCallback((deviceId: string) => {
+    const remoteAudio = document.getElementById("stringee-remote-audio") as HTMLAudioElement & {
+      setSinkId?: (id: string) => Promise<void>;
+    };
+
+    if (remoteAudio && typeof remoteAudio.setSinkId === "function") {
+      remoteAudio
+        .setSinkId(deviceId)
+        .then(() => console.log("[Dialer] Speaker output changed to:", deviceId))
+        .catch((err) => console.warn("[Dialer] Speaker change error:", err));
+    }
+  }, []);
+
+  // Change Microphone Input Device
+  const changeMicrophoneDevice = useCallback(
+    (deviceId: string) => {
+      if (storeCallRef && typeof storeCallRef.changeAudioDevice === "function") {
+        storeCallRef.changeAudioDevice(deviceId);
+      }
+    },
+    [storeCallRef]
+  );
+
   // Keep duration timer active during page routes
   useEffect(() => {
     if (callState === "active" && !timerRef.current) {
@@ -232,6 +255,8 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
     durationSec,
     toNumber,
     isMuted,
+    changeSpeakerDevice,
+  changeMicrophoneDevice,
     makeCall,
     toggleMute,
     hangup,

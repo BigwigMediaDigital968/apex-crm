@@ -1,6 +1,8 @@
 // src/features/dialer/components/KeypadConsole.tsx
+
 import React, { useState } from "react";
 import { useCallStore } from "@/store/call.store";
+import AudioDeviceSelector from "./AudioDeviceSelector";
 
 interface KeypadConsoleProps {
   input: string;
@@ -14,6 +16,8 @@ interface KeypadConsoleProps {
   onMakeCall: () => void;
   onHangup: () => void;
   onReset: () => void;
+  changeSpeakerDevice: (deviceId: string) => void;
+  changeMicrophoneDevice: (deviceId: string) => void;
 }
 
 const KEYPAD_KEYS = [
@@ -48,12 +52,23 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
   onMakeCall,
   onHangup,
   onReset,
+  changeSpeakerDevice,
+  changeMicrophoneDevice,
 }) => {
   const [isMuted, setIsMuted] = useState(false);
+  const [isDeviceMenuOpen, setIsDeviceMenuOpen] = useState(false);
+  const [showInCallKeypad, setShowInCallKeypad] = useState(false);
+  
+  const [activeMicId, setActiveMicId] = useState<string>("");
+  const [activeSpeakerId, setActiveSpeakerId] = useState<string>("");
+
   const callRef = useCallStore((s) => s.callRef);
 
   const handleKeyPress = (digit: string) => {
-    if (isBusy) return;
+    if (isBusy && callRef?.sendDtmf) {
+      callRef.sendDtmf(digit);
+      return;
+    }
     setInput((prev) => prev + digit);
   };
 
@@ -66,13 +81,54 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
     if (!callRef) return;
     const nextMute = !isMuted;
     setIsMuted(nextMute);
-    // Call Stringee SDK mute method
     callRef.mute(nextMute);
   };
 
+  const handleSpeakerChange = (id: string) => {
+    setActiveSpeakerId(id);
+    changeSpeakerDevice(id);
+  };
+
+  const handleMicChange = (id: string) => {
+    setActiveMicId(id);
+    changeMicrophoneDevice(id);
+  };
+
   return (
-    <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-sm space-y-6">
-      {/* Active Call HUD / Input Field */}
+    <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-sm space-y-5">
+      
+      {/* Quick Audio Bar (Available Before & During Call) */}
+      <div className="relative flex items-center justify-between rounded-xl bg-surface-container-low/60 border border-outline-variant/20 px-3.5 py-2 text-xs">
+        <div className="flex items-center gap-2 text-on-surface-variant text-[11px] font-medium truncate">
+          <span className="material-symbols-outlined text-base text-primary">tune</span>
+          <span className="truncate">
+            Audio Configured
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsDeviceMenuOpen((prev) => !prev)}
+          className="flex items-center gap-1 font-semibold text-primary hover:text-primary/80 transition-colors"
+        >
+          <span>Devices</span>
+          <span className="material-symbols-outlined text-sm">
+            {isDeviceMenuOpen ? "expand_less" : "expand_more"}
+          </span>
+        </button>
+
+        {/* Floating Audio Device Picker Dropdown */}
+        <AudioDeviceSelector
+          isOpen={isDeviceMenuOpen}
+          onClose={() => setIsDeviceMenuOpen(false)}
+          selectedMicId={activeMicId}
+          selectedSpeakerId={activeSpeakerId}
+          onSelectSpeaker={handleSpeakerChange}
+          onSelectMicrophone={handleMicChange}
+        />
+      </div>
+
+      {/* Screen HUD / Input */}
       <div className="rounded-xl bg-surface-container-low border border-outline-variant/20 p-4 min-h-[100px] flex flex-col justify-center items-center relative overflow-hidden">
         {!isBusy ? (
           <div className="w-full space-y-2">
@@ -83,52 +139,51 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 disabled={isBusy}
-                className="w-full bg-transparent text-center font-headline-md text-2xl font-bold tracking-wider text-on-surface outline-none placeholder:text-on-surface-variant/40 placeholder:text-lg"
+                className="w-full bg-transparent text-center font-headline-md text-2xl font-bold tracking-wider text-on-surface outline-none placeholder:text-on-surface-variant/40 placeholder:text-base"
               />
+
               {input && (
                 <button
                   type="button"
                   onClick={handleBackspace}
                   className="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-all"
                 >
-                  <span className="material-symbols-outlined text-xl">
-                    backspace
-                  </span>
+                  <span className="material-symbols-outlined text-xl">backspace</span>
                 </button>
               )}
             </div>
           </div>
         ) : (
-          <div className="text-center space-y-1.5 py-2">
+          <div className="text-center space-y-1.5 py-1">
             <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest bg-primary/10 text-primary animate-pulse">
               {callState === "active" ? "Call In Progress" : callState}
             </span>
+
             <p className="font-headline-sm text-2xl font-black text-on-surface tracking-wider">
               {toNumber}
             </p>
+
             <p className="font-mono text-sm font-semibold text-primary">
-              {callState === "active"
-                ? formatDuration(durationSec)
-                : "Connecting..."}
+              {callState === "active" ? formatDuration(durationSec) : "Connecting..."}
             </p>
           </div>
         )}
       </div>
 
-      {/* Touch Dial Keypad */}
-      {!isBusy && (
-        <div className="grid grid-cols-3 gap-3">
+      {/* Keypad Grid (Visible before call, or toggled in-call for DTMF) */}
+      {(!isBusy || showInCallKeypad) && (
+        <div className="grid grid-cols-3 gap-2.5">
           {KEYPAD_KEYS.map((k) => (
             <button
               key={k.digit}
               type="button"
               onClick={() => handleKeyPress(k.digit)}
-              className="flex flex-col items-center justify-center py-3 rounded-xl bg-surface-container-low hover:bg-surface-container-high active:scale-95 border border-outline-variant/20 transition-all group"
+              className="flex flex-col items-center justify-center py-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container-high active:scale-95 border border-outline-variant/20 transition-all group"
             >
-              <span className="font-headline-sm text-xl font-bold text-on-surface group-hover:text-primary">
+              <span className="font-headline-sm text-lg font-bold text-on-surface group-hover:text-primary">
                 {k.digit}
               </span>
-              <span className="font-label-sm text-[9px] font-semibold text-on-surface-variant/60 tracking-widest h-3">
+              <span className="font-label-sm text-[8px] font-semibold text-on-surface-variant/60 tracking-widest h-2.5">
                 {k.sub}
               </span>
             </button>
@@ -136,25 +191,26 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="space-y-3 pt-2">
+      {/* Action Controls */}
+      <div className="space-y-3 pt-1">
         {!isBusy ? (
           <button
             type="button"
             onClick={onMakeCall}
             disabled={status !== "connected" || !input.trim()}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3.5 font-label-md text-sm font-bold text-on-primary shadow-md hover:bg-primary/90 disabled:opacity-40 transition-all"
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3.5 font-label-md text-sm font-bold text-on-primary shadow-md hover:bg-primary/90 disabled:opacity-40 transition-all active:scale-[0.99]"
           >
             <span className="material-symbols-outlined text-xl">call</span>
             Start Call
           </button>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
+              {/* Mute Button */}
               <button
                 type="button"
                 onClick={handleToggleMute}
-                className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                className={`flex items-center justify-center gap-2 py-3 rounded-xl border text-xs font-bold transition-all ${
                   isMuted
                     ? "bg-amber-500/10 text-amber-700 border-amber-500/30"
                     : "bg-surface-container-low text-on-surface border-outline-variant/30 hover:bg-surface-container-high"
@@ -166,30 +222,34 @@ export const KeypadConsole: React.FC<KeypadConsoleProps> = ({
                 {isMuted ? "Muted" : "Mute"}
               </button>
 
+              {/* In-Call Keypad Toggle */}
               <button
                 type="button"
-                className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-surface-container-low text-on-surface border border-outline-variant/30 hover:bg-surface-container-high text-xs font-bold transition-all"
+                onClick={() => setShowInCallKeypad((prev) => !prev)}
+                className={`flex items-center justify-center gap-2 py-3 rounded-xl border text-xs font-bold transition-all ${
+                  showInCallKeypad
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : "bg-surface-container-low text-on-surface border-outline-variant/30 hover:bg-surface-container-high"
+                }`}
               >
-                <span className="material-symbols-outlined text-lg">
-                  volume_up
-                </span>
-                Speaker
+                <span className="material-symbols-outlined text-lg">dialpad</span>
+                {showInCallKeypad ? "Hide Keypad" : "Keypad"}
               </button>
             </div>
 
+            {/* End Call */}
             <button
               type="button"
               onClick={onHangup}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-3.5 font-label-md text-sm font-bold text-white hover:bg-rose-700 shadow-md transition-all"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-rose-600 py-3.5 font-label-md text-sm font-bold text-white hover:bg-rose-700 shadow-md transition-all active:scale-[0.99]"
             >
-              <span className="material-symbols-outlined text-xl">
-                call_end
-              </span>
+              <span className="material-symbols-outlined text-xl">call_end</span>
               End Call
             </button>
           </div>
         )}
 
+        {/* Start Another Call Button */}
         {callState === "ended" && (
           <button
             type="button"

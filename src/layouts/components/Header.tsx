@@ -127,6 +127,7 @@ const Header = () => {
                   </p>
                 </div>
 
+                
                 <Link
                   to="/profile"
                   onClick={()=>setProfileOpen(false)}
@@ -137,7 +138,17 @@ const Header = () => {
                   </span>
                   My Profile
                 </Link>
-                <a
+                <Link
+                  to={`/branches/${user?.branches[0]}`}
+                  onClick={()=>setProfileOpen(false)}
+                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container-high transition-colors"
+                >
+                  <span className="material-symbols-outlined text-lg text-on-surface-variant">
+                    business
+                  </span>
+                  My Branch
+                </Link>
+                {/* <a
                   href="#settings"
                   className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container-high transition-colors"
                 >
@@ -145,7 +156,7 @@ const Header = () => {
                     settings
                   </span>
                   Account Settings
-                </a>
+                </a> */}
 
                 <div className="my-1 border-t border-outline-variant/20" />
 

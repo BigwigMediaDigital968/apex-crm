@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useMyBranchContestsQuery } from "../hooks/useContests";
+import { useAuthStore } from "@/store/auth.store";
 
 export const ActiveContestPopup = () => {
+  const user = useAuthStore((state) => state.user);
   const { data: contests, isLoading } = useMyBranchContestsQuery();
 
   const [activeContest, setActiveContest] = useState<any | null>(null);
@@ -27,6 +29,8 @@ export const ActiveContestPopup = () => {
     setIsOpen(false);
     sessionStorage.setItem("dismissed_contest_popup", "true");
   };
+
+  if(user?.role === 'head') return null;
 
   if (!isOpen || !activeContest) return null;
 

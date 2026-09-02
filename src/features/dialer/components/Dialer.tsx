@@ -15,7 +15,7 @@ const Dialer = () => {
   const paramLeadId = searchParams.get("leadId") || searchParams.get("phone");
 
   const { clientRef, status, error, connect } = useStringeeClient();
-  const { callState, durationSec, toNumber, makeCall, hangup, reset } =
+  const { callState, durationSec, toNumber, makeCall, hangup, reset, changeMicrophoneDevice, changeSpeakerDevice } =
     useDialer({ clientRef });
 
   const [input, setInput] = useState("");
@@ -106,6 +106,8 @@ const Dialer = () => {
             onMakeCall={handleCall}
             onHangup={hangup}
             onReset={reset}
+             changeMicrophoneDevice={changeMicrophoneDevice}
+             changeSpeakerDevice={changeSpeakerDevice}
           />
         </div>
 

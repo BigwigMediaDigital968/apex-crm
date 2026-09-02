@@ -7,13 +7,17 @@ import {
     useBranchAttendanceConfig,
     useUpdateBranchStatus,
 } from "../hooks/useBranches";
+import { useAuthStore } from "@/store/auth.store";
+import BranchHolidaysSection from "../components/BranchHolidaysSection";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const BranchDetailPage = () => {
     const navigate = useNavigate();
+    const user = useAuthStore((s) => s.user);
     const { id } = useParams<{ id: string }>();
     const { data: branch, isLoading, isFetching } = useBranch(id);
+    console.log("Branch data:", branch, "Loading:", isLoading, "Fetching:", isFetching);
     const { data: attendanceData, isLoading: attendanceLoading } =
         useBranchAttendanceConfig(id);
     const updateStatus = useUpdateBranchStatus();
@@ -68,7 +72,9 @@ const BranchDetailPage = () => {
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-outline-variant/30 pb-5">
                 <div className="space-y-1">
-                    <button
+                    {
+                        ( user?.role==='head' || user?.role==='admin' ) && (
+                            <button
                         type="button"
                         onClick={() => navigate("/branches")}
                         className="flex items-center gap-1.5 font-label-md text-xs font-bold text-primary hover:underline mb-2"
@@ -76,14 +82,16 @@ const BranchDetailPage = () => {
                         <span className="material-symbols-outlined text-sm">arrow_back</span>
                         Back to Branches
                     </button>
+                        )
+                    }
                     <div className="flex items-center gap-3">
                         <h1 className="font-headline-md text-2xl sm:text-3xl font-extrabold text-on-surface">
                             {branch.name}
                         </h1>
                         <span
                             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${branch.isActive
-                                    ? "bg-emerald-500/10 text-emerald-700"
-                                    : "bg-blue-500/10 text-blue-700"
+                                ? "bg-emerald-500/10 text-emerald-700"
+                                : "bg-blue-500/10 text-blue-700"
                                 }`}
                         >
                             {branch.isActive ? "Active" : "Setup Phase"}
@@ -100,8 +108,8 @@ const BranchDetailPage = () => {
                             type="button"
                             onClick={() => setConfirmStatusOpen(true)}
                             className={`flex items-center gap-2 rounded-xl px-4 py-2.5 font-label-md text-xs font-bold transition-colors ${branch.isActive
-                                    ? "bg-rose-500/10 text-rose-700 hover:bg-rose-500/20"
-                                    : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
+                                ? "bg-rose-500/10 text-rose-700 hover:bg-rose-500/20"
+                                : "bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
                                 }`}
                         >
                             <span className="material-symbols-outlined text-base">
@@ -203,8 +211,8 @@ const BranchDetailPage = () => {
                             <div className="flex flex-wrap gap-2 text-[11px]">
                                 <span
                                     className={`rounded-full px-2.5 py-1 font-bold ${config.enabled
-                                            ? "bg-emerald-500/10 text-emerald-700"
-                                            : "bg-surface-container-high text-on-surface-variant"
+                                        ? "bg-emerald-500/10 text-emerald-700"
+                                        : "bg-surface-container-high text-on-surface-variant"
                                         }`}
                                 >
                                     {config.enabled ? "Enabled" : "Disabled"}
@@ -235,23 +243,14 @@ const BranchDetailPage = () => {
                 </Can>
 
                 {/* Holidays stub */}
-                <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-sm space-y-2 opacity-70">
-                    <h2 className="font-headline-sm text-base font-bold text-on-surface flex items-center gap-2">
-                        <span className="material-symbols-outlined text-on-surface-variant text-xl">
-                            event_busy
-                        </span>
-                        Holidays
-                        <span className="rounded-full bg-outline-variant/30 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-on-surface-variant">
-                            Coming Soon
-                        </span>
-                    </h2>
-                    <p className="font-body-sm text-xs text-on-surface-variant/70">
-                        Branch-level holiday management isn't wired up to the backend yet.
-                    </p>
+                <div className="">
+                    <BranchHolidaysSection branchId={branch._id} />
                 </div>
 
                 {/* Admin assignment note */}
-                <div className="flex items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest px-5 py-4 shadow-sm">
+                { user?.role !== "employee" &&
+                    (
+                        <div className="flex items-center gap-3 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest px-5 py-4 shadow-sm">
                     <span className="material-symbols-outlined text-primary text-xl">
                         admin_panel_settings
                     </span>
@@ -266,6 +265,8 @@ const BranchDetailPage = () => {
                         Go to Employees
                     </button>
                 </div>
+                    )
+                }
             </div>
 
             <ConfirmDialog

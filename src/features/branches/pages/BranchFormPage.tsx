@@ -4,6 +4,7 @@ import { Can } from "@/components/Auth/Can";
 import { useBranch, useCreateBranch, useUpdateBranch } from "../hooks/useBranches";
 import BranchAttendanceConfigForm from "../components/BranchAttendanceConfigForm";
 import type { Branch, BranchFormInput, BranchAttendanceConfig } from "@/types/branch";
+import BranchHolidaysTab from "../components/BranchHolidaysTab.tsx";
 
 type Tab = "details" | "attendance" | "holidays";
 
@@ -509,6 +510,12 @@ const BranchFormPage = () => {
               branchId={id!}
               branchIsActive={existingBranch?.isActive ?? true}
             />
+          </div>
+        )}
+
+         {isEditMode && tab === "holidays" && (
+          <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 sm:p-8 shadow-sm">
+            <BranchHolidaysTab branchId={id!} />
           </div>
         )}
 
