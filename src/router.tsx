@@ -214,7 +214,7 @@ import { LoginPage, ProfilePage } from "@/features/auth";
 import { LeadListPage } from "@/features/leads";
 import { AttendanceDispatcher, LateCheckInHistoryPage } from "@/features/attendance";
 import { TaskListPage, TaskFormPage, TaskDetailPage } from "@/features/tasks";
-import { CallHistoryPage, DialerPage } from "./features/dialer";
+import { CallHistoryPage, DialerPage, StringeeNumbersPage } from "./features/dialer";
 import { PerformanceDispatcher } from "./features/performance";
 import { CreateRevenuePage, RevenuePage } from "./features/revenue";
 import { ContestListPage } from "./features/contests";
@@ -236,7 +236,7 @@ export const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           { path: "/dashboard", element: <DashboardDispatcher /> },
-          
+
           /* Employees */
           {
             element: <PermissionRoute permission={PERMISSIONS.USER_VIEW} />,
@@ -355,6 +355,12 @@ export const router = createBrowserRouter([
             children: [
               { path: "/dialer", element: <DialerPage /> },
               { path: "/dialer/history", element: <CallHistoryPage /> },
+            ],
+          },
+          {
+            element: <PermissionRoute permission={PERMISSIONS.STRINGEE_NUMBER_VIEW} />,
+            children: [
+              { path: "/dialer/numbers", element: <StringeeNumbersPage /> },
             ],
           },
 

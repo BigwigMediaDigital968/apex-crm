@@ -118,7 +118,7 @@ export const useDialer = ({ clientRef }: UseDialerProps) => {
 
       const call = new StringeeCall(
         clientRef.current,
-        "+917971730788",
+        clientRef.current. || "agent",
         cleanNumber,
         false
       );
