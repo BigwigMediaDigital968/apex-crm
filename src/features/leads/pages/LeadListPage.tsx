@@ -14,20 +14,7 @@ import { useSearchParams } from "react-router";
 
 const PAGE_SIZE = 15;
 
-// These must match the values leads are actually created with (createLead
-// service hardcodes "Website" for manual entries, lead-import.service.ts
-// hardcodes "Excel Import"). The old hardcoded ad-campaign-style options
-// never matched any real lead and silently returned empty results.
 const SOURCE_OPTIONS = ["All Sources", "Website", "Excel Import"];
-
-// NOTE: GET /leads?status=... on the backend only accepts a legacy
-// uppercase enum that doesn't match the values leads actually get created
-// with (LEAD_STATUS is lowercase — see lead.validator.ts vs
-// listLeadQuerySchema). Sending status to the API 400s outright ("Invalid
-// option: expected one of NEW|ASSIGNED|..."). Until that's fixed
-// backend-side, status is filtered client-side on the currently loaded page
-// instead of being passed to the API — it only reflects leads already
-// fetched for this page, not the full result set across all pages.
 const STATUS_FILTERS: { label: string; value: LeadStatus | "" }[] = [
   { label: "All Statuses", value: "" },
   { label: "New", value: "new" },
@@ -73,11 +60,6 @@ const LeadListPage = () => {
   const isEmployee = currentUser?.role === ROLES.EMPLOYEE;
   const isHead = currentUser?.role === ROLES.HEAD;
   const isAdmin = currentUser?.role === ROLES.ADMIN;
-  // lead.service.ts createLead auto-derives the branch from the caller's
-  // own account for Manager/Employee. Admin must always send an explicit
-  // branchId. Head may also send one, but can leave a lead unassigned to
-  // any branch entirely — it just won't be visible below Head until it's
-  // later assigned to an employee (which backfills the branch then).
   const needsManualBranchField = isHead || isAdmin;
   const manualBranchRequired = isAdmin;
 
@@ -144,13 +126,6 @@ const LeadListPage = () => {
 
   const { data: branches } = useBranchesQuery();
 
-  // Employee and Manager are hard-restricted to exactly one branch
-  // (user.service.ts singleBranchRoles) — a branch filter is meaningless
-  // (and, if it listed every branch, exploitable: lead.service.ts listLeads
-  // 403s on a branchId outside the caller's own branches) when there's
-  // nothing else to filter to. Driven by actual accessible-branch count
-  // rather than hardcoded per role, so it also collapses correctly for a
-  // Head/Admin who happens to only have one branch.
   const assignableBranches = useMemo(() => {
     if (!branches) return [];
     if (isHead) return branches;
@@ -184,9 +159,6 @@ const LeadListPage = () => {
     branchId: "",
   });
 
-  // Admin always needs an explicit branch — nothing to pick when there's
-  // only one, so auto-fill it. Head is exempt: leaving it blank is a valid,
-  // deliberate choice for Head (an unassigned lead), not just a default.
   useEffect(() => {
     if (!manualBranchRequired || creationMethod !== "manual") return;
     if (assignableBranches.length !== 1) return;
@@ -205,9 +177,6 @@ const LeadListPage = () => {
       return;
     }
 
-    // An empty string means "no branch" for Head — omit the key entirely
-    // rather than sending "", which the backend would reject as an
-    // invalid branch id instead of treating as absent.
     const payload = {
       ...manualForm,
       branchId: manualForm.branchId || undefined,
