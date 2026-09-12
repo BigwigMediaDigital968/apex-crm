@@ -8,6 +8,7 @@ import {
 import { TaskOverviewWidget } from "@/features/tasks";
 import { useLeads } from "@/features/leads";
 import { useDashboardReport } from "../hooks/useDashboardReport";
+import ExportReportButton from "../components/ExportReportButton";
 
 const TIMEFRAMES = ["This Week", "This Month", "This Quarter"] as const;
 type Timeframe = (typeof TIMEFRAMES)[number];
@@ -117,6 +118,9 @@ const HeadDashboardPage = () => {
           Quick Management Actions
         </p>
         <div className="flex flex-wrap items-center gap-3">
+          {/* Exports the same timeframe the dashboard is showing. */}
+          <ExportReportButton filters={timeframeFilters} />
+
           {/* Primary Action Button */}
           <Link
             to={"/employees/onboard"}

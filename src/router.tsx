@@ -169,7 +169,14 @@ export const router = createBrowserRouter([
           },
 
           /* Performance & Other Modules */
-          { path: "/performance", element: <PerformanceDispatcher /> },
+          {
+            element: (
+              <PermissionRoute permission={PERMISSIONS.PERFORMANCE_VIEW} />
+            ),
+            children: [
+              { path: "/performance", element: <PerformanceDispatcher /> },
+            ],
+          },
           {
             path: "/achievements",
             element: <ComingSoonPage featureName="Achievements" />,
@@ -203,6 +210,9 @@ export const router = createBrowserRouter([
             element: <PermissionRoute permission={PERMISSIONS.CONTEST_CREATE} />,
             children: [{ path: "/contest/new", element: <ContestFormPage /> }],
           },
+          // Intentionally ungated: GET /contest/:id has no authorize() either —
+          // it is branch-scoped in the handler so employees can open their own
+          // branch's contest from ActiveContestPopup.
           { path: "/contest/:id", element: <ContestDetailsPage /> },
           {
             element: <PermissionRoute permission={PERMISSIONS.CONTEST_UPDATE} />,

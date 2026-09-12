@@ -4,6 +4,7 @@ import { useEmployeesQuery } from "@/features/employees";
 import { useBranchesQuery } from "@/features/branches/hooks/useBranches";
 import { useLeads } from "@/features/leads/hooks/useLeads";
 import { useAuditLogs } from "@/features/logs/hooks/useAuditLogs";
+import ExportReportButton from "../components/ExportReportButton";
 
 const AdminDashboardPage = () => {
   const navigate = useNavigate();
@@ -40,6 +41,7 @@ const AdminDashboardPage = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          <ExportReportButton />
           <button
             onClick={() => navigate("/employees/onboard")}
             className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary hover:bg-primary/90 transition-all shadow-md"
