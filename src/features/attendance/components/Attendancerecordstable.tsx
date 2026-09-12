@@ -1,5 +1,6 @@
 import {
   ATTENDANCE_STATUS_LABELS,
+  ATTENDANCE_WORK_MODE,
   ATTENDANCE_WORK_MODE_LABELS,
   type AttendanceListData,
   type AttendanceRecord,
@@ -192,7 +193,7 @@ const AttendanceRecordsTable = ({
                     <td className="px-5 py-3.5">
                       <span
                         className={`inline-block rounded-md px-2 py-0.5 font-label-sm text-[10px] font-bold ${
-                          record.workMode === "wfo"
+                          record.workMode === ATTENDANCE_WORK_MODE.WFO
                             ? "bg-primary/10 text-primary"
                             : "bg-secondary/10 text-secondary"
                         }`}

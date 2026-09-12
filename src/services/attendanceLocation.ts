@@ -1,4 +1,7 @@
-export type WorkMode = "WFO" | "WFH";
+import type { AttendanceWorkMode } from "@/types/attendance";
+
+/** Alias of the canonical backend-aligned union — kept for existing imports. */
+export type WorkMode = AttendanceWorkMode;
 
 export interface AttendanceLocationConfig {
     latitude?: number;

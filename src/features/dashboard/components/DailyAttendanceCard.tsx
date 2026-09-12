@@ -1,10 +1,10 @@
 import { useCheckIn, useCheckOut } from '@/features/attendance/hooks/useAttendance';
 import { getAttendanceErrorMessage } from '@/services/attendanceLocation';
-import type { AttendanceRecord } from '@/types/attendance';
+import type { AttendanceRecord, AttendanceWorkMode } from '@/types/attendance';
 import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 
-export type WorkMode = 'WFO' | 'WFH';
+export type WorkMode = AttendanceWorkMode;
 
 export interface LocationPayload {
     mode: WorkMode;

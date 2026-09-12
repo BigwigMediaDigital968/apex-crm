@@ -24,7 +24,12 @@ import {
 } from "@/features/branches";
 import { LoginPage, ProfilePage } from "@/features/auth";
 import { LeadListPage } from "@/features/leads";
-import { AttendanceDispatcher, LateCheckInHistoryPage } from "@/features/attendance";
+import {
+  AttendanceDispatcher,
+  AttendanceReportPage,
+  LateCheckInHistoryPage,
+  TeamAttendancePage,
+} from "@/features/attendance";
 import { TaskListPage, TaskFormPage, TaskDetailPage } from "@/features/tasks";
 import { CallHistoryPage, DialerPage, StringeeNumbersPage } from "./features/dialer";
 import { PerformanceDispatcher } from "./features/performance";
@@ -131,6 +136,8 @@ export const router = createBrowserRouter([
           {
             element: <PermissionRoute permission={PERMISSIONS.ATTENDANCE_VIEW} />,
             children: [
+              // Own attendance. Head/Admin have none, so the dispatcher
+              // forwards them to the org-wide report instead.
               { path: "/attendance", element: <AttendanceDispatcher /> },
               {
                 path: "/attendance/late-history",
@@ -140,7 +147,18 @@ export const router = createBrowserRouter([
           },
           {
             element: (
-              <PermissionRoute permission={PERMISSIONS.ATTENDANCE_MANAGE} />
+              <PermissionRoute permission={PERMISSIONS.ATTENDANCE_REPORT} />
+            ),
+            children: [
+              { path: "/attendance/team", element: <TeamAttendancePage /> },
+              { path: "/attendance/report", element: <AttendanceReportPage /> },
+            ],
+          },
+          {
+            // Backend gates approval on LATE_CHECKIN_APPROVE, which Manager
+            // holds but ATTENDANCE_MANAGE does not cover.
+            element: (
+              <PermissionRoute permission={PERMISSIONS.LATE_CHECKIN_APPROVE} />
             ),
             children: [
               {

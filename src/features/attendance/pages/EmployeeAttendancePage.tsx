@@ -1,10 +1,8 @@
 import { useMemo, useState } from "react";
-import { ROLES } from "@/types/auth";
 import { useAuthStore } from "@/store/auth.store";
 import { useAttendanceRecords } from "../hooks/useAttendance";
 import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_WORK_MODE_LABELS, type AttendanceStatus } from "@/types/attendance";
 import { daysAgoInput, formatDate, formatTime, todayInput } from "@/utils/Date";
-import TeamAttendanceTab from "../components/TeamAttendanceTab";
 import TodayAttendanceAction from "../components/TodayAttendanceAction";
 
 const STATUS_BADGE_CLASSES: Record<AttendanceStatus, string> = {
@@ -17,8 +15,6 @@ const STATUS_BADGE_CLASSES: Record<AttendanceStatus, string> = {
 
 const EmployeeAttendancePage = () => {
     const user = useAuthStore((state) => state.user);
-    const isManager = user?.role === ROLES.MANAGER;
-    const [activeTab, setActiveTab] = useState<"my_attendance" | "team_attendance">("my_attendance");
     const [page, setPage] = useState(1);
     const dateRange = useMemo(
         () => ({ dateFrom: daysAgoInput(29), dateTo: todayInput() }),
@@ -48,45 +44,15 @@ const EmployeeAttendancePage = () => {
                         })}
                     </p>
                     <h1 className="font-headline-md text-3xl font-bold text-on-surface mt-0.5">
-                        Attendance
+                        My Attendance
                     </h1>
                     <p className="font-body-md text-sm text-on-surface-variant">
-                        {isManager
-                            ? "Track your daily punches, manage shift times, and oversee team logs."
-                            : "Mark your daily punches and keep track of your monthly attendance history."}
+                        Mark your daily punches and keep track of your monthly attendance history.
                     </p>
                 </div>
-
-                {/* Tab Switcher (Visible to Managers Only) */}
-                {isManager && (
-                    <div className="flex rounded-xl bg-surface-container-low p-1 border border-outline-variant/20 shrink-0 self-start lg:self-center">
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab("my_attendance")}
-                            className={`px-4 py-2 rounded-lg font-label-md text-xs font-bold transition-all ${activeTab === "my_attendance"
-                                ? "bg-primary text-on-primary shadow-sm"
-                                : "text-on-surface-variant hover:text-on-surface"
-                                }`}
-                        >
-                            My Attendance
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveTab("team_attendance")}
-                            className={`px-4 py-2 rounded-lg font-label-md text-xs font-bold transition-all ${activeTab === "team_attendance"
-                                ? "bg-primary text-on-primary shadow-sm"
-                                : "text-on-surface-variant hover:text-on-surface"
-                                }`}
-                        >
-                            Team Attendance
-                        </button>
-                    </div>
-                )}
             </div>
 
-            {/* MY ATTENDANCE TAB CONTENT */}
-            {(activeTab === "my_attendance" || !isManager) && (
-                <div className="space-y-6">
+            <div className="space-y-6">
                     {/* Today's action terminal — self-contained, fetches its own today record. */}
                     <TodayAttendanceAction />
 
@@ -195,13 +161,7 @@ const EmployeeAttendancePage = () => {
                             </div>
                         )}
                     </div>
-                </div>
-            )}
-
-            {/* TEAM ATTENDANCE TAB CONTENT (Manager View Only) */}
-            {isManager && activeTab === "team_attendance" && (
-                <TeamAttendanceTab />
-            )}
+            </div>
         </div>
     );
 };

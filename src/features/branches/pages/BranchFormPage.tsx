@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
+import { isAxiosError } from "axios";
 import { Can } from "@/components/Auth/Can";
 import { useBranch, useCreateBranch, useUpdateBranch } from "../hooks/useBranches";
 import BranchAttendanceConfigForm from "../components/BranchAttendanceConfigForm";
@@ -47,6 +48,75 @@ const EMPTY_FORM: BranchFormInput = {
 
 const CODE_PATTERN = /^[A-Z0-9-]+$/;
 
+type AttendanceErrors = Partial<
+  Record<
+    | "latitude"
+    | "longitude"
+    | "radiusMeters"
+    | "timezone"
+    | "workingDays"
+    | "workingHours"
+    | "gracePeriodMinutes",
+    string
+  >
+>;
+
+/** Empty means "not set" — `Number("")` is 0, which is a valid coordinate. */
+const parseCoordinate = (raw: string): number | undefined => {
+  const trimmed = raw.trim();
+  if (trimmed === "" || trimmed === "-") return undefined;
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+/**
+ * latitude/longitude are the only attendanceConfig fields the backend has no
+ * default for, so a branch cannot be created without them — validate here
+ * rather than letting Mongoose reject the whole create with a 500.
+ */
+const validateAttendance = (config: BranchAttendanceConfig): AttendanceErrors => {
+  const errors: AttendanceErrors = {};
+  const { latitude, longitude, radiusMeters } = config.location;
+
+  if (latitude === undefined) {
+    errors.latitude = "Latitude is required";
+  } else if (latitude < -90 || latitude > 90) {
+    errors.latitude = "Must be between -90 and 90";
+  }
+
+  if (longitude === undefined) {
+    errors.longitude = "Longitude is required";
+  } else if (longitude < -180 || longitude > 180) {
+    errors.longitude = "Must be between -180 and 180";
+  }
+
+  if (!Number.isFinite(radiusMeters) || radiusMeters < 10 || radiusMeters > 5000) {
+    errors.radiusMeters = "Must be between 10 and 5000";
+  }
+
+  if (!config.timezone.trim()) {
+    errors.timezone = "Timezone is required";
+  }
+
+  if (config.workingDays.length === 0) {
+    errors.workingDays = "Select at least one working day";
+  }
+
+  if (!config.workingHours.startTime || !config.workingHours.endTime) {
+    errors.workingHours = "Start and end time are required";
+  }
+
+  if (
+    !Number.isFinite(config.gracePeriodMinutes) ||
+    config.gracePeriodMinutes < 0 ||
+    config.gracePeriodMinutes > 180
+  ) {
+    errors.gracePeriodMinutes = "Must be between 0 and 180";
+  }
+
+  return errors;
+};
+
 const toFormInput = (branch: Branch): BranchFormInput => ({
   name: branch.name,
   code: branch.code ?? "",
@@ -91,6 +161,7 @@ const BranchFormPage = () => {
   const [detailsExpanded, setDetailsExpanded] = useState(true);
   const [form, setForm] = useState<BranchFormInput>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof BranchFormInput, string>>>({});
+  const [attendanceErrors, setAttendanceErrors] = useState<AttendanceErrors>({});
 
   useEffect(() => {
     if (isEditMode && existingBranch) {
@@ -175,26 +246,54 @@ const BranchFormPage = () => {
     e.preventDefault();
     if (!validateDetails() || !id) return;
 
-    await updateBranch.mutateAsync({ id, payload: buildDetailsPayload() });
-    navigate(`/branches/${id}`);
+    try {
+      await updateBranch.mutateAsync({ id, payload: buildDetailsPayload() });
+      navigate(`/branches/${id}`);
+    } catch {
+      // Already surfaced by the mutation's error toast.
+    }
   };
 
-  // Creation mode submit handler
-  const handleCreateSubmit = async (includeAttendance = true) => {
+  // Creation mode submit handler. `useDefaults` falls back to the default
+  // hours/days/grace but still sends the entered geofence — the backend
+  // requires coordinates either way.
+  const handleCreateSubmit = async (useDefaults = false) => {
     if (!validateDetails()) {
       setStep(1);
       return;
     }
 
-    const payload = {
-      ...form,
-      name: form.name.trim(),
-      code: form.code.trim().toUpperCase(),
-      attendanceConfig: includeAttendance ? form.attendanceConfig : undefined,
-    };
+    const config: BranchAttendanceConfig = useDefaults
+      ? {
+          ...DEFAULT_ATTENDANCE_CONFIG,
+          location: form.attendanceConfig?.location ?? DEFAULT_ATTENDANCE_CONFIG.location,
+        }
+      : form.attendanceConfig ?? DEFAULT_ATTENDANCE_CONFIG;
 
-    const created = await createBranch.mutateAsync(payload);
-    navigate(`/branches/${created._id}?created=1`, { replace: true });
+    const configErrors = validateAttendance(config);
+    if (Object.keys(configErrors).length > 0) {
+      setAttendanceErrors(configErrors);
+      setStep(2);
+      return;
+    }
+    setAttendanceErrors({});
+
+    try {
+      const created = await createBranch.mutateAsync({
+        ...form,
+        name: form.name.trim(),
+        code: form.code.trim().toUpperCase(),
+        attendanceConfig: config,
+      });
+      navigate(`/branches/${created._id}?created=1`, { replace: true });
+    } catch (error) {
+      // The mutation already toasts; surface a duplicate code on the field
+      // that caused it so the user isn't left on step 2 hunting for it.
+      if (isAxiosError(error) && error.response?.data?.code === "BRANCH_CODE_EXISTS") {
+        setErrors((prev) => ({ ...prev, code: "This branch code is already taken" }));
+        setStep(1);
+      }
+    }
   };
 
   const handleNextStep = () => {
@@ -725,22 +824,31 @@ const BranchFormPage = () => {
               {/* Timezone */}
               <div className="space-y-1.5">
                 <label className="block font-label-md text-xs font-medium text-on-surface-variant">
-                  Timezone
+                  Timezone <span className="text-error">*</span>
                 </label>
                 <input
                   type="text"
                   value={attendance.timezone}
                   placeholder="Asia/Kolkata"
                   onChange={(e) => updateAttendanceConfig("timezone", e.target.value)}
-                  className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3.5 py-2.5 font-body-md text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className={`w-full rounded-xl border bg-surface-container-low px-3.5 py-2.5 font-body-md text-sm text-on-surface outline-none focus:ring-2 ${
+                    attendanceErrors.timezone
+                      ? "border-error focus:border-error focus:ring-error/20"
+                      : "border-outline-variant/40 focus:border-primary focus:ring-primary/20"
+                  }`}
                 />
+                {attendanceErrors.timezone && (
+                  <p className="font-body-sm text-[11px] text-error">
+                    {attendanceErrors.timezone}
+                  </p>
+                )}
               </div>
 
               {/* Location */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="block font-label-md text-xs font-medium text-on-surface-variant">
-                    Geofence Location
+                    Geofence Location <span className="text-error">*</span>
                   </label>
                   <button
                     type="button"
@@ -753,44 +861,68 @@ const BranchFormPage = () => {
                     Use my current location
                   </button>
                 </div>
+                <p className="font-body-sm text-[11px] text-on-surface-variant/70">
+                  Coordinates are required to create a branch, even when attendance
+                  tracking is turned off.
+                </p>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <span className="block font-body-sm text-[11px] text-on-surface-variant/70">
-                      Latitude
+                      Latitude <span className="text-error">*</span>
                     </span>
                     <input
                       type="text"
-                      step="any"
-                      value={attendance.location.latitude}
+                      inputMode="decimal"
+                      placeholder="e.g. 19.076090"
+                      value={attendance.location.latitude ?? ""}
                       onChange={(e) =>
                         updateAttendanceConfig("location", {
                           ...attendance.location,
-                          latitude: Number(e.target.value),
+                          latitude: parseCoordinate(e.target.value),
                         })
                       }
-                      className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 font-body-sm text-xs text-on-surface outline-none focus:border-primary"
+                      className={`w-full rounded-xl border bg-surface-container-low px-3 py-2 font-body-sm text-xs text-on-surface outline-none ${
+                        attendanceErrors.latitude
+                          ? "border-error focus:border-error"
+                          : "border-outline-variant/40 focus:border-primary"
+                      }`}
                     />
+                    {attendanceErrors.latitude && (
+                      <p className="font-body-sm text-[11px] text-error">
+                        {attendanceErrors.latitude}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <span className="block font-body-sm text-[11px] text-on-surface-variant/70">
-                      Longitude
+                      Longitude <span className="text-error">*</span>
                     </span>
                     <input
                       type="text"
-                      step="any"
-                      value={attendance.location.longitude}
+                      inputMode="decimal"
+                      placeholder="e.g. 72.877426"
+                      value={attendance.location.longitude ?? ""}
                       onChange={(e) =>
                         updateAttendanceConfig("location", {
                           ...attendance.location,
-                          longitude: Number(e.target.value),
+                          longitude: parseCoordinate(e.target.value),
                         })
                       }
-                      className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 font-body-sm text-xs text-on-surface outline-none focus:border-primary"
+                      className={`w-full rounded-xl border bg-surface-container-low px-3 py-2 font-body-sm text-xs text-on-surface outline-none ${
+                        attendanceErrors.longitude
+                          ? "border-error focus:border-error"
+                          : "border-outline-variant/40 focus:border-primary"
+                      }`}
                     />
+                    {attendanceErrors.longitude && (
+                      <p className="font-body-sm text-[11px] text-error">
+                        {attendanceErrors.longitude}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <span className="block font-body-sm text-[11px] text-on-surface-variant/70">
-                      Radius (m)
+                      Radius (m) <span className="text-error">*</span>
                     </span>
                     <input
                       type="number"
@@ -803,8 +935,17 @@ const BranchFormPage = () => {
                           radiusMeters: Number(e.target.value),
                         })
                       }
-                      className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 font-body-sm text-xs text-on-surface outline-none focus:border-primary"
+                      className={`w-full rounded-xl border bg-surface-container-low px-3 py-2 font-body-sm text-xs text-on-surface outline-none ${
+                        attendanceErrors.radiusMeters
+                          ? "border-error focus:border-error"
+                          : "border-outline-variant/40 focus:border-primary"
+                      }`}
                     />
+                    {attendanceErrors.radiusMeters && (
+                      <p className="font-body-sm text-[11px] text-error">
+                        {attendanceErrors.radiusMeters}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -812,8 +953,13 @@ const BranchFormPage = () => {
               {/* Working days */}
               <div className="space-y-2">
                 <label className="block font-label-md text-xs font-medium text-on-surface-variant">
-                  Working Days
+                  Working Days <span className="text-error">*</span>
                 </label>
+                {attendanceErrors.workingDays && (
+                  <p className="font-body-sm text-[11px] text-error">
+                    {attendanceErrors.workingDays}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-2">
                   {DAYS.map((day) => {
                     const isSelected = attendance.workingDays.includes(day.value);
@@ -839,7 +985,7 @@ const BranchFormPage = () => {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <label className="block font-label-md text-xs font-medium text-on-surface-variant">
-                    Start Time
+                    Start Time <span className="text-error">*</span>
                   </label>
                   <input
                     type="time"
@@ -855,7 +1001,7 @@ const BranchFormPage = () => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="block font-label-md text-xs font-medium text-on-surface-variant">
-                    End Time
+                    End Time <span className="text-error">*</span>
                   </label>
                   <input
                     type="time"
@@ -871,7 +1017,7 @@ const BranchFormPage = () => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="block font-label-md text-xs font-medium text-on-surface-variant">
-                    Grace Period (min)
+                    Grace Period (min) <span className="text-error">*</span>
                   </label>
                   <input
                     type="number"
@@ -881,8 +1027,17 @@ const BranchFormPage = () => {
                     onChange={(e) =>
                       updateAttendanceConfig("gracePeriodMinutes", Number(e.target.value))
                     }
-                    className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3.5 py-2.5 font-body-md text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className={`w-full rounded-xl border bg-surface-container-low px-3.5 py-2.5 font-body-md text-sm text-on-surface outline-none focus:ring-2 ${
+                      attendanceErrors.gracePeriodMinutes
+                        ? "border-error focus:border-error focus:ring-error/20"
+                        : "border-outline-variant/40 focus:border-primary focus:ring-primary/20"
+                    }`}
                   />
+                  {attendanceErrors.gracePeriodMinutes && (
+                    <p className="font-body-sm text-[11px] text-error">
+                      {attendanceErrors.gracePeriodMinutes}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -901,16 +1056,16 @@ const BranchFormPage = () => {
                 <button
                   type="button"
                   disabled={isSubmitting}
-                  onClick={() => handleCreateSubmit(false)}
+                  onClick={() => handleCreateSubmit(true)}
                   className="rounded-xl border border-outline-variant/40 bg-surface-container-low px-5 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container transition-colors disabled:opacity-50"
                 >
-                  Skip & Use Defaults
+                  Use Default Hours
                 </button>
 
                 <button
                   type="button"
                   disabled={isSubmitting}
-                  onClick={() => handleCreateSubmit(true)}
+                  onClick={() => handleCreateSubmit(false)}
                   className="flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-md hover:bg-primary/90 disabled:opacity-50 transition-all"
                 >
                   <span className="material-symbols-outlined text-lg">add_business</span>

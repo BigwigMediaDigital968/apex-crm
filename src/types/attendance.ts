@@ -19,17 +19,18 @@ export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
   on_leave: "On Leave",
 };
 
+/** Values are uppercase to match the backend enum (constants/attendance.ts). */
 export const ATTENDANCE_WORK_MODE = {
-    WFO: "wfo",
-    WFH: "wfh",
+    WFO: "WFO",
+    WFH: "WFH",
 } as const;
 
 export type AttendanceWorkMode =
     (typeof ATTENDANCE_WORK_MODE)[keyof typeof ATTENDANCE_WORK_MODE];
 
 export const ATTENDANCE_WORK_MODE_LABELS: Record<AttendanceWorkMode, string> = {
-  wfo: "Office",
-  wfh: "Remote",
+  WFO: "Office",
+  WFH: "Remote",
 };
 
 export const ATTENDANCE_EVENT = {
@@ -76,36 +77,20 @@ export interface AttendanceRecord {
   updatedAt: string;
 }
 
+/**
+ * Mirrors attendanceCheckInSchema: workMode is always required, and the
+ * backend additionally rejects a WFO check-in that omits coordinates.
+ */
 export interface CheckInPayload {
-    latitude: string | number;
-    longitude: string | number;
+    workMode: AttendanceWorkMode;
+    latitude?: number;
+    longitude?: number;
 }
 
 export interface CheckOutPayload {
-    latitude: string | number;
-    longitude: string | number;
+    latitude?: number;
+    longitude?: number;
 }
-
-export interface AttendanceQueryParams {
-  employeeId?: string;
-  branchId?: string;
-  dateFrom?: string;
-  dateTo?: string;
-  status?: string;
-  page?: number;
-  limit?: number;
-}
-
-export interface AttendanceReport {
-  // Add the exact fields returned by getTeamAttendanceSummary
-  totalEmployees?: number;
-  present?: number;
-  late?: number;
-  absent?: number;
-}
-
-
-
 
 export interface AttendanceListQuery {
   date?: string;

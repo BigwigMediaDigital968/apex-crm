@@ -72,7 +72,6 @@ export const PERMISSIONS = {
   // Attendance Config
   ATTENDANCE_CONFIG_VIEW: "attendance-config:view",
   ATTENDANCE_CONFIG_UPDATE: "attendance-config:update",
-  LATE_CHECKIN_APPROVE: "attendance:approve",
 
   // Attendance
   ATTENDANCE_VIEW: "attendance:view",
@@ -81,6 +80,8 @@ export const PERMISSIONS = {
   ATTENDANCE_MANAGE: "attendance:manage",
   ATTENDANCE_REPORT: "attendance:report",
   ATTENDANCE_EXPORT: "attendance:export",
+  LATE_CHECKIN_SUBMIT: "attendance:late-checkin:submit",
+  LATE_CHECKIN_APPROVE: "attendance:late-checkin:approve",
 
   // Holidays
   HOLIDAY_VIEW: "holiday:view",
@@ -116,11 +117,33 @@ export const PERMISSIONS = {
   CALL_RECORDING_LISTEN: "call-recording:listen",
 
   STRINGEE_NUMBER_CREATE: "stringee_number:create",
-    STRINGEE_NUMBER_UPDATE: "stringee_number:update",
-
+  STRINGEE_NUMBER_UPDATE: "stringee_number:update",
   STRINGEE_NUMBER_VIEW: "stringee_number:view",
   STRINGEE_NUMBER_ASSIGN: "stringee_number:assign",
   STRINGEE_NUMBER_DELETE: "stringee_number:delete",
+
+  // Leave Management
+  LEAVE_VIEW: "leave:view",
+  LEAVE_CREATE: "leave:create",
+  LEAVE_UPDATE: "leave:update",
+  LEAVE_CANCEL: "leave:cancel",
+
+  LEAVE_APPROVE: "leave:approve",
+  LEAVE_REJECT: "leave:reject",
+
+  LEAVE_MANAGE: "leave:manage",
+
+  LEAVE_BALANCE_VIEW: "leave:balance:view",
+  LEAVE_BALANCE_MANAGE: "leave:balance:manage",
+  LEAVE_BALANCE_TRANSACTION_VIEW: "leave:balance:transaction:view",
+
+  LEAVE_POLICY_VIEW: "leave:policy:view",
+  LEAVE_POLICY_CREATE: "leave:policy:create",
+  LEAVE_POLICY_UPDATE: "leave:policy:update",
+  LEAVE_POLICY_DELETE: "leave:policy:delete",
+
+  LEAVE_REPORT: "leave:report",
+  LEAVE_EXPORT: "leave:export",
 
   // Customers
   CUSTOMER_VIEW: "customer:view",
@@ -186,6 +209,20 @@ export const PERMISSIONS = {
   // Audit
   AUDIT_VIEW: "audit:view",
   AUDIT_READ: "audit:read",
+
+  // Activity logs
+  ACTIVITY_LOG_VIEW: "activity-log:view",
+  ACTIVITY_LOG_EXPORT: "activity-log:export",
+  ACTIVITY_LOG_DELETE: "activity-log:delete",
+
+  // Module-specific activity streams
+  ACTIVITY_LOG_USER_VIEW: "activity-log:user:view",
+  ACTIVITY_LOG_LEAD_VIEW: "activity-log:lead:view",
+  ACTIVITY_LOG_STRINGEE_VIEW: "activity-log:stringee:view",
+  ACTIVITY_LOG_TASK_VIEW: "activity-log:task:view",
+  ACTIVITY_LOG_ATTENDANCE_VIEW: "activity-log:attendance:view",
+  ACTIVITY_LOG_LEAVE_VIEW: "activity-log:leave:view",
+  ACTIVITY_LOG_REVENUE_VIEW: "activity-log:revenue:view",
 } as const;
 
 export type Permission =
