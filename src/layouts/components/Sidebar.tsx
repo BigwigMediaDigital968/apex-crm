@@ -137,6 +137,36 @@ export const NAV_GROUPS: NavGroup[] = [
           },
         ],
       },
+      // {
+      //   label: "Leave",
+      //   icon: "event_busy",
+      //   permissions: [PERMISSIONS.LEAVE_VIEW],
+      //   children: [
+      //     {
+      //       // Head/Admin don't take leave through the system, so they get the
+      //       // approval queue instead — same split as My Attendance.
+      //       label: "My Leave",
+      //       path: "/leave",
+      //       roles: [ROLES.MANAGER, ROLES.EMPLOYEE],
+      //       permissions: [PERMISSIONS.LEAVE_VIEW],
+      //     },
+      //     {
+      //       label: "Approvals",
+      //       path: "/leave/approvals",
+      //       permissions: [PERMISSIONS.LEAVE_APPROVE, PERMISSIONS.LEAVE_REJECT],
+      //     },
+      //     {
+      //       label: "Balances",
+      //       path: "/leave/balances",
+      //       permissions: [PERMISSIONS.LEAVE_BALANCE_VIEW],
+      //     },
+      //     {
+      //       label: "Policies",
+      //       path: "/leave/policies",
+      //       permissions: [PERMISSIONS.LEAVE_POLICY_VIEW],
+      //     },
+      //   ],
+      // },
       {
         label: "Performance",
         path: "/performance",
@@ -149,12 +179,12 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "payments",
         permissions: [PERMISSIONS.REVENUE_VIEW],
       },
-      {
-        label: "Achievements",
-        path: "/achievements",
-        icon: "military_tech",
-        permissions: [PERMISSIONS.ACHIEVEMENT_VIEW],
-      },
+      // {
+      //   label: "Achievements",
+      //   path: "/achievements",
+      //   icon: "military_tech",
+      //   permissions: [PERMISSIONS.ACHIEVEMENT_VIEW],
+      // },
       {
         label: "Contests",
         path: "/contests",
@@ -187,13 +217,13 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "timer",
         permissions: [PERMISSIONS.AUDIT_VIEW],
       },
-      {
-        label: "Settings",
-        path: ROUTES.settings,
-        icon: "settings",
-        // No settings:view permission exists in the backend matrix.
-        roles: [ROLES.HEAD, ROLES.ADMIN],
-      },
+      // {
+      //   label: "Settings",
+      //   path: ROUTES.settings,
+      //   icon: "settings",
+      //   // No settings:view permission exists in the backend matrix.
+      //   roles: [ROLES.HEAD, ROLES.ADMIN],
+      // },
     ],
   },
 ];

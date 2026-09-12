@@ -33,6 +33,12 @@ import {
 import { TaskListPage, TaskFormPage, TaskDetailPage } from "@/features/tasks";
 import { CallHistoryPage, DialerPage, StringeeNumbersPage } from "./features/dialer";
 import { PerformanceDispatcher } from "./features/performance";
+import {
+  LeaveApprovalsPage,
+  LeaveBalancesPage,
+  LeavePolicyPage,
+  MyLeavePage,
+} from "./features/leave";
 import { CreateRevenuePage, RevenuePage } from "./features/revenue";
 import { ContestListPage } from "./features/contests";
 import { PERMISSIONS } from "./types/auth";
@@ -165,6 +171,38 @@ export const router = createBrowserRouter([
                 path: "/attendance/late-approvals",
                 element: <LateCheckInApprovalsPage />,
               },
+            ],
+          },
+
+          /* Leave */
+          {
+            element: <PermissionRoute permission={PERMISSIONS.LEAVE_VIEW} />,
+            children: [{ path: "/leave", element: <MyLeavePage /> }],
+          },
+          {
+            element: (
+              <PermissionRoute
+                permission={[PERMISSIONS.LEAVE_APPROVE, PERMISSIONS.LEAVE_REJECT]}
+              />
+            ),
+            children: [
+              { path: "/leave/approvals", element: <LeaveApprovalsPage /> },
+            ],
+          },
+          {
+            element: (
+              <PermissionRoute permission={PERMISSIONS.LEAVE_POLICY_VIEW} />
+            ),
+            children: [
+              { path: "/leave/policies", element: <LeavePolicyPage /> },
+            ],
+          },
+          {
+            element: (
+              <PermissionRoute permission={PERMISSIONS.LEAVE_BALANCE_VIEW} />
+            ),
+            children: [
+              { path: "/leave/balances", element: <LeaveBalancesPage /> },
             ],
           },
 
