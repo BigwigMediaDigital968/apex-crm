@@ -4,6 +4,7 @@ import {
   useReviewLateCheckIn,
 } from "../api/lateCheckInApi";
 import type { LateCheckInItem } from "../types/lateCheckIn";
+import RefreshButton from "@/components/ui/RefreshButton";
 
 export const LateCheckInApprovalsPage = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>("PENDING");
@@ -45,21 +46,25 @@ export const LateCheckInApprovalsPage = () => {
           </p>
         </div>
 
-        {/* Status Filter Tabs */}
-        <div className="flex gap-2 rounded-xl bg-surface-container-high p-1">
-          {["PENDING", "APPROVED", "REJECTED", ""].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setSelectedStatus(tab)}
-              className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-                selectedStatus === tab
-                  ? "bg-primary text-on-primary shadow-sm"
-                  : "text-on-surface-variant hover:text-on-surface"
-              }`}
-            >
-              {tab || "ALL"}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <RefreshButton queryKey={["late-checkins"]} />
+
+          {/* Status Filter Tabs */}
+          <div className="flex gap-2 rounded-xl bg-surface-container-high p-1">
+            {["PENDING", "APPROVED", "REJECTED", ""].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setSelectedStatus(tab)}
+                className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
+                  selectedStatus === tab
+                    ? "bg-primary text-on-primary shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface"
+                }`}
+              >
+                {tab || "ALL"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

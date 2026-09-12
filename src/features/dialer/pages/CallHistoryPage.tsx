@@ -4,7 +4,8 @@ import type {
 } from "@/services/dialerApi";
 import React, { useState } from "react";
 import { useAuthStore } from "@/store/auth.store";
-import { useCallLogs } from "../hooks/useCallHistory";
+import { dialerKeys, useCallLogs } from "../hooks/useCallHistory";
+import RefreshButton from "@/components/ui/RefreshButton";
 
 const formatDuration = (seconds: number) => {
   if (!seconds) return "--";
@@ -57,8 +58,7 @@ const CallHistoryPage: React.FC = () => {
     ...getDefaultRoleParams(),
   });
 
-  const { logs, pagination, loading, error, refetch } =
-    useCallLogs(queryParams);
+  const { logs, pagination, loading, error } = useCallLogs(queryParams);
 
   const handleFilterChange = (
     key: keyof GetCallLogsQueryParams,
@@ -96,14 +96,11 @@ const CallHistoryPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/30 text-xs font-bold text-on-surface transition-all"
-        >
-          <span className="material-symbols-outlined text-sm">refresh</span>
-          Refresh Logs
-        </button>
+        <RefreshButton
+          queryKey={dialerKeys.all}
+          label="Refresh Logs"
+          className="self-start sm:self-auto"
+        />
       </div>
 
       {/* Toolbar */}

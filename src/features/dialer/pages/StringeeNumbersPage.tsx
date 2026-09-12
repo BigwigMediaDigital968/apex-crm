@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import {
+    stringeeNumberKeys,
     useStringeeNumbersQuery,
     useCreateStringeeNumber,
     useAssignStringeeNumber,
     useUpdateStringeeNumber, // Add your update hook here
 } from "@/features/dialer/hooks/useStringeeNumbers";
 import { Can } from "@/components/Auth/Can";
+import RefreshButton from "@/components/ui/RefreshButton";
 import type { StringeeNumber } from "@/types/stringeeNumber";
 import { useBranchesQuery } from "@/features/branches";
 import AssignNumberModal from "../components/AssignNumberModal";
@@ -83,16 +85,20 @@ export const StringeeNumbersPage = () => {
                     </p>
                 </div>
 
-                <Can permission="stringee_number:create">
-                    <button
-                        type="button"
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-on-primary shadow-sm hover:opacity-95 transition-all self-start sm:self-auto"
-                    >
-                        <span className="material-symbols-outlined text-base">add_call</span>
-                        <span>Add New Number</span>
-                    </button>
-                </Can>
+                <div className="flex items-center gap-3 self-start sm:self-auto">
+                    <RefreshButton queryKey={stringeeNumberKeys.all} />
+
+                    <Can permission="stringee_number:create">
+                        <button
+                            type="button"
+                            onClick={() => setIsAddModalOpen(true)}
+                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-on-primary shadow-sm hover:opacity-95 transition-all"
+                        >
+                            <span className="material-symbols-outlined text-base">add_call</span>
+                            <span>Add New Number</span>
+                        </button>
+                    </Can>
+                </div>
             </div>
 
             {/* KPI Stats Summary */}

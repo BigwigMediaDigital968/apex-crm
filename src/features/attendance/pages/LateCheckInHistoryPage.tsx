@@ -1,17 +1,22 @@
 import { useLateCheckInRequests } from "../api/lateCheckInApi";
+import RefreshButton from "@/components/ui/RefreshButton";
 
 export const LateCheckInHistoryPage = () => {
   const { data: requests = [], isLoading } = useLateCheckInRequests();
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-on-surface mt-2">
-          Late Check-in History
-        </h1>
-        <p className="text-sm text-on-surface-variant">
-          View your submitted late access requests.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-on-surface mt-2">
+            Late Check-in History
+          </h1>
+          <p className="text-sm text-on-surface-variant">
+            View your submitted late access requests.
+          </p>
+        </div>
+
+        <RefreshButton queryKey={["late-checkins"]} className="mt-2" />
       </div>
 
       <div className="rounded-2xl border border-outline/20 bg-surface-container-lowest overflow-hidden shadow-sm">

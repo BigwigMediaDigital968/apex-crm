@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
 import { Can } from "@/components/Auth/Can";
+import RefreshButton from "@/components/ui/RefreshButton";
 import { useAuthStore } from "@/store/auth.store";
 import { ROLES } from "@/types/auth";
 import { useBranchesQuery } from "@/features/branches";
@@ -185,15 +186,19 @@ const RevenuePage = () => {
                     </p>
                 </div>
 
-                <Can permission="revenue:create">
-                    <Link
-                        to="/revenue/create"
-                        className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all self-start md:self-auto"
-                    >
-                        <span className="material-symbols-outlined text-lg">add_circle</span>
-                        <span>Log Revenue</span>
-                    </Link>
-                </Can>
+                <div className="flex items-center gap-3 self-start md:self-auto">
+                    <RefreshButton queryKey={["revenue-report"]} />
+
+                    <Can permission="revenue:create">
+                        <Link
+                            to="/revenue/create"
+                            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all"
+                        >
+                            <span className="material-symbols-outlined text-lg">add_circle</span>
+                            <span>Log Revenue</span>
+                        </Link>
+                    </Can>
+                </div>
             </div>
 
             {/* Summary cards */}

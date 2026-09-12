@@ -3,6 +3,7 @@ import { useAuditLogs } from "../hooks/useAuditLogs";
 import { AUDIT_LOG_PAGE_SIZE } from "../constants";
 import ActionBadge from "../components/ActionBadge";
 import AuditLogFilters from "../components/AuditLogFilters";
+import RefreshButton from "@/components/ui/RefreshButton";
 import type { AuditLog, AuditLogQueryParams } from "@/types/audit";
 
 const formatDateTime = (iso: string) =>
@@ -163,7 +164,7 @@ const AuditLogPage = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const queryParams = useMemo(() => filters, [filters]);
-  const { data, isLoading, isError, isFetching, refetch } = useAuditLogs(queryParams);
+  const { data, isLoading, isError, refetch } = useAuditLogs(queryParams);
 
   const logs = data?.logs ?? [];
 
@@ -205,20 +206,11 @@ const AuditLogPage = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => refetch()}
-          disabled={isFetching}
-            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all self-start md:self-auto shrink-0"
-        >
-          <span
-            className={`material-symbols-outlined text-base ${
-              isFetching ? "animate-spin text-white" : ""
-            }`}
-          >
-            refresh
-          </span>
-          <span>{isFetching ? "Refreshing..." : "Refresh Logs"}</span>
-        </button>
+        <RefreshButton
+          queryKey={["audit-logs"]}
+          label="Refresh Logs"
+          className="self-start md:self-auto shrink-0"
+        />
       </div>
 
       {/* Main Content Container */}

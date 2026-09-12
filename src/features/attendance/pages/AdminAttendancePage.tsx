@@ -5,7 +5,8 @@ import { useBranchesQuery } from "@/features/branches";
 import { useEmployeesQuery } from "@/features/employees";
 import type { AttendanceFilterState } from "../components/Attendancefilters";
 import { daysAgoInput, todayInput } from "@/utils/Date";
-import { useAttendanceRecords, useAttendanceSummary } from "../hooks/useAttendance";
+import { attendanceKeys, useAttendanceRecords, useAttendanceSummary } from "../hooks/useAttendance";
+import RefreshButton from "@/components/ui/RefreshButton";
 import AttendanceRecordsTable from "../components/Attendancerecordstable";
 import AttendanceSummaryTable from "../components/Attendancesummarytable";
 import AttendanceFilters from "../components/Attendancefilters";
@@ -107,16 +108,20 @@ const AdminAttendancePage = () => {
           </p>
         </div>
 
-        {(branches?.length ?? 0) > 0 && (
-          <span className="inline-flex items-center gap-1.5 self-start md:self-auto rounded-full bg-surface-container-lowest border border-outline-variant/30 px-3.5 py-1.5 font-label-sm text-[11px] font-bold text-on-surface-variant shadow-sm">
-            <span className="material-symbols-outlined text-sm text-primary">
-              domain
+        <div className="flex items-center gap-3 self-start md:self-auto">
+          {(branches?.length ?? 0) > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-container-lowest border border-outline-variant/30 px-3.5 py-1.5 font-label-sm text-[11px] font-bold text-on-surface-variant shadow-sm">
+              <span className="material-symbols-outlined text-sm text-primary">
+                domain
+              </span>
+              {isHead
+                ? `${branches?.length} ${branches?.length === 1 ? "Branch" : "Branches"} in scope`
+                : `${branches?.length} Assigned ${branches?.length === 1 ? "Branch" : "Branches"}`}
             </span>
-            {isHead
-              ? `${branches?.length} ${branches?.length === 1 ? "Branch" : "Branches"} in scope`
-              : `${branches?.length} Assigned ${branches?.length === 1 ? "Branch" : "Branches"}`}
-          </span>
-        )}
+          )}
+
+          <RefreshButton queryKey={attendanceKeys.all} />
+        </div>
       </div>
 
       {/* Filters */}

@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { Can } from "@/components/Auth/Can";
-import { useBranchesQuery, useUpdateBranchStatus } from "../hooks/useBranches";
+import { branchKeys, useBranchesQuery, useUpdateBranchStatus } from "../hooks/useBranches";
+import RefreshButton from "@/components/ui/RefreshButton";
 import type { Branch } from "@/types/branch";
 
 const BranchListPage = () => {
@@ -51,15 +52,19 @@ const BranchListPage = () => {
           </p>
         </div>
 
-        <Can permission="branch:create">
-          <button
-            onClick={() => navigate("/branches/new")}
-            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all self-start md:self-auto shrink-0"
-          >
-            <span className="material-symbols-outlined text-lg">add_business</span>
-            <span>Create Branch</span>
-          </button>
-        </Can>
+        <div className="flex items-center gap-3 self-start md:self-auto shrink-0">
+          <RefreshButton queryKey={branchKeys.all} />
+
+          <Can permission="branch:create">
+            <button
+              onClick={() => navigate("/branches/new")}
+              className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all shrink-0"
+            >
+              <span className="material-symbols-outlined text-lg">add_business</span>
+              <span>Create Branch</span>
+            </button>
+          </Can>
+        </div>
       </div>
 
       {/* Search */}
