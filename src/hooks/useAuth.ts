@@ -51,10 +51,12 @@
 // };
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { useNavigate } from "react-router";
 import { authApi } from "@/services/authApi";
 import { lateCheckInApi } from "@/services/authApi";
 import { useAuthStore } from "@/store/auth.store";
+import { getErrorMessage } from "@/utils/getErrorMessage";
 import type { LoginPayload } from "@/types/auth";
 
 export const useAuth = () => {
@@ -82,9 +84,37 @@ export const useLogin = () => {
   });
 };
 
+export const useUpdateProfile = () => {
+  const updateUser = useAuthStore((s) => s.updateUser);
+
+  return useMutation({
+    mutationFn: (payload: { name: string }) => authApi.updateMe(payload),
+    onSuccess: (user) => {
+      updateUser(user);
+      toast.success("Profile updated successfully");
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Failed to update profile"));
+    },
+  });
+};
+
+export const useChangePassword = () => {
+  return useMutation({
+    mutationFn: (payload: { currentPassword: string; newPassword: string }) =>
+      authApi.changePassword(payload),
+    onSuccess: () => {
+      toast.success("Password changed successfully");
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Failed to change password"));
+    },
+  });
+};
+
 export const useSubmitLateReason = () => {
   return useMutation({
-    mutationFn: (payload: { userId: string; reason: string }) =>
+    mutationFn: (payload: { lockoutToken: string; reason: string }) =>
       lateCheckInApi.submitReason(payload),
   });
 };

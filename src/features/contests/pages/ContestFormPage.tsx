@@ -62,7 +62,7 @@ export const ContestFormPage = () => {
                 {/* Header Section */}
                 <div>
                     <Link
-                        to={isEditMode && id ? `/contests/${id}` : "/contests"}
+                        to={isEditMode && id ? `/contest/${id}` : "/contests"}
                         className="inline-flex items-center gap-1 text-xs font-bold text-on-surface-variant hover:text-primary transition-colors mb-2"
                     >
                         <span className="material-symbols-outlined text-sm">arrow_back</span>

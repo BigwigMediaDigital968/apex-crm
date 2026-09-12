@@ -68,16 +68,12 @@ const Header = () => {
       {/* Right Controls Section */}
       <div className="flex items-center gap-3 sm:gap-4">
         {/* Quick Add Action Button */}
-        {/* <button className="hidden items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 text-xs font-semibold text-on-primary shadow-sm hover:bg-primary/90 transition-all sm:flex">
-          <span className="material-symbols-outlined text-lg">add</span>
-          <span>Quick Add</span>
-        </button> */}
-        <Can permission={['user:create', 'lead:create', 'branch:create']}>
+        <Can permission={["user:create", "lead:create", "branch:create"]}>
           <QuickAddMenu />
         </Can>
 
         {/* Notification Icon */}
-        <button
+        {/* <button
           aria-label="Notifications"
           className="relative flex h-10 w-10 items-center justify-center rounded-xl text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors"
         >
@@ -86,14 +82,18 @@ const Header = () => {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-error opacity-75" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-error" />
           </span>
-        </button>
+        </button> */}
 
         <div className="h-6 w-px bg-outline-variant/40" />
 
         {/* User Profile Menu */}
-        <div className="relative">
+        <div
+          className="relative"
+          onMouseEnter={() => setProfileOpen(true)}
+          onMouseLeave={() => setProfileOpen(false)}
+        >
           <button
-            onClick={() => setProfileOpen((v) => !v)}
+            onClick={() => setProfileOpen((prev) => !prev)}
             className="flex items-center gap-3 rounded-xl p-1 text-left hover:bg-surface-container-high transition-colors focus:outline-none"
           >
             <div className="hidden text-right sm:block">
@@ -112,11 +112,12 @@ const Header = () => {
           {/* Profile Dropdown Menu */}
           {profileOpen && (
             <>
-              {/* Overlay listener to dismiss on click outside */}
+              {/* Click-outside backdrop for touch screens / mobile */}
               <div
-                className="fixed inset-0 z-40"
+                className="fixed inset-0 z-40 sm:hidden"
                 onClick={() => setProfileOpen(false)}
               />
+
               <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-1.5 shadow-xl transition-all">
                 <div className="px-3 py-2 sm:hidden border-b border-outline-variant/20 mb-1">
                   <p className="text-xs font-semibold text-on-surface">
@@ -127,10 +128,9 @@ const Header = () => {
                   </p>
                 </div>
 
-                
                 <Link
                   to="/profile"
-                  onClick={()=>setProfileOpen(false)}
+                  onClick={() => setProfileOpen(false)}
                   className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container-high transition-colors"
                 >
                   <span className="material-symbols-outlined text-lg text-on-surface-variant">
@@ -138,32 +138,25 @@ const Header = () => {
                   </span>
                   My Profile
                 </Link>
-                <Link
-                  to={`/branches/${user?.branches[0]}`}
-                  onClick={()=>setProfileOpen(false)}
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container-high transition-colors"
-                >
-                  <span className="material-symbols-outlined text-lg text-on-surface-variant">
-                    business
-                  </span>
-                  My Branch
-                </Link>
-                {/* <a
-                  href="#settings"
-                  className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container-high transition-colors"
-                >
-                  <span className="material-symbols-outlined text-lg text-on-surface-variant">
-                    settings
-                  </span>
-                  Account Settings
-                </a> */}
+
+                {user?.branches?.[0] && (
+                  <Link
+                    to={`/branches/${user.branches[0]}`}
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-on-surface hover:bg-surface-container-high transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-lg text-on-surface-variant">
+                      business
+                    </span>
+                    My Branch
+                  </Link>
+                )}
 
                 <div className="my-1 border-t border-outline-variant/20" />
 
                 <button
                   onClick={() => logout()}
-                        disabled={isPending}
-
+                  disabled={isPending}
                   className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-error hover:bg-error-container/20 transition-colors"
                 >
                   <span className="material-symbols-outlined text-lg">

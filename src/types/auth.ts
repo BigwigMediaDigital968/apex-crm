@@ -174,6 +174,11 @@ export const PERMISSIONS = {
   REVENUE_DELETE: "revenue:delete",
   REVENUE_MANAGE: "revenue:manage",
 
+  // Contests
+  CONTEST_CREATE: "contest:create",
+  CONTEST_UPDATE: "contest:update",
+  CONTEST_VIEW_ALL: "contest:view-all",
+
   // Reports
   REPORT_VIEW: "report:view",
   REPORT_EXPORT: "report:export",

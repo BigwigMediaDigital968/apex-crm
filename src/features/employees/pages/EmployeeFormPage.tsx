@@ -111,8 +111,6 @@ const EmployeeFormPage = () => {
     const { id } = useParams<{ id: string }>();
     const isEditMode = !!id;
 
-    console.log("isEditMode", isEditMode)
-
     const currentUser = useAuthStore((s) => s.user);
     const isSelfEdit = isEditMode && currentUser?._id === id;
 
@@ -265,13 +263,6 @@ const EmployeeFormPage = () => {
                     JSON.stringify(originalBranchIds) !==
                     JSON.stringify(nextBranchIds);
 
-                console.log("originalBranchIds", {
-                    name: userForm.fullName.trim(),
-                    email: userForm.officialEmail.trim().toLowerCase(),
-                    role: userForm.role,
-                    isActive: userForm.isActive,
-                },)
-
                 await updateEmployee.mutateAsync({
                     id,
                     payload: {
@@ -391,8 +382,6 @@ const EmployeeFormPage = () => {
         return Object.keys(next).length === 0;
     };
 
-    console.log("profileForm", profileForm)
-
     const submitProfile = async (e: FormEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -439,14 +428,9 @@ const EmployeeFormPage = () => {
         };
 
         try {
-            console.log("herer")
-            console.log("profileMode", profileMode)
             if (profileMode === "create") {
-                console.log("herer 2")
                 await createProfile.mutateAsync(payload);
             } else {
-
-                console.log("existingProfile", existingProfile)
                 if (!existingProfile) return toast.error("Unable to Find Employee Profile");
 
                 await updateProfile.mutateAsync({
@@ -518,7 +502,6 @@ const EmployeeFormPage = () => {
     }
 
 
-    // console.log("existingEmployee",existingEmployee);
     const userSubmitting =
         createEmployee.isPending ||
         updateEmployee.isPending ||

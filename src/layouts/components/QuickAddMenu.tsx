@@ -9,7 +9,11 @@ interface QuickAddProps {
   onAddEmployee?: () => void;
 }
 
-const QuickAddMenu = ({ onAddLead, onAddBranch, onAddEmployee }: QuickAddProps) => {
+const QuickAddMenu = ({
+  onAddLead,
+  onAddBranch,
+  onAddEmployee,
+}: QuickAddProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -27,7 +31,7 @@ const QuickAddMenu = ({ onAddLead, onAddBranch, onAddEmployee }: QuickAddProps) 
 
   const handleAction = (actionType: "lead" | "branch" | "employee") => {
     setIsOpen(false);
-    
+
     switch (actionType) {
       case "lead":
         if (onAddLead) onAddLead();
@@ -65,7 +69,10 @@ const QuickAddMenu = ({ onAddLead, onAddBranch, onAddEmployee }: QuickAddProps) 
 
       {/* Popover Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-64 origin-top-right rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-2 shadow-xl ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150 z-50">
+        <div
+          onMouseLeave={() => setIsOpen(false)}
+          className="absolute right-0 mt-2 w-64 origin-top-right rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-2 shadow-xl ring-1 ring-black/5 animate-in fade-in slide-in-from-top-2 duration-150 z-50"
+        >
           <div className="px-3 py-2 border-b border-outline-variant/20">
             <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
               Quick Management Actions
@@ -74,51 +81,61 @@ const QuickAddMenu = ({ onAddLead, onAddBranch, onAddEmployee }: QuickAddProps) 
 
           <div className="mt-1 space-y-1">
             {/* Lead Option */}
-            <Can permission={'lead:create'}>
-                <button
-              onClick={() => handleAction("lead")}
-              className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-medium text-on-surface hover:bg-surface-container-low transition-colors group"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 group-hover:bg-sky-500 group-hover:text-white transition-colors">
-                <span className="material-symbols-outlined text-lg">person_add</span>
-              </div>
-              <div>
-                <p className="font-bold text-on-surface">New Lead</p>
-                <p className="text-[11px] text-on-surface-variant/70">Add client or inquiry record</p>
-              </div>
-            </button>
+            <Can permission={"lead:create"}>
+              <button
+                onClick={() => handleAction("lead")}
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-medium text-on-surface hover:bg-surface-container-low transition-colors group"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-600 group-hover:bg-sky-500 group-hover:text-white transition-colors">
+                  <span className="material-symbols-outlined text-lg">
+                    person_add
+                  </span>
+                </div>
+                <div>
+                  <p className="font-bold text-on-surface">New Lead</p>
+                  <p className="text-[11px] text-on-surface-variant/70">
+                    Add client or inquiry record
+                  </p>
+                </div>
+              </button>
             </Can>
             {/* Employee Option */}
-            <Can permission={'user:create'}>
-
-            <button
-              onClick={() => handleAction("employee")}
-              className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-medium text-on-surface hover:bg-surface-container-low transition-colors group"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                <span className="material-symbols-outlined text-lg">badge</span>
-              </div>
-              <div>
-                <p className="font-bold text-on-surface">New Employee</p>
-                <p className="text-[11px] text-on-surface-variant/70">Onboard workforce member</p>
-              </div>
-            </button>
+            <Can permission={"user:create"}>
+              <button
+                onClick={() => handleAction("employee")}
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-medium text-on-surface hover:bg-surface-container-low transition-colors group"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-600 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                  <span className="material-symbols-outlined text-lg">
+                    badge
+                  </span>
+                </div>
+                <div>
+                  <p className="font-bold text-on-surface">New Employee</p>
+                  <p className="text-[11px] text-on-surface-variant/70">
+                    Onboard workforce member
+                  </p>
+                </div>
+              </button>
             </Can>
-            <Can permission={'branch:create'}>
-
-            {/* Branch Option */}
-            <button
-              onClick={() => handleAction("branch")}
-              className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-medium text-on-surface hover:bg-surface-container-low transition-colors group"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-colors">
-                <span className="material-symbols-outlined text-lg">storefront</span>
-              </div>
-              <div>
-                <p className="font-bold text-on-surface">New Branch</p>
-                <p className="text-[11px] text-on-surface-variant/70">Create operational location</p>
-              </div>
-            </button>
+            <Can permission={"branch:create"}>
+              {/* Branch Option */}
+              <button
+                onClick={() => handleAction("branch")}
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-medium text-on-surface hover:bg-surface-container-low transition-colors group"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-colors">
+                  <span className="material-symbols-outlined text-lg">
+                    storefront
+                  </span>
+                </div>
+                <div>
+                  <p className="font-bold text-on-surface">New Branch</p>
+                  <p className="text-[11px] text-on-surface-variant/70">
+                    Create operational location
+                  </p>
+                </div>
+              </button>
             </Can>
           </div>
         </div>

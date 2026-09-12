@@ -1,11 +1,25 @@
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { TaskOverviewWidget } from "@/features/tasks";
-
-// Mapped permission badges/counters for quick overview
-
+import { useEmployeesQuery } from "@/features/employees";
+import { useBranchesQuery } from "@/features/branches/hooks/useBranches";
+import { useLeads } from "@/features/leads/hooks/useLeads";
+import { useAuditLogs } from "@/features/logs/hooks/useAuditLogs";
 
 const AdminDashboardPage = () => {
   const navigate = useNavigate();
+
+  const { data: usersData, isLoading: usersLoading } = useEmployeesQuery({ limit: 5 });
+  const { data: activeUsersData } = useEmployeesQuery({ isActive: true, limit: 1 });
+  const { data: branches, isLoading: branchesLoading } = useBranchesQuery();
+  const { data: leadsData, isLoading: leadsLoading } = useLeads({ limit: 1 });
+  const { data: auditData, isLoading: auditLoading } = useAuditLogs({
+    limit: 4,
+    sortOrder: "desc",
+  });
+
+  const activeBranches = (branches ?? []).filter((b) => b.isActive);
+  const totalUsers = usersData?.pagination.total ?? 0;
+  const activeUsers = activeUsersData?.pagination.total ?? 0;
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-8">
@@ -21,22 +35,11 @@ const AdminDashboardPage = () => {
             Admin Management Console
           </h1>
           <p className="font-body-md text-sm text-on-surface-variant mt-0.5">
-            Full system control across users, branch assignments, lead sources, and audit logs.
+            Full system control across users, branch assignments, and audit logs.
           </p>
         </div>
 
-        {/* Global Controls */}
         <div className="flex items-center gap-3">
-          {/* Permission check: report:export */}
-          {/* <button
-            onClick={() => alert("Exporting full system data log...")}
-            className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container transition-all shadow-sm"
-          >
-            <span className="material-symbols-outlined text-base">download</span>
-            <span>Export System Audit</span>
-          </button> */}
-
-          {/* Permission check: user:create */}
           <button
             onClick={() => navigate("/employees/onboard")}
             className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary hover:bg-primary/90 transition-all shadow-md"
@@ -54,18 +57,18 @@ const AdminDashboardPage = () => {
         <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-2">
           <div className="flex items-center justify-between">
             <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-              System Users (`user:*`)
+              System Users
             </p>
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <span className="material-symbols-outlined text-lg">manage_accounts</span>
             </span>
           </div>
           <p className="font-headline-md text-3xl font-extrabold text-on-surface">
-            148
+            {usersLoading ? "…" : totalUsers}
           </p>
           <p className="font-label-sm text-xs font-medium text-emerald-600 flex items-center gap-1">
             <span className="material-symbols-outlined text-sm">check_circle</span>
-            142 Active • 6 Pending
+            {usersLoading ? "Loading…" : `${activeUsers} Active • ${totalUsers - activeUsers} Inactive`}
           </p>
         </div>
 
@@ -73,35 +76,37 @@ const AdminDashboardPage = () => {
         <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-2">
           <div className="flex items-center justify-between">
             <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-              Active Branches (`branch:*`)
+              Active Branches
             </p>
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500/10 text-sky-700">
               <span className="material-symbols-outlined text-lg">storefront</span>
             </span>
           </div>
           <p className="font-headline-md text-3xl font-extrabold text-on-surface">
-            04
+            {branchesLoading ? "…" : String(activeBranches.length).padStart(2, "0")}
           </p>
-          <p className="font-label-sm text-xs font-medium text-on-surface-variant">
-            Delhi (HQ), Mumbai, BLR, Pune
+          <p className="font-label-sm text-xs font-medium text-on-surface-variant truncate">
+            {branchesLoading
+              ? "Loading…"
+              : activeBranches.map((b) => b.name).join(", ") || "No active branches"}
           </p>
         </div>
 
-        {/* Lead Sources Stat */}
+        {/* Leads Stat */}
         <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-2">
           <div className="flex items-center justify-between">
             <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-              Lead Channels (`lead-source:*`)
+              Total Leads
             </p>
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700">
-              <span className="material-symbols-outlined text-lg">share_location</span>
+              <span className="material-symbols-outlined text-lg">hub</span>
             </span>
           </div>
           <p className="font-headline-md text-3xl font-extrabold text-on-surface">
-            12
+            {leadsLoading ? "…" : leadsData?.pagination.total ?? 0}
           </p>
           <p className="font-label-sm text-xs font-medium text-on-surface-variant">
-            Website, Meta Ads, Referrals...
+            Across all managed branches
           </p>
         </div>
 
@@ -109,18 +114,18 @@ const AdminDashboardPage = () => {
         <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-2">
           <div className="flex items-center justify-between">
             <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-              Security Logs (`audit:*`)
+              Audit Log Entries
             </p>
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-500/10 text-purple-700">
               <span className="material-symbols-outlined text-lg">shield</span>
             </span>
           </div>
           <p className="font-headline-md text-3xl font-extrabold text-on-surface">
-            1,240
+            {auditLoading ? "…" : auditData?.pagination.total ?? 0}
           </p>
-          <p className="font-label-sm text-xs font-bold text-emerald-600 flex items-center gap-1">
+          <p className="font-label-sm text-xs font-bold text-on-surface-variant flex items-center gap-1">
             <span className="material-symbols-outlined text-sm">verified</span>
-            No system anomalies
+            Recorded system-wide
           </p>
         </div>
 
@@ -134,7 +139,6 @@ const AdminDashboardPage = () => {
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
 
-          {/* Employee Management */}
           <button
             onClick={() => navigate("/employees")}
             className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
@@ -147,7 +151,6 @@ const AdminDashboardPage = () => {
             </span>
           </button>
 
-          {/* Branch Management */}
           <button
             onClick={() => navigate("/branches")}
             className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
@@ -160,7 +163,6 @@ const AdminDashboardPage = () => {
             </span>
           </button>
 
-          {/* Lead Management */}
           <button
             onClick={() => navigate("/leads")}
             className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
@@ -173,7 +175,6 @@ const AdminDashboardPage = () => {
             </span>
           </button>
 
-          {/* Activity Logs */}
           <button
             onClick={() => navigate("/logs")}
             className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
@@ -186,7 +187,6 @@ const AdminDashboardPage = () => {
             </span>
           </button>
 
-          {/* Task Management */}
           <button
             onClick={() => navigate("/tasks")}
             className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
@@ -211,7 +211,7 @@ const AdminDashboardPage = () => {
       {/* 4. Core Management Section (User Management & Audit Activity) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Left Column (User Directory Table with Actions) */}
+        {/* Left Column (User Directory Table) */}
         <div className="lg:col-span-2 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm overflow-hidden">
           <div className="p-5 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -219,13 +219,16 @@ const AdminDashboardPage = () => {
                 User Directory & Access Control
               </h3>
               <p className="font-body-sm text-xs text-on-surface-variant">
-                Manage roles, update statuses (`user:status:update`), and reassign branches.
+                Manage roles, statuses, and branch assignments.
               </p>
             </div>
 
-            <button className="font-label-md text-xs font-bold text-primary hover:underline self-start sm:self-auto">
+            <Link
+              to="/employees"
+              className="font-label-md text-xs font-bold text-primary hover:underline self-start sm:self-auto"
+            >
               View All Users
-            </button>
+            </Link>
           </div>
 
           <div className="overflow-x-auto">
@@ -240,97 +243,64 @@ const AdminDashboardPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/20 font-body-sm text-xs text-on-surface">
-                {[
-                  { id: "1", name: "Rahul Desai", email: "rahul@company.com", role: "Sales Manager", branch: "Delhi (HQ)", status: "Active" },
-                  { id: "2", name: "Priya Sharma", email: "priya@company.com", role: "Sales Agent", branch: "Mumbai", status: "Active" },
-                  { id: "3", name: "Amit Kumar", email: "amit@company.com", role: "HR Manager", branch: "Bengaluru", status: "Inactive" },
-                  { id: "4", name: "Neha Singh", email: "neha@company.com", role: "Sales Agent", branch: "Pune", status: "Active" },
-                ].map((user) => (
-                  <tr key={user.id} className="hover:bg-surface-container-low/30 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div>
-                        <p className="font-label-md font-bold">{user.name}</p>
-                        <p className="font-body-sm text-[11px] text-on-surface-variant/70">{user.email}</p>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 font-label-sm text-xs font-semibold">
-                      {user.role}
-                    </td>
-                    <td className="py-3.5 px-4 text-on-surface-variant">
-                      {user.branch}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      {/* `user:status:update` toggle */}
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${user.status === "Active"
-                          ? "bg-emerald-500/10 text-emerald-700"
-                          : "bg-error/10 text-error"
-                          }`}
-                      >
-                        <span className={`h-1.5 w-1.5 rounded-full ${user.status === "Active" ? "bg-emerald-500" : "bg-error"}`} />
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      {/* Action buttons with tooltips */}
-                      <div className="flex items-center justify-end gap-1">
-                        {/* Edit User (`user:update`) */}
-                        <div className="relative group">
-                          <button
-                            aria-label="Edit User"
-                            onClick={() => alert(`Edit ${user.name}`)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-base">edit</span>
-                          </button>
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-20">
-                            <div className="bg-on-surface text-surface-container-lowest font-label-sm text-[10px] py-1 px-2 rounded shadow-md whitespace-nowrap">
-                              Edit User
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Assign Branch (`user:assign-branch`) */}
-                        <div className="relative group">
-                          <button
-                            aria-label="Assign Branch"
-                            onClick={() => alert(`Assign Branch for ${user.name}`)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-base">location_city</span>
-                          </button>
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-20">
-                            <div className="bg-on-surface text-surface-container-lowest font-label-sm text-[10px] py-1 px-2 rounded shadow-md whitespace-nowrap">
-                              Assign Branch
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Delete User (`user:delete`) */}
-                        <div className="relative group">
-                          <button
-                            aria-label="Delete User"
-                            onClick={() => alert(`Delete ${user.name}`)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-error/80 hover:bg-error/10 hover:text-error transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-base">delete</span>
-                          </button>
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-20">
-                            <div className="bg-on-surface text-surface-container-lowest font-label-sm text-[10px] py-1 px-2 rounded shadow-md whitespace-nowrap">
-                              Delete User
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                {usersLoading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <tr key={i}>
+                      <td colSpan={5} className="py-3.5 px-4">
+                        <div className="h-6 rounded-lg bg-surface-container-high animate-pulse" />
+                      </td>
+                    </tr>
+                  ))
+                ) : (usersData?.employees ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-6 px-4 text-center text-on-surface-variant">
+                      No users found.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  usersData!.employees.map((user) => (
+                    <tr key={user._id} className="hover:bg-surface-container-low/30 transition-colors">
+                      <td className="py-3.5 px-4">
+                        <div>
+                          <p className="font-label-md font-bold">{user.name}</p>
+                          <p className="font-body-sm text-[11px] text-on-surface-variant/70">{user.email}</p>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-label-sm text-xs font-semibold capitalize">
+                        {user.role}
+                      </td>
+                      <td className="py-3.5 px-4 text-on-surface-variant">
+                        {user.branches[0]?.name ?? "—"}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${user.isActive
+                            ? "bg-emerald-500/10 text-emerald-700"
+                            : "bg-error/10 text-error"
+                            }`}
+                        >
+                          <span className={`h-1.5 w-1.5 rounded-full ${user.isActive ? "bg-emerald-500" : "bg-error"}`} />
+                          {user.isActive ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <Link
+                          to={`/employees/${user._id}/edit`}
+                          aria-label="Edit User"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-base">edit</span>
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Right Column: Security Audit Trail (`audit:view`, `audit:read`) */}
+        {/* Right Column: Security Audit Trail */}
         <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 space-y-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -339,38 +309,47 @@ const AdminDashboardPage = () => {
                 Audit Trail Log
               </h3>
             </div>
-            <span className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-100/60 px-2 py-0.5 rounded-md">
-              Live Feed
-            </span>
           </div>
 
           <div className="space-y-3.5 divide-y divide-outline-variant/10">
-            {[
-              { id: "1", action: "user:status:update", details: "Admin changed Rahul Desai status to Active", time: "2 mins ago" },
-              { id: "2", action: "branch:create", details: "New Branch 'Pune' created by Admin", time: "1 hour ago" },
-              { id: "3", action: "user:assign-role", details: "Assigned 'Sales Manager' to Priya S.", time: "3 hours ago" },
-              { id: "4", action: "lead-source:create", details: "Added 'Meta Ads Q3' lead channel", time: "Yesterday" },
-            ].map((audit) => (
-              <div key={audit.id} className="pt-3 first:pt-0 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-label-sm text-[10px] font-bold font-mono text-primary bg-primary/5 px-2 py-0.5 rounded">
-                    {audit.action}
-                  </span>
-                  <span className="font-body-sm text-[10px] text-on-surface-variant/60">
-                    {audit.time}
-                  </span>
+            {auditLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="pt-3 first:pt-0">
+                  <div className="h-10 rounded-lg bg-surface-container-high animate-pulse" />
                 </div>
-                <p className="font-body-sm text-xs text-on-surface">
-                  {audit.details}
-                </p>
-              </div>
-            ))}
+              ))
+            ) : (auditData?.logs ?? []).length === 0 ? (
+              <p className="py-4 text-center font-body-sm text-xs text-on-surface-variant/70">
+                No audit activity recorded yet.
+              </p>
+            ) : (
+              auditData!.logs.map((log) => (
+                <div key={log._id} className="pt-3 first:pt-0 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-label-sm text-[10px] font-bold font-mono text-primary bg-primary/5 px-2 py-0.5 rounded">
+                      {log.action}
+                    </span>
+                    <span className="font-body-sm text-[10px] text-on-surface-variant/60">
+                      {new Date(log.createdAt).toLocaleString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
+                  <p className="font-body-sm text-xs text-on-surface">
+                    {log.actor?.name ?? "System"} — {log.entity}
+                  </p>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="pt-2 text-center border-t border-outline-variant/20">
-            <button className="font-label-md text-xs font-bold text-primary hover:underline">
+            <Link to="/logs" className="font-label-md text-xs font-bold text-primary hover:underline">
               View All Audit Logs
-            </button>
+            </Link>
           </div>
         </div>
 

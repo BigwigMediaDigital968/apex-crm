@@ -17,7 +17,6 @@ const BranchDetailPage = () => {
     const user = useAuthStore((s) => s.user);
     const { id } = useParams<{ id: string }>();
     const { data: branch, isLoading, isFetching } = useBranch(id);
-    console.log("Branch data:", branch, "Loading:", isLoading, "Fetching:", isFetching);
     const { data: attendanceData, isLoading: attendanceLoading } =
         useBranchAttendanceConfig(id);
     const updateStatus = useUpdateBranchStatus();

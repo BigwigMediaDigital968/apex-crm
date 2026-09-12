@@ -25,7 +25,6 @@ const ContestListPage = () => {
     const toggleStatus = useToggleContestStatus();
 
     const contests = data?.contests ?? [];
-    console.log(contests)
     const pagination = data?.pagination;
 
     const handleConfirmToggle = async () => {

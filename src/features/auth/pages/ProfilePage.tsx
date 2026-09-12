@@ -1,28 +1,29 @@
 import { useEmployeeQuery } from "@/features/employees";
+import { useChangePassword, useUpdateProfile } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/auth.store";
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
+import toast from "react-hot-toast";
 
 
 const ProfilePage = () => {
     const user = useAuthStore((s) => s.user);
 
     const { data: userProfile, isLoading: userProfileLoading } = useEmployeeQuery(user?._id);
-    console.log("user:", user);
-    console.log("user id:", user?._id);
-    console.log("userProfile:", userProfile);
-    console.log("loading:", userProfileLoading);
 
     const navigate = useNavigate();
 
+    const updateProfile = useUpdateProfile();
+    const changePassword = useChangePassword();
+
     const [isEditing, setIsEditing] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPasswordChange, setShowPasswordChange] = useState(false);
 
-    // Form State
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
+    // Personal info form state — name only. Email is admin-managed and never
+    // editable here (changing it would change the account's login identity).
+    const [name, setName] = useState("");
+
+    const [passwordForm, setPasswordForm] = useState({
         currentPassword: "",
         newPassword: "",
         confirmPassword: "",
@@ -30,36 +31,30 @@ const ProfilePage = () => {
 
     useEffect(() => {
         if (userProfile) {
-            setFormData((prev) => ({
-                ...prev,
-                name: userProfile.name ?? "",
-                email: userProfile.email ?? "",
-            }));
+            setName(userProfile.name ?? "");
         }
     }, [userProfile]);
 
-    const handleSubmit = async (e: FormEvent) => {
+    const handleProfileSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        await updateProfile.mutateAsync({ name });
+        setIsEditing(false);
+    };
+
+    const handlePasswordSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
-        if (showPasswordChange && formData.newPassword !== formData.confirmPassword) {
-            alert("New passwords do not match!");
+        if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+            toast.error("New passwords do not match!");
             return;
         }
 
-        setIsSubmitting(true);
-
-        try {
-            console.log("Updating profile:", formData);
-            // TODO: Call your backend API endpoint (e.g., PUT /api/users/profile)
-
-            setIsEditing(false);
-            setShowPasswordChange(false);
-            setFormData((prev) => ({ ...prev, currentPassword: "", newPassword: "", confirmPassword: "" }));
-        } catch (error) {
-            console.error("Failed to update profile", error);
-        } finally {
-            setIsSubmitting(false);
-        }
+        await changePassword.mutateAsync({
+            currentPassword: passwordForm.currentPassword,
+            newPassword: passwordForm.newPassword,
+        });
+        setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+        setShowPasswordChange(false);
     };
 
     if (userProfileLoading) {
@@ -111,8 +106,8 @@ const ProfilePage = () => {
                         <button
                             type="button"
                             onClick={() => {
+                                setName(userProfile?.name ?? "");
                                 setIsEditing(false);
-                                setShowPasswordChange(false);
                             }}
                             className="rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container transition-colors"
                         >
@@ -121,13 +116,13 @@ const ProfilePage = () => {
                         <button
                             type="submit"
                             form="my-profile-form"
-                            disabled={isSubmitting}
+                            disabled={updateProfile.isPending}
                             className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 disabled:opacity-50 transition-all"
                         >
                             <span className="material-symbols-outlined text-base">
-                                {isSubmitting ? "sync" : "save"}
+                                {updateProfile.isPending ? "sync" : "save"}
                             </span>
-                            <span>{isSubmitting ? "Saving..." : "Save Changes"}</span>
+                            <span>{updateProfile.isPending ? "Saving..." : "Save Changes"}</span>
                         </button>
                     </div>
                 )}
@@ -170,10 +165,10 @@ const ProfilePage = () => {
                 </div>
             </div>
 
-            {/* 3. Form Content Area */}
+            {/* 3. Personal Information Form */}
             <form
                 id="my-profile-form"
-                onSubmit={handleSubmit}
+                onSubmit={handleProfileSubmit}
                 className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 sm:p-8 shadow-sm space-y-8"
             >
                 {/* Personal Details */}
@@ -193,14 +188,15 @@ const ProfilePage = () => {
                                 id="name"
                                 type="text"
                                 disabled={!isEditing}
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
                                 className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3.5 py-2.5 font-body-md text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60 transition-all"
                                 required
+                                minLength={2}
                             />
                         </div>
 
-                        {/* Email */}
+                        {/* Email — always read-only; changing login email is admin-managed */}
                         <div className="space-y-1.5">
                             <label htmlFor="email" className="block font-label-md text-xs font-medium text-on-surface-variant">
                                 Email Address
@@ -208,12 +204,13 @@ const ProfilePage = () => {
                             <input
                                 id="email"
                                 type="email"
-                                disabled={!isEditing}
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3.5 py-2.5 font-body-md text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60 transition-all"
-                                required
+                                disabled
+                                value={userProfile?.email ?? ""}
+                                className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3.5 py-2.5 font-body-md text-sm text-on-surface outline-none disabled:opacity-60 transition-all"
                             />
+                            <p className="font-body-sm text-[11px] text-on-surface-variant/70">
+                                Contact an admin to change your email address.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -250,89 +247,109 @@ const ProfilePage = () => {
                         </div>
                     )
                 }
+            </form>
 
-                <hr className="border-outline-variant/20" />
+            {/* 4. Security / Password — a separate section with its own form and
+                save action, independent of the "Edit Profile" flow above. */}
+            <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 sm:p-8 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                    <h3 className="font-headline-sm text-base font-bold text-on-surface flex items-center gap-2">
+                        <span className="material-symbols-outlined text-primary text-xl">lock</span>
+                        Security & Password
+                    </h3>
 
-                {/* Security / Password Section */}
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-headline-sm text-base font-bold text-on-surface flex items-center gap-2">
-                            <span className="material-symbols-outlined text-primary text-xl">lock</span>
-                            Security & Password
-                        </h3>
+                    {!showPasswordChange && (
+                        <button
+                            type="button"
+                            onClick={() => setShowPasswordChange(true)}
+                            className="font-label-md text-xs font-bold text-primary hover:underline"
+                        >
+                            Change Password
+                        </button>
+                    )}
+                </div>
 
-                        {isEditing && !showPasswordChange && (
-                            <button
-                                type="button"
-                                onClick={() => setShowPasswordChange(true)}
-                                className="font-label-md text-xs font-bold text-primary hover:underline"
-                            >
-                                Change Password
-                            </button>
-                        )}
-                    </div>
+                {!showPasswordChange ? (
+                    <p className="font-body-sm text-xs text-on-surface-variant">
+                        ••••••••••••
+                    </p>
+                ) : (
+                    <form
+                        onSubmit={handlePasswordSubmit}
+                        className="space-y-4 bg-surface-container-low/50 p-4 rounded-xl border border-outline-variant/30"
+                    >
+                        <div className="space-y-1.5">
+                            <label htmlFor="currentPassword" className="block font-label-md text-xs font-medium text-on-surface-variant">
+                                Current Password
+                            </label>
+                            <input
+                                id="currentPassword"
+                                type="password"
+                                value={passwordForm.currentPassword}
+                                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                                className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3.5 py-2 font-body-md text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                required
+                                minLength={8}
+                            />
+                        </div>
 
-                    {!showPasswordChange ? (
-                        <p className="font-body-sm text-xs text-on-surface-variant">
-                            •••••••••••• (Password last changed 3 months ago)
-                        </p>
-                    ) : (
-                        <div className="space-y-4 bg-surface-container-low/50 p-4 rounded-xl border border-outline-variant/30">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <label htmlFor="currentPassword" className="block font-label-md text-xs font-medium text-on-surface-variant">
-                                    Current Password
+                                <label htmlFor="newPassword" className="block font-label-md text-xs font-medium text-on-surface-variant">
+                                    New Password
                                 </label>
                                 <input
-                                    id="currentPassword"
+                                    id="newPassword"
                                     type="password"
-                                    value={formData.currentPassword}
-                                    onChange={(e) => setFormData({ ...formData, currentPassword: e.target.value })}
+                                    value={passwordForm.newPassword}
+                                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
                                     className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3.5 py-2 font-body-md text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                    required={showPasswordChange}
+                                    required
+                                    minLength={8}
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-1.5">
-                                    <label htmlFor="newPassword" className="block font-label-md text-xs font-medium text-on-surface-variant">
-                                        New Password
-                                    </label>
-                                    <input
-                                        id="newPassword"
-                                        type="password"
-                                        value={formData.newPassword}
-                                        onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                                        className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3.5 py-2 font-body-md text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                        required={showPasswordChange}
-                                    />
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <label htmlFor="confirmPassword" className="block font-label-md text-xs font-medium text-on-surface-variant">
-                                        Confirm New Password
-                                    </label>
-                                    <input
-                                        id="confirmPassword"
-                                        type="password"
-                                        value={formData.confirmPassword}
-                                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                                        className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3.5 py-2 font-body-md text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                        required={showPasswordChange}
-                                    />
-                                </div>
+                            <div className="space-y-1.5">
+                                <label htmlFor="confirmPassword" className="block font-label-md text-xs font-medium text-on-surface-variant">
+                                    Confirm New Password
+                                </label>
+                                <input
+                                    id="confirmPassword"
+                                    type="password"
+                                    value={passwordForm.confirmPassword}
+                                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                                    className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-lowest px-3.5 py-2 font-body-md text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    required
+                                    minLength={8}
+                                />
                             </div>
+                        </div>
 
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="submit"
+                                disabled={changePassword.isPending}
+                                className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 disabled:opacity-50 transition-all"
+                            >
+                                <span className="material-symbols-outlined text-base">
+                                    {changePassword.isPending ? "sync" : "save"}
+                                </span>
+                                <span>{changePassword.isPending ? "Updating..." : "Update Password"}</span>
+                            </button>
                             <button
                                 type="button"
-                                onClick={() => setShowPasswordChange(false)}
+                                onClick={() => {
+                                    setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+                                    setShowPasswordChange(false);
+                                }}
                                 className="font-label-sm text-xs text-on-surface-variant hover:text-on-surface"
                             >
-                                Cancel Password Change
+                                Cancel
                             </button>
                         </div>
-                    )}
-                </div>
-            </form>
+                    </form>
+                )}
+            </div>
 
         </div>
     );

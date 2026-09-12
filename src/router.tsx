@@ -177,10 +177,21 @@ export const router = createBrowserRouter([
           },
 
           /* Contests */
-          { path: "/contests", element: <ContestListPage /> },
-          { path: "/contest/new", element: <ContestFormPage /> },
+          {
+            element: <PermissionRoute permission={PERMISSIONS.CONTEST_VIEW_ALL} />,
+            children: [{ path: "/contests", element: <ContestListPage /> }],
+          },
+          {
+            element: <PermissionRoute permission={PERMISSIONS.CONTEST_CREATE} />,
+            children: [{ path: "/contest/new", element: <ContestFormPage /> }],
+          },
           { path: "/contest/:id", element: <ContestDetailsPage /> },
-          { path: "/contest/:id/edit", element: <ContestFormPage /> },
+          {
+            element: <PermissionRoute permission={PERMISSIONS.CONTEST_UPDATE} />,
+            children: [
+              { path: "/contest/:id/edit", element: <ContestFormPage /> },
+            ],
+          },
 
           /* Catch-all & Errors */
           { path: "/unauthorized", element: <UnauthorizedPage /> },

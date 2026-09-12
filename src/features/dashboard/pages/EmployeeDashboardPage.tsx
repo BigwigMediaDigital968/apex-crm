@@ -1,18 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useAuthStore } from "@/store/auth.store";
 import { useLeads, useMyFollowUps } from "@/features/leads/hooks/useLeads";
 import { useAttendanceRecords, } from "@/features/attendance/hooks/useAttendance";
+import { useRevenueReportQuery } from "@/features/revenue/hooks/useRevenue";
+import { REVENUE_STATUS, type RevenueStatusSummary } from "@/types/revenue";
+import TaskOverviewWidget from "@/features/tasks/components/TaskOverviewWidget";
 import { todayInput } from "@/utils/Date";
 import { DailyAttendanceCard } from "../components/DailyAttendanceCard";
-
-interface CallLog {
-  id: string;
-  name: string;
-  timeAgo: string;
-  type: "missed" | "outgoing" | "inbound";
-  notes: string;
-}
 
 const initialsOf = (name: string) =>
   name
@@ -25,35 +20,34 @@ const initialsOf = (name: string) =>
 const isFollowUpOverdue = (scheduledAt: string) =>
   new Date(scheduledAt).getTime() < Date.now();
 
-const MOCK_CALL_LOGS: CallLog[] = [
-  {
-    id: "1",
-    name: "Vikram Rathore",
-    timeAgo: "10 mins ago",
-    type: "missed",
-    notes: "Missed call. Lead source: Website. Need to call back...",
-  },
-  {
-    id: "2",
-    name: "Sanjay Mehra",
-    timeAgo: "1 hr ago",
-    type: "outgoing",
-    notes: '"Interested in Bulk Discount. Asked for pricing sheet..."',
-  },
-  {
-    id: "3",
-    name: "Kiran Bajaj",
-    timeAgo: "3 hrs ago",
-    type: "inbound",
-    notes: "Inbound inquiry. Budget: ₹5L. Hot lead transfer from team.",
-  },
-];
+const formatInr = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
+
+/** Reads/writes a per-user scratchpad draft in this browser's localStorage —
+ * private to this device, but real enough to justify the "Autosaved" label
+ * (previously it just held React state and vanished on refresh). */
+const scratchpadKey = (userId: string) => `crm:scratchpad:${userId}`;
 
 const EmployeeDashboardPage = () => {
-  const [scratchpadText, setScratchpadText] = useState("");
-
   const currentUser = useAuthStore((s) => s.user);
   const firstName = currentUser?.name?.split(" ")[0] ?? "there";
+
+  const [scratchpadText, setScratchpadText] = useState(() => {
+    if (!currentUser?._id) return "";
+    try {
+      return localStorage.getItem(scratchpadKey(currentUser._id)) ?? "";
+    } catch {
+      return "";
+    }
+  });
+
+  useEffect(() => {
+    if (!currentUser?._id) return;
+    try {
+      localStorage.setItem(scratchpadKey(currentUser._id), scratchpadText);
+    } catch {
+      // localStorage unavailable (private mode, etc.) — draft just won't persist
+    }
+  }, [scratchpadText, currentUser?._id]);
 
   const { data: myLeadsData, isLoading: leadsLoading } = useLeads({
     assignedTo: currentUser?._id,
@@ -78,6 +72,15 @@ const EmployeeDashboardPage = () => {
     () => pendingFollowUps.filter((f) => isFollowUpOverdue(f.scheduledAt)).length,
     [pendingFollowUps]
   );
+
+  const { data: revenueData, isLoading: revenueLoading } = useRevenueReportQuery({
+    viewMode: "INDIVIDUAL",
+  });
+  const verifiedRevenue = Array.isArray(revenueData?.summary)
+    ? (revenueData.summary as RevenueStatusSummary[]).find(
+        (s) => s._id === REVENUE_STATUS.VERIFIED
+      )?.totalAmount ?? 0
+    : 0;
 
   const today = todayInput();
 
@@ -213,91 +216,71 @@ const EmployeeDashboardPage = () => {
           </span>
         </div>
 
-        {/* Calls Today */}
+        {/* My Revenue */}
         <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-surface-container-lowest p-5 shadow-sm border-b-2 border-b-primary">
           <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-            Calls Today
+            My Verified Revenue
           </p>
           <p className="font-headline-md text-3xl font-extrabold text-on-surface mt-1">
-            20
+            {revenueLoading ? "—" : formatInr(verifiedRevenue)}
           </p>
-          <p className="font-body-sm text-xs text-on-surface-variant mt-2 flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm text-emerald-600">
-              check_circle
-            </span>
-            Goal: 40 calls
-          </p>
+          <Link
+            to="/revenue"
+            className="font-label-sm text-xs font-semibold text-primary mt-2 flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-sm">payments</span>
+            View revenue log
+          </Link>
           <span className="material-symbols-outlined absolute -right-3 -bottom-3 text-7xl text-on-surface-variant/5 pointer-events-none">
-            call
-          </span>
-        </div>
-
-        {/* Active Tasks */}
-        <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm">
-          <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-            Active Tasks
-          </p>
-          <p className="font-headline-md text-3xl font-extrabold text-on-surface mt-1">
-            04
-          </p>
-          <p className="font-body-sm text-xs text-on-surface-variant mt-2 flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">schedule</span>
-            2 Due by EOD
-          </p>
-          <span className="material-symbols-outlined absolute -right-3 -bottom-3 text-7xl text-on-surface-variant/5 pointer-events-none">
-            task_alt
+            payments
           </span>
         </div>
       </div>
 
-      {/* Main Grid: Left Column (Target & Follow-ups), Right Column (Scratchpad & Call Logs) */}
+      {/* Main Grid: Left Column (Follow-ups & Tasks), Right Column (Scratchpad & Calls) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Left Span (2 Columns) */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* Monthly Sales Target Card */}
+          {/* Revenue Summary Card */}
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-primary/95 to-primary/80 p-6 sm:p-8 text-on-primary shadow-md">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <h2 className="font-headline-sm text-xl font-bold">
-                  Monthly Sales Target
+                  Revenue Summary
                 </h2>
                 <p className="font-body-sm text-xs text-on-primary/70 mt-0.5">
-                  Quarter 3 Revenue Performance
+                  Verified vs. pending, all time
                 </p>
               </div>
 
               <div className="text-left sm:text-right">
                 <p className="font-headline-md text-3xl font-extrabold tracking-tight">
-                  ₹7.8L{" "}
+                  {revenueLoading ? "—" : formatInr(verifiedRevenue)}
                   <span className="text-lg font-normal text-on-primary/60">
-                    / ₹10.0L
+                    {" "}verified
                   </span>
                 </p>
               </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="mt-6 space-y-2">
-              <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/20">
-                <div
-                  className="h-full rounded-full bg-sky-300 transition-all duration-500"
-                  style={{ width: "78%" }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <span className="font-label-sm text-xs font-bold tracking-wider uppercase text-sky-200">
-                  78% Completed
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 font-label-sm text-[11px] backdrop-blur-md">
-                  <span className="material-symbols-outlined text-sm text-amber-300">
-                    stars
-                  </span>
-                  Incentive Tier 2 Unlocked
-                </span>
-              </div>
+            {/* Pending amount */}
+            <div className="mt-6 flex items-center justify-between pt-4 border-t border-white/15">
+              <span className="font-label-sm text-xs font-bold tracking-wider uppercase text-sky-100">
+                Pending review
+              </span>
+              <span className="font-label-md text-sm font-bold">
+                {revenueLoading
+                  ? "—"
+                  : formatInr(
+                      Array.isArray(revenueData?.summary)
+                        ? (revenueData!.summary as RevenueStatusSummary[]).find(
+                            (s) => s._id === REVENUE_STATUS.PENDING
+                          )?.totalAmount ?? 0
+                        : 0
+                    )}
+              </span>
             </div>
           </div>
 
@@ -390,6 +373,11 @@ const EmployeeDashboardPage = () => {
               </div>
             )}
           </div>
+
+          <TaskOverviewWidget
+            title="My Tasks"
+            description="Your task load and progress."
+          />
         </div>
 
         {/* Right Span (1 Column) */}
@@ -423,46 +411,17 @@ const EmployeeDashboardPage = () => {
               Call Logs
             </h3>
 
-            <div className="space-y-4">
-              {MOCK_CALL_LOGS.map((log) => (
-                <div key={log.id} className="flex gap-3">
-                  {/* Call Status Icon */}
-                  <div
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${log.type === "missed"
-                      ? "bg-error/10 text-error"
-                      : "bg-sky-500/10 text-sky-700"
-                      }`}
-                  >
-                    <span className="material-symbols-outlined text-base">
-                      {log.type === "missed"
-                        ? "call_missed"
-                        : log.type === "outgoing"
-                          ? "call_made"
-                          : "call_received"}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center justify-between">
-                      <p className="font-label-md text-xs font-bold text-on-surface">
-                        {log.name}
-                      </p>
-                      <span className="font-body-sm text-[10px] text-on-surface-variant/60">
-                        {log.timeAgo}
-                      </span>
-                    </div>
-                    <p className="font-body-sm text-xs text-on-surface-variant/80 italic line-clamp-2">
-                      {log.notes}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="font-body-sm text-xs text-on-surface-variant/80">
+              Your recent calls live in the Dialer — open your call history to see them.
+            </p>
 
             <div className="pt-2 text-center border-t border-outline-variant/20">
-              <button className="font-label-md text-xs font-bold text-primary hover:underline">
-                View Full History
-              </button>
+              <Link
+                to="/dialer/history"
+                className="font-label-md text-xs font-bold text-primary hover:underline"
+              >
+                View Call History
+              </Link>
             </div>
           </div>
         </div>

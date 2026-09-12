@@ -37,16 +37,11 @@ export const contestApi = {
         return data.data;
     },
 
-    contestById : async (id:string): Promise<Contest> => {
-        const { data } = await apiClient.get<ApiEnvelope<ContestListData>>(
-            "/contest/all",
-            { params: {
-                limit:100
-            } }
+    contestById: async (id: string): Promise<Contest> => {
+        const { data } = await apiClient.get<ApiEnvelope<Contest>>(
+            `/contest/${id}`
         );
-        const contest = data.data.contests.find((contest)=>contest._id=id);
-
-        return contest as Contest;
+        return data.data;
     },
 
     /** GET /contests/my-branch — active contests for the current user's branch. */

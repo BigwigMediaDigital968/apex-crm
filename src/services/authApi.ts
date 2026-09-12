@@ -8,7 +8,8 @@ interface ApiEnvelope<T> {
 }
 
 export interface LateCheckInPayload {
-  userId: string;
+  /** Short-lived token from the login 403 response — proves identity without a full access token. */
+  lockoutToken: string;
   reason: string;
 }
 
@@ -41,6 +42,22 @@ export const authApi = {
 
   logout: async (refreshToken: string) => {
     await apiClient.post("/auth/logout", { refreshToken });
+  },
+
+  /** Self-service profile update — name only. Email changes are admin-managed. */
+  updateMe: async (payload: { name: string }) => {
+    const { data } = await apiClient.patch<ApiEnvelope<{ user: AuthUser }>>(
+      "/auth/me",
+      payload
+    );
+    return data.data.user;
+  },
+
+  changePassword: async (payload: {
+    currentPassword: string;
+    newPassword: string;
+  }) => {
+    await apiClient.patch("/auth/me/password", payload);
   },
 };
 

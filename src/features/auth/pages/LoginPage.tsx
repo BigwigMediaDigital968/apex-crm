@@ -181,7 +181,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [reason, setReason] = useState("");
   const [lockoutData, setLockoutData] = useState<{
-    userId: string;
+    lockoutToken: string;
     message: string;
     reasonRequired: boolean;
   } | null>(null);
@@ -195,13 +195,13 @@ const LoginPage = () => {
       { email, password },
       {
         onError: (error: any) => {
-          // Detect Express 403 AFTER_HOURS_LOCKOUT response
-          if (error?.response?.data?.code === "AFTER_HOURS_LOCKOUT") {
-            const { user, message, reasonRequired } = error.response.data;
+          // Detect Express 403 lockout responses (after-hours / holiday)
+          const data = error?.response?.data;
+          if (data?.lockoutToken) {
             setLockoutData({
-              userId: user.id,
-              message,
-              reasonRequired,
+              lockoutToken: data.lockoutToken,
+              message: data.message,
+              reasonRequired: data.reasonRequired,
             });
           }
         },
@@ -211,10 +211,10 @@ const LoginPage = () => {
 
   const handleReasonSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!lockoutData?.userId || !reason.trim()) return;
+    if (!lockoutData?.lockoutToken || !reason.trim()) return;
 
     submitReason.mutate({
-      userId: lockoutData.userId,
+      lockoutToken: lockoutData.lockoutToken,
       reason: reason.trim(),
     });
   };
@@ -390,12 +390,12 @@ const LoginPage = () => {
                   >
                     Password
                   </label>
-                  <a
+                  {/* <a
                     href="#"
                     className="text-xs font-semibold text-primary hover:underline hover:text-primary/80 transition-colors"
                   >
                     Forgot password?
-                  </a>
+                  </a> */}
                 </div>
                 <div className="relative flex items-center rounded-xl border border-outline/30 bg-surface-container-lowest transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
                   <span className="material-symbols-outlined absolute left-3.5 text-xl text-on-surface-variant/70">
