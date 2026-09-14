@@ -33,17 +33,14 @@ const LeaveBalancesPage = () => {
   const [adjustRemarks, setAdjustRemarks] = useState("");
   const [adjustError, setAdjustError] = useState("");
 
-  useEffect(() => {
-    if (user?._id && !employeeId) {
-      setEmployeeId(user._id);
-    }
-  }, [user?._id, employeeId]);
+  const isManager = user?.role === ROLES.MANAGER;
 
   const { data: employeeData, isLoading: employeesLoading } = useEmployeesQuery(
     {
       role: ROLES.EMPLOYEE,
-      isActive: true,
       limit: 100,
+      // Pass reportingManager matching the backend schema
+      ...(isManager && user?._id ? { reportingManager: user._id } : {}),
     },
   );
 
@@ -51,6 +48,33 @@ const LeaveBalancesPage = () => {
     isActive: "true",
     limit: 100,
   });
+
+  const employees = employeeData?.employees ?? [];
+  const policies = policyData?.policies ?? [];
+
+  // 2. Single unified effect to handle default selection and list changes
+  useEffect(() => {
+    if (employeesLoading) return;
+
+    // For non-managers (Employees), default to their own user/profile ID
+    if (!isManager && user?._id) {
+      // Check if employee has a profile record returned in employees query
+      const selfProfile = employees.find(
+        (emp) => emp.user?._id === user._id || emp._id === user._id,
+      );
+      setEmployeeId(selfProfile?._id || user._id);
+      return;
+    }
+
+    // For Managers/Admins: Validate or select first available option
+    const isValidSelection = employees.some((emp) => emp._id === employeeId);
+
+    if ((!employeeId || !isValidSelection) && employees.length > 0) {
+      setEmployeeId(employees[0]._id);
+    } else if (employees.length === 0) {
+      setEmployeeId("");
+    }
+  }, [employees, employeeId, employeesLoading, isManager, user?._id]);
 
   const { data: balances, isLoading: balancesLoading } =
     useEmployeeLeaveBalances(employeeId || undefined, year);
@@ -60,9 +84,6 @@ const LeaveBalancesPage = () => {
 
   const allocateBalance = useAllocateLeaveBalance();
   const adjustBalance = useAdjustLeaveBalance();
-
-  const employees = employeeData?.employees ?? [];
-  const policies = policyData?.policies ?? [];
 
   const handleAllocate = async () => {
     if (!employeeId || !allocatePolicyId) return;
@@ -162,7 +183,11 @@ const LeaveBalancesPage = () => {
             className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2.5 text-xs font-semibold text-on-surface outline-none focus:border-primary disabled:opacity-50"
           >
             <option value="">
-              {employeesLoading ? "Loading employees…" : "Select an employee"}
+              {employeesLoading
+                ? "Loading employees…"
+                : isManager
+                  ? "Select assigned employee"
+                  : "Select an employee"}
             </option>
             {employees.map((employee) => (
               <option key={employee._id} value={employee._id}>

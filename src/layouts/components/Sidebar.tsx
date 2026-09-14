@@ -63,13 +63,13 @@ export const NAV_GROUPS: NavGroup[] = [
             label: "My Leads",
             path: `${ROUTES.leads}?view=mine`,
             permissions: [PERMISSIONS.LEAD_VIEW],
-            roles: [ROLES.MANAGER, ROLES.EMPLOYEE]
+            roles: [ROLES.EMPLOYEE]
           },
           {
             label: "Follow-ups",
             path: `${ROUTES.leads}?view=followups`,
             permissions: [PERMISSIONS.LEAD_FOLLOWUP_VIEW],
-            roles: [ROLES.EMPLOYEE, ROLES.MANAGER]
+            roles: [ROLES.EMPLOYEE]
           },
         ],
       },
@@ -110,7 +110,7 @@ export const NAV_GROUPS: NavGroup[] = [
             // Head/Admin don't punch in, so they get the report instead.
             label: "My Attendance",
             path: ROUTES.attendance,
-            roles: [ROLES.MANAGER, ROLES.EMPLOYEE],
+            roles: [ROLES.EMPLOYEE],
             permissions: [PERMISSIONS.ATTENDANCE_VIEW],
             
           },
@@ -135,7 +135,7 @@ export const NAV_GROUPS: NavGroup[] = [
             // Own submitted requests — Head/Admin never file these.
             label: "My Late Requests",
             path: "/attendance/late-history",
-            roles: [ROLES.MANAGER, ROLES.EMPLOYEE],
+            roles: [ROLES.EMPLOYEE],
             permissions: [PERMISSIONS.ATTENDANCE_VIEW],
           },
         ],
@@ -150,23 +150,26 @@ export const NAV_GROUPS: NavGroup[] = [
             // approval queue instead — same split as My Attendance.
             label: "My Leave",
             path: "/leave",
-            roles: [ROLES.MANAGER, ROLES.EMPLOYEE],
+            roles: [ROLES.EMPLOYEE],
             permissions: [PERMISSIONS.LEAVE_VIEW],
           },
           {
-            label: "Approvals",
+            label: "Leave Approvals",
             path: "/leave/approvals",
+            roles: [ROLES.HEAD, ROLES.ADMIN, ROLES.MANAGER],
             permissions: [PERMISSIONS.LEAVE_APPROVE, PERMISSIONS.LEAVE_REJECT],
           },
           {
-            label: "Balances",
+            label: "Leave Balances",
             path: "/leave/balances",
             permissions: [PERMISSIONS.LEAVE_BALANCE_VIEW],
+            roles: [ROLES.ADMIN, ROLES.HEAD, ROLES.MANAGER, ROLES.EMPLOYEE],
           },
           {
-            label: "Policies",
+            label: "Leave Policies",
             path: "/leave/policies",
             permissions: [PERMISSIONS.LEAVE_POLICY_VIEW],
+             roles: [ROLES.HEAD, ROLES.ADMIN],
           },
         ],
       },

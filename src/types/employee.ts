@@ -2,6 +2,7 @@ import type { Role } from "./auth";
 import type { BranchRef } from "./branch";
 
 export interface Employee {
+  user: any;
   _id: string;
   name: string;
   email: string;
