@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import Modal from "@/components/ui/Modal";
 import RefreshButton from "@/components/ui/RefreshButton";
@@ -15,10 +15,13 @@ import {
   useLeaveBalanceTransactions,
   useLeavePolicies,
 } from "../hooks/useLeave";
+import { useAuth } from "@/hooks/useAuth";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 const LeaveBalancesPage = () => {
+  const { user } = useAuth();
+
   const [employeeId, setEmployeeId] = useState("");
   const [year, setYear] = useState(CURRENT_YEAR);
 
@@ -30,11 +33,19 @@ const LeaveBalancesPage = () => {
   const [adjustRemarks, setAdjustRemarks] = useState("");
   const [adjustError, setAdjustError] = useState("");
 
-  const { data: employeeData, isLoading: employeesLoading } = useEmployeesQuery({
-    role: ROLES.EMPLOYEE,
-    isActive: true,
-    limit: 100,
-  });
+  useEffect(() => {
+    if (user?._id && !employeeId) {
+      setEmployeeId(user._id);
+    }
+  }, [user?._id, employeeId]);
+
+  const { data: employeeData, isLoading: employeesLoading } = useEmployeesQuery(
+    {
+      role: ROLES.EMPLOYEE,
+      isActive: true,
+      limit: 100,
+    },
+  );
 
   const { data: policyData } = useLeavePolicies({
     isActive: "true",
@@ -142,21 +153,24 @@ const LeaveBalancesPage = () => {
 
       {/* Employee + year picker */}
       <div className="flex flex-wrap items-center gap-3">
-        <select
-          value={employeeId}
-          onChange={(e) => setEmployeeId(e.target.value)}
-          disabled={employeesLoading}
-          className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2.5 text-xs font-semibold text-on-surface outline-none focus:border-primary disabled:opacity-50"
-        >
-          <option value="">
-            {employeesLoading ? "Loading employees…" : "Select an employee"}
-          </option>
-          {employees.map((employee) => (
-            <option key={employee._id} value={employee._id}>
-              {employee.name}
+        {/* Render employee selector ONLY for admins/managers with balance management permissions */}
+        <Can permission={PERMISSIONS.LEAVE_BALANCE_MANAGE}>
+          <select
+            value={employeeId}
+            onChange={(e) => setEmployeeId(e.target.value)}
+            disabled={employeesLoading}
+            className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2.5 text-xs font-semibold text-on-surface outline-none focus:border-primary disabled:opacity-50"
+          >
+            <option value="">
+              {employeesLoading ? "Loading employees…" : "Select an employee"}
             </option>
-          ))}
-        </select>
+            {employees.map((employee) => (
+              <option key={employee._id} value={employee._id}>
+                {employee.name}
+              </option>
+            ))}
+          </select>
+        </Can>
 
         <select
           value={year}
