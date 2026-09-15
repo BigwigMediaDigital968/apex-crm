@@ -5,6 +5,7 @@ import { useLogout } from "@/hooks/useAuth";
 import { Link } from "react-router";
 import QuickAddMenu from "./QuickAddMenu";
 import { Can } from "@/components/Auth/Can";
+import { ROLES } from "@/types/auth";
 
 const Header = () => {
   const user = useAuthStore((s) => s.user);
@@ -139,7 +140,10 @@ const Header = () => {
                   My Profile
                 </Link>
 
-                {user?.branches?.[0] && (
+                {/* Manager/Employee only — Head/Admin aren't scoped to a
+                    single branch, so "My Branch" isn't meaningful for them. */}
+                {(user?.role === ROLES.MANAGER || user?.role === ROLES.EMPLOYEE) &&
+                  user?.branches?.[0] && (
                   <Link
                     to={`/branches/${user.branches[0]}`}
                     onClick={() => setProfileOpen(false)}

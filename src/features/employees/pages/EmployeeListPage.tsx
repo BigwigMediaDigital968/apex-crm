@@ -120,16 +120,20 @@ const EmployeeListPage = () => {
     setStatusTarget(null);
   };
 
-  // Mutating actions (branch assignment, edit, status toggle) stay locked
-  // for Head accounts and for your own row — you shouldn't be able to
-  // reassign/deactivate yourself from this table.
+  // Mutating actions (branch assignment, edit, status toggle) are
+  // hierarchy-gated the same way as viewing: only roles junior to yours
+  // (assignableRoles) can be touched — a peer or senior account (even
+  // another Admin, if you're an Admin) is locked — plus your own row is
+  // always locked, since you shouldn't reassign/deactivate yourself here.
   const isRowLocked = (emp: Employee) =>
-    emp.role === ROLES.HEAD || emp._id === currentUser?._id;
+    emp._id === currentUser?._id || !assignableRoles.includes(emp.role);
 
   // Viewing is read-only, but still hierarchy-gated: a role can only view
   // profiles junior to its own (the same set it's allowed to assign —
   // ROLE_HIERARCHY via getAssignableRoles/assignableRoles above). Peers and
-  // seniors are locked; your own row is always viewable regardless.
+  // seniors are locked, even in the same branch — the table row already
+  // shows their name/email, and a peer's full profile isn't yours to open.
+  // Your own row is always viewable regardless.
   const isViewLocked = (emp: Employee) =>
     emp._id !== currentUser?._id && !assignableRoles.includes(emp.role);
 
