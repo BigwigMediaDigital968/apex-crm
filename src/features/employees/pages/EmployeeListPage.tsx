@@ -46,7 +46,19 @@ const formatDate = (iso: string) =>
 
 const EmployeeListPage = () => {
   const currentUser = useAuthStore((s) => s.user);
+  const isManager = currentUser?.role === ROLES.MANAGER;
   const assignableRoles = currentUser ? getAssignableRoles(currentUser.role) : [];
+
+  // Manager: the Role filter only offers roles they actually manage
+  // (reuses the same assignableRoles list already computed above for the
+  // create/edit modal) — "All Team" still fetches everyone in their
+  // branch, but peer Manager rows are hidden client-side below.
+  const roleFilterOptions: { label: string; value: Role | "" }[] = isManager
+    ? [
+        { label: "All Team", value: "" },
+        ...assignableRoles.map((role) => ({ label: ROLE_LABELS[role], value: role })),
+      ]
+    : ROLE_FILTER_OPTIONS;
 
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebouncedValue(searchInput);
@@ -73,7 +85,8 @@ const EmployeeListPage = () => {
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
     role: roleFilter || undefined,
-    branchId: branchFilter || undefined,
+    // Manager: always their own branch, never a company-wide pick.
+    branchId: isManager ? currentUser?.branches?.[0] : branchFilter || undefined,
     isActive: statusFilter === "" ? undefined : statusFilter === "true",
   });
 
@@ -84,7 +97,12 @@ const EmployeeListPage = () => {
     "response" in error &&
     (error as { response?: { status?: number } }).response?.status === 403;
 
-  const employees = data?.employees ?? [];
+  // A peer Manager should never show up in another Manager's directory —
+  // only the branch-scoped fetch above is shared with them, so filter that
+  // one role out client-side (their own row stays visible).
+  const employees = (data?.employees ?? []).filter(
+    (emp) => !(isManager && emp.role === ROLES.MANAGER && emp._id !== currentUser?._id)
+  );
   const pagination = data?.pagination;
 
   const [editTarget, setEditTarget] = useState<Employee | null>(null);
@@ -102,8 +120,18 @@ const EmployeeListPage = () => {
     setStatusTarget(null);
   };
 
+  // Mutating actions (branch assignment, edit, status toggle) stay locked
+  // for Head accounts and for your own row — you shouldn't be able to
+  // reassign/deactivate yourself from this table.
   const isRowLocked = (emp: Employee) =>
     emp.role === ROLES.HEAD || emp._id === currentUser?._id;
+
+  // Viewing is read-only, but still hierarchy-gated: a role can only view
+  // profiles junior to its own (the same set it's allowed to assign —
+  // ROLE_HIERARCHY via getAssignableRoles/assignableRoles above). Peers and
+  // seniors are locked; your own row is always viewable regardless.
+  const isViewLocked = (emp: Employee) =>
+    emp._id !== currentUser?._id && !assignableRoles.includes(emp.role);
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
@@ -158,7 +186,7 @@ const EmployeeListPage = () => {
             onChange={(e) => setRoleFilter(e.target.value as Role | "")}
             className="w-full appearance-none rounded-xl border border-outline-variant/50 bg-surface-container-low px-4 py-2.5 pr-10 font-label-md text-on-surface outline-none focus:border-primary transition-all"
           >
-            {ROLE_FILTER_OPTIONS.map((opt) => (
+            {roleFilterOptions.map((opt) => (
               <option key={opt.label} value={opt.value}>
                 {opt.label}
               </option>
@@ -169,23 +197,27 @@ const EmployeeListPage = () => {
           </span>
         </div>
 
-        <div className="relative">
-          <select
-            value={branchFilter}
-            onChange={(e) => setBranchFilter(e.target.value)}
-            className="w-full appearance-none rounded-xl border border-outline-variant/50 bg-surface-container-low px-4 py-2.5 pr-10 font-label-md text-on-surface outline-none focus:border-primary transition-all"
-          >
-            <option value="">All Branches</option>
-            {branches?.map((branch) => (
-              <option key={branch._id} value={branch._id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
-          <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xl text-on-surface-variant">
-            expand_more
-          </span>
-        </div>
+        {/* Branch filter — Head/Admin only. A Manager's directory is
+            already their own branch, so there's nothing to pick. */}
+        {!isManager && (
+          <div className="relative">
+            <select
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+              className="w-full appearance-none rounded-xl border border-outline-variant/50 bg-surface-container-low px-4 py-2.5 pr-10 font-label-md text-on-surface outline-none focus:border-primary transition-all"
+            >
+              <option value="">All Branches</option>
+              {branches?.map((branch) => (
+                <option key={branch._id} value={branch._id}>
+                  {branch.name}
+                </option>
+              ))}
+            </select>
+            <span className="material-symbols-outlined pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xl text-on-surface-variant">
+              expand_more
+            </span>
+          </div>
+        )}
 
         <div className="relative">
           <select
@@ -282,6 +314,7 @@ const EmployeeListPage = () => {
                 ) : (
                   employees.map((emp) => {
                     const locked = isRowLocked(emp);
+                    const viewLocked = isViewLocked(emp);
                     return (
                       <tr
                         key={emp._id}
@@ -370,8 +403,8 @@ const EmployeeListPage = () => {
                               <button
                               // onClick={() => setViewTarget(emp)}
                               onClick={() => (navigate(`/employees/${emp._id}/profile`))}
-                              disabled={locked}
-                              title={locked ? "This account cannn't be viewd" : "View employee"}
+                              disabled={viewLocked}
+                              title={viewLocked ? "This account cannn't be viewd" : "View employee"}
                               className="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-container hover:text-on-surface disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
                             >
 

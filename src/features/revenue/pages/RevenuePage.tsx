@@ -29,7 +29,7 @@ interface LeadItem {
 
 const RevenuePage = () => {
     const currentUser = useAuthStore((s) => s.user);
-    const isEmployee = currentUser?.role === ROLES.EMPLOYEE;
+    const isManager = currentUser?.role === ROLES.MANAGER;
     const canManage = currentUser?.role === ROLES.ADMIN || currentUser?.role === ROLES.HEAD;
 
     const [viewMode, setViewMode] = useState<RevenueViewMode>("");
@@ -47,7 +47,14 @@ const RevenuePage = () => {
     const empDropdownRef = useRef<HTMLDivElement>(null);
 
     const { data: branches } = useBranchesQuery();
-    const { data: employeesData } = useEmployeesQuery(); // Fetches staff/user array
+    // Manager: scoped to their own branch's employees only (mirrors
+    // TeamAttendanceTab's "my team" convention). Admin/Head: unscoped,
+    // company-wide fetch.
+    const { data: employeesData } = useEmployeesQuery(
+        isManager
+            ? { role: "employee", branchId: currentUser?.branches?.[0], isActive: true, limit: 100 }
+            : {}
+    );
     const employees = employeesData?.employees ?? employeesData ?? [];
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -105,31 +112,37 @@ const RevenuePage = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Manager: default to their own team rather than the blank/unscoped
+    // view — computed, never stored, so there's no state to fall out of
+    // sync (mirrors ManagementDashboard's `resolvedViewMode`).
+    const effectiveViewMode: RevenueViewMode =
+        viewMode === "" && isManager ? "TEAM" : viewMode;
+
     const canFetchRevenue =
-    viewMode === "" ||
-    (viewMode === "BRANCH" && branchId !== "") ||
-    (viewMode === "INDIVIDUAL" && selectedEmployeeId !== "") ||
-    (viewMode === "LEAD" && selectedLeadId !== "") ||
-    (viewMode === "TEAM" && selectedManagerId !== "");
+    effectiveViewMode === "" ||
+    (effectiveViewMode === "BRANCH" && branchId !== "") ||
+    (effectiveViewMode === "INDIVIDUAL" && selectedEmployeeId !== "") ||
+    (effectiveViewMode === "LEAD" && selectedLeadId !== "") ||
+    (effectiveViewMode === "TEAM" && (isManager || selectedManagerId !== ""));
 
     const { data, isLoading, isError } = useRevenueReportQuery(
     {
-        ...(viewMode !== "" && { viewMode }),
+        ...(effectiveViewMode !== "" && { viewMode: effectiveViewMode }),
 
         branchId:
-            viewMode === "BRANCH"
+            effectiveViewMode === "BRANCH"
                 ? branchId || undefined
                 : undefined,
 
         employeeId:
-            viewMode === "INDIVIDUAL"
+            effectiveViewMode === "INDIVIDUAL"
                 ? selectedEmployeeId || undefined
-                : viewMode === "TEAM"
-                    ? selectedManagerId || undefined
+                : effectiveViewMode === "TEAM"
+                    ? (isManager ? currentUser?._id : selectedManagerId) || undefined
                     : undefined,
 
         leadId:
-            viewMode === "LEAD"
+            effectiveViewMode === "LEAD"
                 ? selectedLeadId || undefined
                 : undefined,
 
@@ -222,8 +235,10 @@ const RevenuePage = () => {
 
             {/* Filters Toolbar */}
             <div className="flex flex-wrap items-center gap-3 bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 shadow-sm">
-                {/* View Mode Selector */}
-                {!isEmployee && (
+                {/* View Mode Selector — Admin/Head only. Manager gets a
+                    self-scoped 3-way control below instead (never a
+                    cross-org picker); Employee gets no selector at all. */}
+                {canManage && (
                     <select
                         value={viewMode}
                         onChange={(e) => {
@@ -243,8 +258,8 @@ const RevenuePage = () => {
                     </select>
                 )}
 
-                {/* 1. INDIVIDUAL: Searchable Employee Combobox */}
-                {viewMode === "INDIVIDUAL" && !isEmployee && (
+                {/* 1. INDIVIDUAL: Searchable Employee Combobox (Admin/Head only) */}
+                {viewMode === "INDIVIDUAL" && canManage && (
                     <div className="relative" ref={empDropdownRef}>
                         <input
                             type="text"
@@ -291,14 +306,16 @@ const RevenuePage = () => {
                     </div>
                 )}
 
-                {/* 2. TEAM: Select Manager Dropdown */}
-                {viewMode === "TEAM" && !isEmployee && (
+                {/* 2. TEAM: Select Manager Dropdown (Admin/Head only — a
+                    Manager is always implicitly their own team, see the
+                    Manager control below) */}
+                {viewMode === "TEAM" && canManage && (
                     <select
                         value={selectedManagerId}
                         onChange={(e) => setSelectedManagerId(e.target.value)}
                         className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2 text-xs font-semibold text-on-surface outline-none"
                     >
-                        <option value="">Select Manager / Lead…</option>
+                        <option value="">Select Manager…</option>
                         {managers.map((m: any) => (
                             <option key={m._id} value={m._id}>
                                 {m.name} ({m.role})
@@ -307,8 +324,70 @@ const RevenuePage = () => {
                     </select>
                 )}
 
-                {/* 3. BRANCH: Select Branch Dropdown */}
-                {viewMode === "BRANCH" && (
+                {/* Manager: self-scoped 3-way control — whole team combined,
+                    own individual revenue, or drill into one team member.
+                    Never a picker for another manager's team. */}
+                {isManager && (
+                    <>
+                        <div className="flex items-center gap-1 rounded-xl bg-surface-container-low p-1 w-fit">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setViewMode("TEAM");
+                                    setSelectedEmployeeId("");
+                                    setEmpSearchQuery("");
+                                }}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${effectiveViewMode === "TEAM" ? "bg-primary text-on-primary" : "text-on-surface-variant"
+                                    }`}
+                            >
+                                My Team
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setViewMode("INDIVIDUAL");
+                                    setSelectedEmployeeId(currentUser?._id ?? "");
+                                    setEmpSearchQuery("");
+                                }}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${effectiveViewMode === "INDIVIDUAL" && selectedEmployeeId === currentUser?._id
+                                    ? "bg-primary text-on-primary"
+                                    : "text-on-surface-variant"
+                                    }`}
+                            >
+                                My Revenue
+                            </button>
+                        </div>
+
+                        <select
+                            value={
+                                effectiveViewMode === "INDIVIDUAL" && selectedEmployeeId !== currentUser?._id
+                                    ? selectedEmployeeId
+                                    : ""
+                            }
+                            onChange={(e) => {
+                                const employeeId = e.target.value;
+                                if (!employeeId) {
+                                    setViewMode("TEAM");
+                                    setSelectedEmployeeId("");
+                                    return;
+                                }
+                                setViewMode("INDIVIDUAL");
+                                setSelectedEmployeeId(employeeId);
+                            }}
+                            className="rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2 text-xs font-semibold text-on-surface outline-none"
+                        >
+                            <option value="">All Team Members</option>
+                            {filteredEmployees.map((emp: any) => (
+                                <option key={emp._id} value={emp._id}>
+                                    {emp.name}
+                                </option>
+                            ))}
+                        </select>
+                    </>
+                )}
+
+                {/* 3. BRANCH: Select Branch Dropdown (Admin/Head only) */}
+                {viewMode === "BRANCH" && canManage && (
                     <select
                         value={branchId}
                         onChange={(e) => setBranchId(e.target.value)}
@@ -323,7 +402,8 @@ const RevenuePage = () => {
                     </select>
                 )}
 
-                {viewMode === "LEAD" && (
+                {/* Lead Revenue: Admin/Head only */}
+                {viewMode === "LEAD" && canManage && (
                     <div className="relative" ref={dropdownRef}>
                         <div className="relative">
                             <input
