@@ -69,7 +69,7 @@ const ExportReportButton = ({ filters = {} }: ExportReportButtonProps) => {
               className="fixed inset-0 z-10"
               onClick={() => setIsOpen(false)}
             />
-            <div className="absolute right-0 z-20 mt-2 w-64 space-y-3 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-lg">
+            <div className="absolute left-0 z-20 mt-2 w-64 space-y-3 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-lg">
               <div className="space-y-1.5">
                 <label className="block font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/70">
                   Module

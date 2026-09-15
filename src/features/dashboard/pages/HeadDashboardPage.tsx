@@ -7,6 +7,8 @@ import {
 } from "@/features/employees";
 import { TaskOverviewWidget } from "@/features/tasks";
 import { useLeads } from "@/features/leads";
+import { useAuditLogs } from "@/features/logs/hooks/useAuditLogs";
+import ActionBadge from "@/features/logs/components/ActionBadge";
 import { useDashboardReport } from "../hooks/useDashboardReport";
 import ExportReportButton from "../components/ExportReportButton";
 
@@ -74,7 +76,11 @@ const HeadDashboardPage = () => {
   const statusBreakdown = dashboardReport?.leads.statusBreakdown ?? [];
   const maxStatusCount = Math.max(1, ...statusBreakdown.map((s) => s.count));
 
-  const topBranches = useMemo(() => (branches ?? []).slice(0, 5), [branches]);
+  const topBranches = useMemo(() => (branches ?? []).slice(0, 3), [branches]);
+
+  const { data: recentLogsData, isLoading: recentLogsLoading } = useAuditLogs({
+    limit: 5,
+  });
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
@@ -444,6 +450,58 @@ const HeadDashboardPage = () => {
             >
               Manage All Branches
             </Link>
+          </div>
+
+          {/* Latest Logs */}
+          <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h3 className="font-headline-sm text-base font-bold text-on-surface">
+                Latest Logs
+              </h3>
+              <Link
+                to="/logs"
+                className="font-label-sm text-[11px] font-bold text-primary hover:underline"
+              >
+                View All
+              </Link>
+            </div>
+
+            <div className="space-y-3.5 divide-y divide-outline-variant/10">
+              {recentLogsLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="pt-3 first:pt-0">
+                    <div className="h-10 rounded-lg bg-surface-container-high animate-pulse" />
+                  </div>
+                ))
+              ) : (recentLogsData?.logs ?? []).length === 0 ? (
+                <p className="py-4 text-center font-body-sm text-xs text-on-surface-variant/70">
+                  No activity recorded yet.
+                </p>
+              ) : (
+                recentLogsData!.logs.map((log) => (
+                  <div key={log._id} className="pt-3 first:pt-0 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <ActionBadge action={log.action} />
+                      <span className="font-body-sm text-[10px] text-on-surface-variant/60 shrink-0">
+                        {new Date(log.createdAt).toLocaleString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <p className="font-body-sm text-xs text-on-surface">
+                      {log.description}
+                    </p>
+                    <p className="font-body-sm text-[10px] text-on-surface-variant/70">
+                      {log.performedBy?.name ?? "System"}
+                      {log.branch?.name ? ` · ${log.branch.name}` : ""}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </div>
