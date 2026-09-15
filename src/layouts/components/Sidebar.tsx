@@ -69,7 +69,7 @@ export const NAV_GROUPS: NavGroup[] = [
             label: "Follow-ups",
             path: `${ROUTES.leads}?view=followups`,
             permissions: [PERMISSIONS.LEAD_FOLLOWUP_VIEW],
-            roles: [ROLES.EMPLOYEE]
+            roles: [ROLES.EMPLOYEE, ROLES.HEAD]
           },
         ],
       },
@@ -82,6 +82,7 @@ export const NAV_GROUPS: NavGroup[] = [
             label: "Dialer",
             path: "/dialer",
             permissions: [PERMISSIONS.CALL_INITIATE],
+            roles: [ROLES.HEAD, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE]
           },
           {
             label: "History",
