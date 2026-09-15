@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 
 import { tasksApi } from "@/services/tasksApi";
 import { getErrorMessage } from "@/utils/getErrorMessage";
-import type { CreateTaskPayload, TaskListQuery, UpdateTaskPayload } from "@/types/task";
+import type { CreateTaskPayload, Task, TaskListQuery, UpdateTaskPayload } from "@/types/task";
 
 /* =========================================================
    Query Keys
@@ -85,11 +85,39 @@ export const useUpdateTask = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: UpdateTaskPayload }) =>
-      tasksApi.update(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: UpdateTaskPayload;
+      /** Skip the success toast — for high-frequency actions like a board drag. */
+      silent?: boolean;
+    }) => tasksApi.update(id, payload),
 
-    onSuccess: (task) => {
-      toast.success("Task updated successfully");
+    // Patch every cached task list immediately so a board drag (or the
+    // inline status select) reflects instantly instead of waiting on the
+    // round-trip — rolled back in onError if the request fails.
+    onMutate: async ({ id, payload }) => {
+      await queryClient.cancelQueries({ queryKey: taskQueryKeys.lists() });
+
+      const previousLists = queryClient.getQueriesData<Task[]>({
+        queryKey: taskQueryKeys.lists(),
+      });
+
+      queryClient.setQueriesData<Task[]>(
+        { queryKey: taskQueryKeys.lists() },
+        (old) =>
+          old?.map((task) =>
+            task._id === id ? { ...task, ...payload } as Task : task
+          )
+      );
+
+      return { previousLists };
+    },
+
+    onSuccess: (task, variables) => {
+      if (!variables.silent) toast.success("Task updated successfully");
 
       // PATCH /tasks/:id returns the raw (unpopulated) document, unlike
       // GET /tasks/:id — invalidate rather than cache it directly so the
@@ -104,7 +132,10 @@ export const useUpdateTask = () => {
       });
     },
 
-    onError: (error) => {
+    onError: (error, _variables, context) => {
+      context?.previousLists.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
       toast.error(getErrorMessage(error, "Failed to update task"));
     },
   });

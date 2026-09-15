@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
-import { taskQueryKeys, useTasks } from "../hooks/useTasks";
+import { taskQueryKeys, useTasks, useUpdateTask } from "../hooks/useTasks";
 import RefreshButton from "@/components/ui/RefreshButton";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getErrorMessage } from "@/utils/getErrorMessage";
 import { Can } from "@/components/Auth/Can";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useAuthStore } from "@/store/auth.store";
 import { ROLES } from "@/types/auth";
 import { useBranchesQuery } from "@/features/branches";
@@ -14,12 +15,19 @@ import {
   TASK_PRIORITY_LABELS,
   TASK_STATUS,
   TASK_STATUS_LABELS,
-  type Task,
   type TaskListQuery,
   type TaskPriority,
   type TaskStatus,
 } from "@/types/task";
 import TaskDetailModal from "../components/TaskDetailModal";
+import TaskBoard from "../components/TaskBoard";
+import {
+  PRIORITY_BADGE_CLASSES,
+  STATUS_BADGE_CLASSES,
+  STATUS_DOT_CLASSES,
+  isDueSoon,
+  isOverdue,
+} from "../taskDisplay";
 
 const STATUS_FILTERS: { label: string; value: TaskStatus | "" }[] = [
   { label: "All Statuses", value: "" },
@@ -37,42 +45,14 @@ const PRIORITY_FILTERS: { label: string; value: TaskPriority | "" }[] = [
   })),
 ];
 
-const STATUS_BADGE_CLASSES: Record<TaskStatus, string> = {
-  todo: "bg-indigo-500/10 text-indigo-700",
-  in_progress: "bg-sky-500/10 text-sky-700",
-  on_hold: "bg-amber-500/10 text-amber-700",
-  completed: "bg-emerald-500/10 text-emerald-700",
-  cancelled: "bg-rose-500/10 text-rose-700",
-};
-
-const STATUS_DOT_CLASSES: Record<TaskStatus, string> = {
-  todo: "bg-indigo-500",
-  in_progress: "bg-sky-500",
-  on_hold: "bg-amber-500",
-  completed: "bg-emerald-500",
-  cancelled: "bg-rose-500",
-};
-
-const PRIORITY_BADGE_CLASSES: Record<TaskPriority, string> = {
-  low: "bg-surface-container-high text-on-surface-variant",
-  medium: "bg-sky-500/10 text-sky-700",
-  high: "bg-amber-500/10 text-amber-700",
-  urgent: "bg-rose-500/10 text-rose-700",
-};
-
-const isOverdue = (task: Task) =>
-  Boolean(
-    task.dueDate &&
-      task.status !== "completed" &&
-      task.status !== "cancelled" &&
-      new Date(task.dueDate).getTime() < Date.now()
-  );
-
 const TaskListPage = () => {
   const navigate = useNavigate();
   const currentUser = useAuthStore((s) => s.user);
   const isEmployee = currentUser?.role === ROLES.EMPLOYEE;
   const isHead = currentUser?.role === ROLES.HEAD;
+  const { hasPermission } = usePermissions();
+  const canUpdateStatus = hasPermission("task:update");
+  const updateTask = useUpdateTask();
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery);
@@ -83,6 +63,7 @@ const TaskListPage = () => {
   const [dueFrom, setDueFrom] = useState("");
   const [dueTo, setDueTo] = useState("");
   const [showOverdueOnly, setShowOverdueOnly] = useState(false);
+  const [taskView, setTaskView] = useState<"list" | "board">("list");
 
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
 
@@ -119,7 +100,7 @@ const TaskListPage = () => {
 
   const { data: tasks, isLoading, isFetching, isError, error } = useTasks(serverQuery);
 
-  const scopedTasks = tasks ?? [];
+  const scopedTasks = useMemo(() => tasks ?? [], [tasks]);
 
   const displayedTasks = useMemo(
     () => (showOverdueOnly ? scopedTasks.filter(isOverdue) : scopedTasks),
@@ -158,7 +139,7 @@ const TaskListPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="min-h-screen bg-surface p-2 sm:p-2 lg:p-4 space-y-6">
       {/* --- TOP BANNER / HEADER --- */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -191,30 +172,54 @@ const TaskListPage = () => {
         </div>
       </div>
 
-      {/* --- STAT CARDS --- */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {[
-          { label: "Total Tasks", value: stats.total, icon: "list_alt", color: "text-on-surface" },
-          { label: "To Do", value: stats.todo, icon: "radio_button_unchecked", color: "text-indigo-600" },
-          { label: "In Progress", value: stats.inProgress, icon: "autorenew", color: "text-sky-600" },
-          { label: "Completed", value: stats.completed, icon: "check_circle", color: "text-emerald-600" },
-          { label: "Overdue", value: stats.overdue, icon: "warning", color: "text-rose-600" },
-        ].map((card) => (
-          <div
-            key={card.label}
-            className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-                {card.label}
-              </span>
-              <span className={`material-symbols-outlined text-lg ${card.color}`}>
+      {/* --- STATS STRIP + LIST/BOARD TOGGLE (one row, to keep the list/board itself above the fold) --- */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest px-4 py-2.5 shadow-sm">
+        <div className="flex flex-wrap items-center divide-x divide-outline-variant/20">
+          {[
+            { label: "Total", value: stats.total, icon: "list_alt", color: "text-on-surface" },
+            { label: "To Do", value: stats.todo, icon: "radio_button_unchecked", color: "text-indigo-600" },
+            { label: "In Progress", value: stats.inProgress, icon: "autorenew", color: "text-sky-600" },
+            { label: "Completed", value: stats.completed, icon: "check_circle", color: "text-emerald-600" },
+            { label: "Overdue", value: stats.overdue, icon: "warning", color: "text-rose-600" },
+          ].map((card) => (
+            <div key={card.label} className="flex items-center gap-1.5 px-3.5 first:pl-0 last:pr-0">
+              <span className={`material-symbols-outlined text-base ${card.color}`}>
                 {card.icon}
               </span>
+              <span className="text-sm font-extrabold text-on-surface">{card.value}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant/70">
+                {card.label}
+              </span>
             </div>
-            <p className="mt-1 text-2xl font-extrabold text-on-surface">{card.value}</p>
-          </div>
-        ))}
+          ))}
+        </div>
+
+        <div className="flex items-center gap-1 rounded-xl border border-outline-variant/30 bg-surface-container-low p-1 w-fit shrink-0">
+          <button
+            type="button"
+            onClick={() => setTaskView("list")}
+            title="List view"
+            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
+              taskView === "list"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+            }`}
+          >
+            <span className="material-symbols-outlined text-lg">view_list</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTaskView("board")}
+            title="Board view"
+            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all ${
+              taskView === "board"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
+            }`}
+          >
+            <span className="material-symbols-outlined text-lg">view_kanban</span>
+          </button>
+        </div>
       </div>
 
       {/* --- CONTROL BAR: SEARCH & FILTERS --- */}
@@ -353,7 +358,8 @@ const TaskListPage = () => {
         )}
       </div>
 
-      {/* --- MAIN DATA TABLE --- */}
+      {/* --- MAIN DATA TABLE (List view) --- */}
+      {taskView === "list" && (
       <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -433,11 +439,22 @@ const TaskListPage = () => {
                   const assignee =
                     typeof task.assignedTo === "object" ? task.assignedTo : null;
                   const overdue = isOverdue(task);
+                  const dueSoon = isDueSoon(task);
+
+                  // Jira-style urgency cue: a tinted row + left accent bar
+                  // for tasks that are overdue or due within the next 24h,
+                  // so the list draws the eye to what's approaching without
+                  // needing to open anything.
+                  const urgencyClasses = overdue
+                    ? "border-l-[3px] border-l-rose-500 bg-rose-500/5 hover:bg-rose-500/10"
+                    : dueSoon
+                      ? "border-l-[3px] border-l-amber-500 bg-amber-500/5 hover:bg-amber-500/10"
+                      : "border-l-[3px] border-l-transparent hover:bg-surface-container-low/40";
 
                   return (
                     <tr
                       key={task._id}
-                      className="group transition-colors hover:bg-surface-container-low/40 cursor-pointer"
+                      className={`group transition-colors cursor-pointer ${urgencyClasses}`}
                       onClick={() => setDetailTaskId(task._id)}
                     >
                       <td className="px-6 py-4 max-w-xs">
@@ -557,6 +574,20 @@ const TaskListPage = () => {
           </div>
         )}
       </div>
+      )}
+
+      {/* --- BOARD (Kanban) view --- */}
+      {taskView === "board" && !isLoading && !isError && (
+        <TaskBoard
+          tasks={scopedTasks}
+          isEmployee={isEmployee}
+          canDrag={canUpdateStatus}
+          onOpenTask={setDetailTaskId}
+          onStatusChange={(task, nextStatus) =>
+            updateTask.mutate({ id: task._id, payload: { status: nextStatus }, silent: true })
+          }
+        />
+      )}
 
       <TaskDetailModal taskId={detailTaskId} onClose={() => setDetailTaskId(null)} />
     </div>
