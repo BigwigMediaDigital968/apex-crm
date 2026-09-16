@@ -112,7 +112,9 @@ export interface CreateLeadPayload {
 }
 
 export interface AssignLeadPayload {
-  employeeId: string;
+  /** At least one of employeeId/branchId is required. */
+  employeeId?: string;
+  branchId?: string;
 }
 
 export interface BulkAssignLeadsPayload extends AssignLeadPayload {

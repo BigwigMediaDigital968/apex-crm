@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { useBranchesQuery } from "@/features/branches";
 import { useEmployeeProfilesQuery } from "@/features/employees";
@@ -26,6 +26,9 @@ const AssignLeadModal = ({
   onClose,
 }: AssignLeadModalProps) => {
   const [branchId, setBranchId] = useState(currentBranchId ?? "");
+  const [branchSearch, setBranchSearch] = useState("");
+  const [isBranchListOpen, setIsBranchListOpen] = useState(false);
+  const branchFieldRef = useRef<HTMLDivElement>(null);
   const [search, setSearch] = useState("");
   const [employeeId, setEmployeeId] = useState(currentEmployeeId ?? "");
 
@@ -53,6 +56,14 @@ const AssignLeadModal = ({
 
   const showBranchFilter = assignableBranches.length > 1;
 
+  const filteredBranches = useMemo(() => {
+    if (!branchSearch.trim()) return assignableBranches;
+    const q = branchSearch.trim().toLowerCase();
+    return assignableBranches.filter((branch) =>
+      branch.name.toLowerCase().includes(q),
+    );
+  }, [assignableBranches, branchSearch]);
+
   const { data: employeeData, isLoading: employeesLoading } =
     useEmployeeProfilesQuery({
       branchId,
@@ -65,9 +76,26 @@ const AssignLeadModal = ({
       currentBranchId ??
         (assignableBranches.length === 1 ? assignableBranches[0]._id : ""),
     );
+    setBranchSearch("");
+    setIsBranchListOpen(false);
     setEmployeeId("");
     setSearch("");
   }, [open, currentBranchId, leadId, assignableBranches]);
+
+  useEffect(() => {
+    if (!isBranchListOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        branchFieldRef.current &&
+        !branchFieldRef.current.contains(e.target as Node)
+      ) {
+        setIsBranchListOpen(false);
+        setBranchSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isBranchListOpen]);
 
   useEffect(() => {
     if (!currentEmployeeId || employeeId || !employeeData) return;
@@ -80,7 +108,7 @@ const AssignLeadModal = ({
   }, [currentEmployeeId, employeeData, employeeId]);
 
   const filteredEmployees = useMemo(() => {
-    const list = employeeData?.profiles ?? [];
+    const list = employeeData?.profiles.filter((e)=>e.user.role === "employee") ?? [];
 
     if (!search.trim()) return list;
 
@@ -97,16 +125,27 @@ const AssignLeadModal = ({
 
   const handleBranchChange = (id: string) => {
     setBranchId(id);
+    setBranchSearch("");
     setEmployeeId("");
+    setIsBranchListOpen(false);
   };
 
+  const selectedBranchLabel = branchId
+    ? assignableBranches.find((b) => b._id === branchId)?.name ?? "All branches"
+    : "All branches";
+
   const handleConfirm = async () => {
-    if (!employeeId) return;
+    if (!employeeId && !branchId) return;
+
+    const payload = {
+      employeeId: employeeId || undefined,
+      branchId: branchId || undefined,
+    };
 
     if (isBulk && leadIds) {
-      await bulkAssign.mutateAsync({ leadIds, employeeId });
+      await bulkAssign.mutateAsync({ leadIds, ...payload });
     } else if (leadId) {
-      await assignLead.mutateAsync({ id: leadId, payload: { employeeId } });
+      await assignLead.mutateAsync({ id: leadId, payload });
     } else {
       return;
     }
@@ -127,7 +166,7 @@ const AssignLeadModal = ({
           <span className="font-semibold text-on-surface">
             {isBulk ? `${leadIds?.length ?? 0} selected leads` : leadName}
           </span>{" "}
-          to a branch representative.
+          to a branch representative, or to a branch only.
         </p>
 
         {/* Branch filter — hidden when the caller only has one
@@ -135,33 +174,93 @@ const AssignLeadModal = ({
                     when the org only has one), since there's nothing to
                     narrow down. */}
         {showBranchFilter && (
-          <div>
+          <div className="relative" ref={branchFieldRef}>
             <label className="font-label-sm text-[10px] uppercase font-bold text-on-surface-variant/70 block mb-1">
               Branch
             </label>
 
-            <select
-              value={branchId}
-              onChange={(e) => handleBranchChange(e.target.value)}
-              disabled={branchesLoading}
-              className="w-full rounded-lg border border-outline-variant/40 bg-surface-container-lowest px-3 py-2 text-sm text-on-surface outline-none focus:border-primary disabled:opacity-50"
-            >
-              <option value="">All branches</option>
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-base text-on-surface-variant/50">
+                search
+              </span>
 
-              {assignableBranches.map((branch) => (
-                <option key={branch._id} value={branch._id}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
+              <input
+                type="text"
+                placeholder={selectedBranchLabel}
+                value={branchSearch}
+                onFocus={() => setIsBranchListOpen(true)}
+                onChange={(e) => {
+                  setBranchSearch(e.target.value);
+                  setIsBranchListOpen(true);
+                }}
+                disabled={branchesLoading}
+                className="w-full rounded-lg border border-outline-variant/40 bg-surface-container-lowest pl-8 pr-3 py-2 text-sm text-on-surface outline-none focus:border-primary disabled:opacity-50"
+              />
+            </div>
+
+            {isBranchListOpen && (
+              <div className="absolute left-0 right-0 z-30 mt-1 max-h-40 overflow-y-auto rounded-lg border border-outline-variant/30 bg-surface-container-lowest shadow-lg divide-y divide-outline-variant/20">
+                <button
+                  type="button"
+                  onClick={() => handleBranchChange("")}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-sm transition-colors ${
+                    branchId === ""
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-on-surface hover:bg-surface-container-low"
+                  }`}
+                >
+                  <span>All branches</span>
+                  {branchId === "" && (
+                    <span className="material-symbols-outlined text-base">
+                      check_circle
+                    </span>
+                  )}
+                </button>
+
+                {filteredBranches.length === 0 ? (
+                  <p className="py-4 text-center font-body-sm text-xs text-on-surface-variant/70">
+                    No branches found.
+                  </p>
+                ) : (
+                  filteredBranches.map((branch) => {
+                    const selected = branch._id === branchId;
+
+                    return (
+                      <button
+                        key={branch._id}
+                        type="button"
+                        onClick={() => handleBranchChange(branch._id)}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-sm transition-colors ${
+                          selected
+                            ? "bg-primary/10 text-primary font-semibold"
+                            : "text-on-surface hover:bg-surface-container-low"
+                        }`}
+                      >
+                        <span className="truncate">{branch.name}</span>
+                        {selected && (
+                          <span className="material-symbols-outlined text-base">
+                            check_circle
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
         )}
 
         {/* Employee search */}
         <div>
-          <label className="font-label-sm text-[10px] uppercase font-bold text-on-surface-variant/70 block mb-1">
-            Representative
-          </label>
+          <div className="flex items-baseline justify-between">
+            <label className="font-label-sm text-[10px] uppercase font-bold text-on-surface-variant/70 block mb-1">
+              Representative
+            </label>
+            <span className="font-body-sm text-[10px] text-on-surface-variant/60">
+              Optional — leave unpicked to assign the branch only
+            </span>
+          </div>
 
           <div className="relative mb-2">
             <span className="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-base text-on-surface-variant/50">
@@ -201,7 +300,9 @@ const AssignLeadModal = ({
                   <button
                     key={employee._id}
                     type="button"
-                    onClick={() => setEmployeeId(employee._id)}
+                    onClick={() =>
+                      setEmployeeId(selected ? "" : employee._id)
+                    }
                     className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-sm transition-colors ${
                       selected
                         ? "bg-primary/10 text-primary font-semibold"
@@ -236,13 +337,17 @@ const AssignLeadModal = ({
             type="button"
             onClick={handleConfirm}
             disabled={
-              !employeeId || assignLead.isPending || bulkAssign.isPending
+              (!employeeId && !branchId) ||
+              assignLead.isPending ||
+              bulkAssign.isPending
             }
             className="rounded-lg bg-primary px-4 py-1.5 text-xs font-bold text-on-primary hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {assignLead.isPending || bulkAssign.isPending
               ? "Assigning..."
-              : "Confirm Assignment"}
+              : employeeId
+                ? "Confirm Assignment"
+                : "Assign to Branch"}
           </button>
         </div>
       </div>
