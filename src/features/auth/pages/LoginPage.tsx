@@ -266,7 +266,7 @@ const LoginPage = () => {
             </h2>
             <p className="text-sm text-on-surface-variant">
               {lockoutData
-                ? "Outside working hours permission required."
+                ? "Special access permission required."
                 : "Please enter your details to sign in to your account."}
             </p>
           </div>
@@ -312,14 +312,14 @@ const LoginPage = () => {
                       htmlFor="reason"
                       className="block text-sm font-medium text-on-surface"
                     >
-                      Reason for Late Check-in
+                      Reason for Access Request
                     </label>
                     <textarea
                       id="reason"
                       rows={4}
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
-                      placeholder="Explain why you are accessing the CRM after working hours..."
+                      placeholder="Explain why you need access to the CRM right now..."
                       className="w-full rounded-xl border border-outline/30 bg-surface-container-lowest p-3.5 text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                       required
                     />
