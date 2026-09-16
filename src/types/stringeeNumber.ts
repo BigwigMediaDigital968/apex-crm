@@ -11,6 +11,8 @@ export interface StringeeNumberBranch {
 }
 
 export interface StringeeNumber {
+  stringeePassword: string;
+  stringeeUserId: string;
   _id: string;
   phoneNumber: string;
   label?: string;
@@ -31,8 +33,9 @@ export interface CreateStringeeNumberInput {
 }
 
 export interface AssignStringeeNumberInput {
-  numberId: string;
   targetUserId: string | null;
+  stringeeUserId?: string;
+  stringeePassword?: string;
 }
 
 export interface UpdateStringeeNumberInput {

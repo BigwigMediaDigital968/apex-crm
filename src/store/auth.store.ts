@@ -35,8 +35,16 @@ export const useAuthStore = create<AuthState>()(
 
       setBootstrapping: (isBootstrapping) => set({ isBootstrapping }),
 
-      clearSession: () =>
-        set({ user: null, accessToken: null, refreshToken: null }),
+      clearSession: () => {
+        // Clear dialer session authentication flags on logout
+        Object.keys(sessionStorage).forEach((key) => {
+          if (key.startsWith("dialer_auth_verified_")) {
+            sessionStorage.removeItem(key);
+          }
+        });
+
+        set({ user: null, accessToken: null, refreshToken: null });
+      },
     }),
     {
       name: "crm-auth",
