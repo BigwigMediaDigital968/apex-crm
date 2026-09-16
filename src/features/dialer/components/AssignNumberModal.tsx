@@ -3,12 +3,6 @@ import { useEmployeesQuery } from "@/features/employees/hooks/useEmployees";
 import { useBranchesQuery } from "@/features/branches";
 import type { StringeeNumber } from "@/types/stringeeNumber";
 
-interface AssignNumberPayload {
-  targetUserId: string;
-  stringeeUserId: string;
-  stringeePassword?: string;
-}
-
 interface AssignNumberModalProps {
   assigningNumber: StringeeNumber | null;
   onClose: () => void;
