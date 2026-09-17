@@ -231,7 +231,7 @@ const HeadDashboardPage = () => {
             </p>
           )}
           <Link
-            to="/workforce"
+            to="/employees"
             className="group inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors duration-200 hover:text-primary/80"
           >
             <span className="material-symbols-outlined text-sm">badge</span>
