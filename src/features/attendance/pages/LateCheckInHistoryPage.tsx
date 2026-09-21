@@ -49,14 +49,14 @@ export const LateCheckInHistoryPage = () => {
                   <td className="p-4">
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                        item.status === "PENDING"
+                        item.status === "pending"
                           ? "bg-amber-500/10 text-amber-600"
-                          : item.status === "APPROVED"
+                          : item.status === "approved"
                             ? "bg-emerald-500/10 text-emerald-600"
                             : "bg-rose-500/10 text-rose-600"
                       }`}
                     >
-                      {item.status}
+                      {item.status?.toUpperCase()}
                     </span>
                   </td>
                   <td className="p-4 text-on-surface-variant">

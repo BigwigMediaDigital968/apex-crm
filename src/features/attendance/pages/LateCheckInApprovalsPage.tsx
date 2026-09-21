@@ -17,12 +17,12 @@ export const LateCheckInApprovalsPage = () => {
   );
   const [remarks, setRemarks] = useState("");
 
-  const handleReview = (status: "APPROVED" | "REJECTED") => {
+  const handleReview = (status: "approved" | "rejected") => {
     if (!activeRequest) return;
     reviewMutation.mutate(
       {
         requestId: activeRequest._id,
-        status: status.toLowerCase() as "APPROVED" | "REJECTED", // Convert to lowercase
+        status,
         remarks,
       },
       {
@@ -112,18 +112,18 @@ export const LateCheckInApprovalsPage = () => {
                   <td className="p-4">
                     <span
                       className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                        item.status === "PENDING"
+                        item.status === "pending"
                           ? "bg-amber-500/10 text-amber-600"
-                          : item.status === "APPROVED"
+                          : item.status === "approved"
                             ? "bg-emerald-500/10 text-emerald-600"
                             : "bg-rose-500/10 text-rose-600"
                       }`}
                     >
-                      {item.status}
+                      {item.status?.toUpperCase()}
                     </span>
                   </td>
                   <td className="p-4 text-right">
-                    {item.status?.toUpperCase() === "PENDING" && (
+                    {item.status === "pending" && (
                       <button
                         onClick={() => setActiveRequest(item)}
                         className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
@@ -172,14 +172,14 @@ export const LateCheckInApprovalsPage = () => {
               </button>
               <button
                 disabled={reviewMutation.isPending}
-                onClick={() => handleReview("REJECTED")}
+                onClick={() => handleReview("rejected")}
                 className="flex-1 rounded-xl bg-error-container text-on-error-container py-2.5 text-sm font-semibold hover:opacity-90"
               >
                 Reject
               </button>
               <button
                 disabled={reviewMutation.isPending}
-                onClick={() => handleReview("APPROVED")}
+                onClick={() => handleReview("approved")}
                 className="flex-1 rounded-xl bg-primary text-on-primary py-2.5 text-sm font-semibold hover:bg-primary/90"
               >
                 Approve

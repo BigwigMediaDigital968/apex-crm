@@ -1,4 +1,6 @@
-export type LateCheckInStatus = "PENDING" | "APPROVED" | "REJECTED";
+// The API stores and returns these lowercase; keep the type honest so
+// comparisons against it don't silently fall through.
+export type LateCheckInStatus = "pending" | "approved" | "rejected";
 
 export interface LateCheckInUser {
   _id: string;
@@ -22,6 +24,6 @@ export interface LateCheckInItem {
 
 export interface ReviewLateCheckInPayload {
   requestId: string;
-  status: "APPROVED" | "REJECTED";
+  status: Extract<LateCheckInStatus, "approved" | "rejected">;
   remarks?: string;
 }

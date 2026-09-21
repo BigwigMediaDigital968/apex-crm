@@ -12,7 +12,7 @@ export const PendingLateRequestsCard = () => {
     useState<LateCheckInItem | null>(null);
   const [remarks, setRemarks] = useState("");
 
-  const handleAction = (status: "APPROVED" | "REJECTED") => {
+  const handleAction = (status: "approved" | "rejected") => {
     if (!selectedRequest) return;
     reviewMutation.mutate(
       { requestId: selectedRequest._id, status, remarks },
@@ -103,14 +103,14 @@ export const PendingLateRequestsCard = () => {
               </button>
               <button
                 disabled={reviewMutation.isPending}
-                onClick={() => handleAction("REJECTED")}
+                onClick={() => handleAction("rejected")}
                 className="rounded-xl bg-error-container text-on-error-container px-4 py-2 text-sm font-semibold"
               >
                 Reject
               </button>
               <button
                 disabled={reviewMutation.isPending}
-                onClick={() => handleAction("APPROVED")}
+                onClick={() => handleAction("approved")}
                 className="rounded-xl bg-primary text-on-primary px-4 py-2 text-sm font-semibold"
               >
                 Approve
