@@ -36,9 +36,22 @@ export interface CallLogsPagination {
   totalPages: number;
 }
 
+/**
+ * Aggregated over every log matching the current filter — NOT just the rows on
+ * the current page. Computed server-side so the KPI cards can't drift from the
+ * filter that produced them.
+ */
+export interface CallLogsStats {
+  totalCalls: number;
+  totalSeconds: number;
+  answeredCalls: number;
+  missedCalls: number;
+}
+
 export interface GetCallLogsResponse {
   success: boolean;
   data: CallLogEntry[];
+  stats?: CallLogsStats;
   pagination: CallLogsPagination;
 }
 

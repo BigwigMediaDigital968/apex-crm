@@ -4,6 +4,7 @@ import {
   dialerApi,
   type CallLogEntry,
   type CallLogsPagination,
+  type CallLogsStats,
   type GetCallLogsQueryParams,
 } from "@/services/dialerApi";
 
@@ -17,6 +18,8 @@ export const dialerKeys = {
 
 export interface UseCallLogsReturn {
   logs: CallLogEntry[];
+  /** Totals across the whole filtered set, not just the current page. */
+  stats: CallLogsStats;
   pagination: CallLogsPagination;
   loading: boolean;
   error: string | null;
@@ -44,8 +47,16 @@ export const useCallLogs = (
     totalPages: 1,
   };
 
+  const emptyStats: CallLogsStats = {
+    totalCalls: 0,
+    totalSeconds: 0,
+    answeredCalls: 0,
+    missedCalls: 0,
+  };
+
   return {
     logs: query.data?.data ?? [],
+    stats: query.data?.stats ?? emptyStats,
     pagination: query.data?.pagination ?? defaultPagination,
     loading: query.isLoading,
     error: query.error ? (query.error as Error).message : null,
