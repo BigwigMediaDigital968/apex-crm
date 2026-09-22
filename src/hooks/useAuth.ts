@@ -60,6 +60,25 @@ export const useChangePassword = () => {
   });
 };
 
+/** Head/Admin resetting someone else's password from their profile page. */
+export const useResetUserPassword = () => {
+  return useMutation({
+    mutationFn: ({
+      userId,
+      newPassword,
+    }: {
+      userId: string;
+      newPassword: string;
+    }) => authApi.resetUserPassword(userId, { newPassword }),
+    onSuccess: () => {
+      toast.success("Password updated successfully");
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Failed to update password"));
+    },
+  });
+};
+
 export const useSubmitLateReason = () => {
   return useMutation({
     mutationFn: (payload: { lockoutToken: string; reason: string }) =>

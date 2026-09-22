@@ -19,6 +19,7 @@ import {
     type SalaryStructure,
 } from "@/types/employee";
 import DocumentsSection from "../components/DocumentsSection";
+import ResetPasswordButton from "../components/ResetPasswordButton";
 import SalarySection from "../components/SalarySection";
 import {
     useCreateEmployee,
@@ -548,16 +549,24 @@ const EmployeeFormPage = () => {
                 </div>
 
                 {isEditMode && (
-                    <button
-                        type="button"
-                        onClick={() => navigate(`/employees/${id}/profile`)}
-                        className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container transition-colors self-start sm:self-auto"
-                    >
-                        <span className="material-symbols-outlined text-base">
-                            visibility
-                        </span>
-                        View Profile
-                    </button>
+                    <div className="flex items-center gap-3 self-start sm:self-auto">
+                        <ResetPasswordButton
+                            userId={id}
+                            userName={existingEmployee?.name}
+                            targetRole={existingEmployee?.role}
+                        />
+
+                        <button
+                            type="button"
+                            onClick={() => navigate(`/employees/${id}/profile`)}
+                            className="flex items-center gap-2 rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-2.5 font-label-md text-xs font-bold text-on-surface hover:bg-surface-container transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-base">
+                                visibility
+                            </span>
+                            View Profile
+                        </button>
+                    </div>
                 )}
             </div>
 

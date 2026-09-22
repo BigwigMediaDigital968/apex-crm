@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Can } from "@/components/Auth/Can";
 import { useEmployeeProfileByUserQuery, useEmployeeQuery } from "../hooks/useEmployees";
+import ResetPasswordButton from "../components/ResetPasswordButton";
 import { PERMISSIONS, ROLE_LABELS } from "@/types/auth";
 
 const getInitials = (name?: string) =>
@@ -92,17 +93,25 @@ const UserProfilePage = () => {
             Back to Employees
           </button>
 
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${user.isActive
-              ? "bg-emerald-500/10 text-emerald-700"
-              : "bg-surface-container-high text-on-surface-variant"
-              }`}
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${user.isActive ? "bg-emerald-500" : "bg-outline"}`}
+          <div className="flex items-center gap-3">
+            <ResetPasswordButton
+              userId={user._id}
+              userName={user.name}
+              targetRole={user.role}
             />
-            {user.isActive ? "Active" : "Inactive"}
-          </span>
+
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${user.isActive
+                ? "bg-emerald-500/10 text-emerald-700"
+                : "bg-surface-container-high text-on-surface-variant"
+                }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${user.isActive ? "bg-emerald-500" : "bg-outline"}`}
+              />
+              {user.isActive ? "Active" : "Inactive"}
+            </span>
+          </div>
         </div>
 
         {/* Account header — everything we know from the User record */}
@@ -651,12 +660,18 @@ const UserProfilePage = () => {
 
       {/* Floating Bottom Action Bar */}
       <Can permission={[PERMISSIONS.USER_UPDATE, PERMISSIONS.EMPLOYEE_UPDATE]}>
-        <div className="fixed bottom-4 left-4 right-4 max-w-7xl mx-auto rounded-2xl border border-outline-variant/30 bg-surface-container-lowest/90 backdrop-blur-md p-4 shadow-lg z-20">
+        <div className="sticky bottom-4 left-4 right-4 max-w-7xl mx-auto rounded-2xl border border-outline-variant/30 bg-surface-container-lowest/90 backdrop-blur-md p-4 shadow-lg z-20">
           <div className="flex items-center justify-between gap-4">
             <p className="text-xs text-on-surface-variant hidden sm:block">
               Need to update {userObj?.name || "this user"}'s role, branch, or employment status?
             </p>
             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+              <ResetPasswordButton
+                userId={userObj?._id ?? id}
+                userName={userObj?.name}
+                targetRole={userObj?.role ?? user?.role}
+              />
+
               <button
                 type="button"
                 onClick={() => navigate(`/employees/${id}/edit`)}

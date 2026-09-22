@@ -59,6 +59,14 @@ export const authApi = {
   }) => {
     await apiClient.patch("/auth/me/password", payload);
   },
+
+  /**
+   * Head/Admin reset of another user's password. No current password is sent —
+   * the actor never knows it; the API authorizes on `user:update` instead.
+   */
+  resetUserPassword: async (userId: string, payload: { newPassword: string }) => {
+    await apiClient.patch(`/auth/update-password/${userId}`, payload);
+  },
 };
 
 export const lateCheckInApi = {
