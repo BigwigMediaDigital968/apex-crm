@@ -29,11 +29,15 @@ export const employeeKeys = {
   detail: (id: string) => [...employeeKeys.all, "detail", id] as const,
 };
 
-export const useEmployeesQuery = (query: EmployeeListQuery = {}) =>
+export const useEmployeesQuery = (
+  query: EmployeeListQuery = {},
+  options?: { enabled?: boolean }
+) =>
   useQuery({
     queryKey: employeeKeys.list(query),
     queryFn: () => employeeApi.list(query),
     placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
   });
 
 export const useEmployeeQuery = (id: string | undefined) =>
@@ -153,12 +157,14 @@ export const employeeProfileKeys = {
 };
 
 export const useEmployeeProfilesQuery = (
-  query: EmployeeProfileListQuery = {}
+  query: EmployeeProfileListQuery = {},
+  options?: { enabled?: boolean }
 ) =>
   useQuery({
     queryKey: employeeProfileKeys.list(query),
     queryFn: () => employeeApi.listProfiles(query),
     placeholderData: keepPreviousData,
+    enabled: options?.enabled ?? true,
   });
 
 /**

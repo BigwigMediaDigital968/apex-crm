@@ -209,6 +209,7 @@ export interface EmployeeProfileListQuery {
   page?: number;
   limit?: number;
   branchId?: string;
+  reportingManager?: string;
   status?: EmploymentStatus;
   search?: string;
 }

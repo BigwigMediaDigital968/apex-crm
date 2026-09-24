@@ -6,7 +6,8 @@ export const REVENUE_STATUS = {
 
 export type RevenueStatus = (typeof REVENUE_STATUS)[keyof typeof REVENUE_STATUS];
 
-export type RevenueViewMode = "INDIVIDUAL" | "TEAM" | "BRANCH" | "LEAD" | "";
+/** "" is the page's "All" filter; it is sent to the API as "ALL". */
+export type RevenueViewMode = "ALL" | "INDIVIDUAL" | "TEAM" | "BRANCH" | "LEAD" | "";
 
 export interface RevenueEmployeeRef {
   _id: string;
@@ -41,6 +42,8 @@ export interface RevenueRecord {
   status: RevenueStatus;
   verifiedBy?: { _id: string; name: string };
   verifiedAt?: string;
+  lastEditedBy?: { _id: string; name: string };
+  lastEditedAt?: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -85,6 +88,17 @@ export interface CreateRevenuePayload {
   amount: number;
   source: string;
   clientName: string;
+  clientContact?: string;
+  reference?: string;
+  notes?: string;
+}
+
+/** Empty string on an optional text field clears it. */
+export interface UpdateRevenuePayload {
+  date?: string;
+  amount?: number;
+  source?: string;
+  clientName?: string;
   clientContact?: string;
   reference?: string;
   notes?: string;

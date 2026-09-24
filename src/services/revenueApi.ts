@@ -5,6 +5,7 @@ import type {
   RevenueRecord,
   RevenueReportParams,
   RevenueReportResponse,
+  UpdateRevenuePayload,
   UpdateRevenueStatusPayload,
 } from "@/types/revenue";
 
@@ -26,6 +27,17 @@ export const revenueApi = {
   create: async (payload: CreateRevenuePayload): Promise<RevenueRecord> => {
     const { data } = await apiClient.post<ApiEnvelope<RevenueRecord>>(
       "/revenue",
+      payload
+    );
+    return data.data;
+  },
+
+  /**
+   * PATCH /revenue/:id
+   */
+  update: async (id: string, payload: UpdateRevenuePayload): Promise<RevenueRecord> => {
+    const { data } = await apiClient.patch<ApiEnvelope<RevenueRecord>>(
+      `/revenue/${id}`,
       payload
     );
     return data.data;

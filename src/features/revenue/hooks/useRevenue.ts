@@ -1,6 +1,6 @@
 import { revenueApi } from "@/services/revenueApi";
 import { getErrorMessage } from "@/utils/getErrorMessage";
-import type { CreateRevenuePayload, RevenueReportParams, UpdateRevenueStatusPayload } from "@/types/revenue";
+import type { CreateRevenuePayload, RevenueReportParams, UpdateRevenuePayload, UpdateRevenueStatusPayload } from "@/types/revenue";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
@@ -29,6 +29,22 @@ export const useCreateRevenueMutation = () => {
         },
         onError: (error) => {
             toast.error(getErrorMessage(error, "Failed to log revenue entry"));
+        },
+    });
+};
+
+export const useUpdateRevenueMutation = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, payload }: { id: string; payload: UpdateRevenuePayload }) =>
+            revenueApi.update(id, payload),
+        onSuccess: () => {
+            toast.success("Revenue entry updated");
+            queryClient.invalidateQueries({ queryKey: ["revenue-report"] });
+        },
+        onError: (error) => {
+            toast.error(getErrorMessage(error, "Failed to update revenue entry"));
         },
     });
 };

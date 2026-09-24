@@ -3,15 +3,18 @@ import { Link } from "react-router";
 import { Can } from "@/components/Auth/Can";
 import RefreshButton from "@/components/ui/RefreshButton";
 import { useAuthStore } from "@/store/auth.store";
-import { ROLES } from "@/types/auth";
+import { PERMISSIONS, ROLES } from "@/types/auth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useBranchesQuery } from "@/features/branches";
-import { useEmployeesQuery } from "@/features/employees"; // Ensure this hook import exists
-import type { RevenueStatus, RevenueViewMode } from "@/types/revenue";
+import { useEmployeeProfilesQuery, useEmployeesQuery } from "@/features/employees";
+import type { RevenueRecord, RevenueStatus, RevenueViewMode } from "@/types/revenue";
 import {
     useRevenueReportQuery,
     useUpdateRevenueStatusMutation,
 } from "../hooks/useRevenue";
 import { useLeads } from "@/features/leads";
+import EditRevenueModal from "../components/EditRevenueModal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const STATUS_BADGE: Record<RevenueStatus, string> = {
     PENDING: "bg-amber-500/10 text-amber-700",
@@ -47,15 +50,27 @@ const RevenuePage = () => {
     const empDropdownRef = useRef<HTMLDivElement>(null);
 
     const { data: branches } = useBranchesQuery();
-    // Manager: scoped to their own branch's employees only (mirrors
-    // TeamAttendanceTab's "my team" convention). Admin/Head: unscoped,
-    // company-wide fetch.
+    // Manager: only their direct reports — the backend rejects anyone else
+    // with a 403. Admin/Head: company-wide list (100 is the API's max page).
     const { data: employeesData } = useEmployeesQuery(
-        isManager
-            ? { role: "employee", branchId: currentUser?.branches?.[0], isActive: true, limit: 100 }
-            : {}
+        { limit: 100 },
+        { enabled: canManage }
     );
-    const employees = employeesData?.employees ?? employeesData ?? [];
+    const { data: teamProfilesData } = useEmployeeProfilesQuery(
+        { reportingManager: currentUser?._id, limit: 100 },
+        { enabled: isManager && !!currentUser?._id }
+    );
+    const employees = useMemo(() => {
+        if (isManager) {
+            return (teamProfilesData?.profiles ?? []).map((p) => ({
+                _id: p.user._id,
+                name: p.user.name,
+                email: p.user.email,
+                role: p.user.role,
+            }));
+        }
+        return employeesData?.employees ?? [];
+    }, [isManager, teamProfilesData, employeesData]);
     const [searchQuery, setSearchQuery] = useState("");
 
     const { data: leadsData, isLoading: isLeadLoading } = useLeads();
@@ -127,7 +142,9 @@ const RevenuePage = () => {
 
     const { data, isLoading, isError } = useRevenueReportQuery(
     {
-        ...(effectiveViewMode !== "" && { viewMode: effectiveViewMode }),
+        // "All" = everything the user's role may see (Head: company, Admin:
+        // their branches, Manager: their team, Employee: own entries)
+        viewMode: effectiveViewMode || "ALL",
 
         branchId:
             effectiveViewMode === "BRANCH"
@@ -162,7 +179,28 @@ const RevenuePage = () => {
 );
 
     const updateStatus = useUpdateRevenueStatusMutation();
+    // Verify/Reject waits for confirmation in a dialog before calling the API
+    const [pendingAction, setPendingAction] = useState<{
+        record: RevenueRecord;
+        status: "VERIFIED" | "REJECTED";
+    } | null>(null);
+
+    const handleConfirmAction = () => {
+        if (!pendingAction) return;
+        updateStatus.mutate(
+            { id: pendingAction.record._id, payload: { status: pendingAction.status } },
+            { onSettled: () => setPendingAction(null) }
+        );
+    };
     const records = data?.records ?? [];
+    const [editingRecord, setEditingRecord] = useState<RevenueRecord | null>(null);
+
+    // Mirrors the backend: the owner can edit only while PENDING; anyone with
+    // revenue:manage can verify/reject and edit any entry.
+    const { hasPermission } = usePermissions();
+    const canEdit = (rec: RevenueRecord) =>
+        (rec.employee?._id === currentUser?._id && rec.status === "PENDING") ||
+        hasPermission(PERMISSIONS.REVENUE_MANAGE);
 
     const handleSelectLead = (lead: LeadItem) => {
         setSelectedLeadId(lead._id);
@@ -521,18 +559,30 @@ const RevenuePage = () => {
                                             </span>
                                         </td>
                                         <td className="px-5 py-3.5 text-right">
+                                            <div className="flex justify-end gap-1.5">
+                                            <Can permission="revenue:update">
+                                                {canEdit(rec) && (
+                                                    <button
+                                                        onClick={() => setEditingRecord(rec)}
+                                                        title={rec.lastEditedBy ? `Last edited by ${rec.lastEditedBy.name}` : "Edit entry"}
+                                                        className="rounded-lg bg-primary/10 px-2.5 py-1.5 text-[10px] font-bold text-primary hover:bg-primary/20"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                )}
+                                            </Can>
                                             <Can permission="revenue:manage">
                                                 {rec.status === "PENDING" && (
                                                     <div className="flex justify-end gap-1.5">
                                                         <button
-                                                            onClick={() => updateStatus.mutate({ id: rec._id, payload: { status: "VERIFIED" } })}
+                                                            onClick={() => setPendingAction({ record: rec, status: "VERIFIED" })}
                                                             disabled={updateStatus.isPending}
                                                             className="rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-500/20 disabled:opacity-50"
                                                         >
                                                             Verify
                                                         </button>
                                                         <button
-                                                            onClick={() => updateStatus.mutate({ id: rec._id, payload: { status: "REJECTED" } })}
+                                                            onClick={() => setPendingAction({ record: rec, status: "REJECTED" })}
                                                             disabled={updateStatus.isPending}
                                                             className="rounded-lg bg-rose-500/10 px-2.5 py-1.5 text-[10px] font-bold text-rose-700 hover:bg-rose-500/20 disabled:opacity-50"
                                                         >
@@ -541,6 +591,7 @@ const RevenuePage = () => {
                                                     </div>
                                                 )}
                                             </Can>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -549,6 +600,23 @@ const RevenuePage = () => {
                     </table>
                 </div>
             </div>
+
+            <EditRevenueModal record={editingRecord} onClose={() => setEditingRecord(null)} />
+
+            <ConfirmDialog
+                open={pendingAction !== null}
+                onClose={() => !updateStatus.isPending && setPendingAction(null)}
+                onConfirm={handleConfirmAction}
+                isLoading={updateStatus.isPending}
+                tone={pendingAction?.status === "REJECTED" ? "danger" : "primary"}
+                title={pendingAction?.status === "REJECTED" ? "Reject revenue entry?" : "Verify revenue entry?"}
+                description={
+                    pendingAction
+                        ? `${pendingAction.status === "REJECTED" ? "Reject" : "Verify"} ₹${pendingAction.record.amount.toLocaleString("en-IN")} from ${pendingAction.record.clientName}, logged by ${pendingAction.record.employee?.name ?? "the employee"}? After this, the employee can no longer edit the entry.`
+                        : undefined
+                }
+                confirmLabel={pendingAction?.status === "REJECTED" ? "Reject" : "Verify"}
+            />
         </div>
     );
 };
