@@ -9,7 +9,6 @@ function App() {
     <>
       <Providers>
         <AuthBootstrap>
-
           <RouterProvider router={router} />
         </AuthBootstrap>
       </Providers>

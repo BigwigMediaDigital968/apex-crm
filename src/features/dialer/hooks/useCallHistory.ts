@@ -12,8 +12,10 @@ import {
 export const dialerKeys = {
   all: ["dialer"] as const,
   logs: () => [...dialerKeys.all, "logs"] as const,
-  logList: (params: GetCallLogsQueryParams) => [...dialerKeys.logs(), params] as const,
-  leadHistory: (leadId: string) => [...dialerKeys.all, "lead-history", leadId] as const,
+  logList: (params: GetCallLogsQueryParams) =>
+    [...dialerKeys.logs(), params] as const,
+  leadHistory: (leadId: string) =>
+    [...dialerKeys.all, "lead-history", leadId] as const,
 };
 
 export interface UseCallLogsReturn {
@@ -27,12 +29,23 @@ export interface UseCallLogsReturn {
 }
 
 export const useCallLogs = (
-  initialParams: GetCallLogsQueryParams = { limit: 10, page: 1 }
+  initialParams: GetCallLogsQueryParams = { limit: 10, page: 1 },
 ): UseCallLogsReturn => {
   const query = useQuery({
     queryKey: dialerKeys.logList(initialParams),
     queryFn: async () => {
       const response = await dialerApi.getCallLogs(initialParams);
+
+      console.log("=== API RESPONSE DATA ===", response.data);
+
+      if (response.data && response.data.length > 0) {
+        console.log("First record keys:", Object.keys(response.data[0]));
+        console.log(
+          "First record recordingUrl value:",
+          response.data[0].recordingUrl,
+        );
+      }
+
       if (!response.success) {
         throw new Error("Failed to fetch call logs");
       }
@@ -71,7 +84,9 @@ export interface UseLeadCallHistoryReturn {
   refetch: () => void;
 }
 
-export const useLeadCallHistory = (leadId: string): UseLeadCallHistoryReturn => {
+export const useLeadCallHistory = (
+  leadId: string,
+): UseLeadCallHistoryReturn => {
   const query = useQuery({
     queryKey: dialerKeys.leadHistory(leadId),
     queryFn: () => dialerApi.getLeadCallHistory(leadId),

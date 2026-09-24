@@ -1,6 +1,7 @@
 // src/features/dialer/components/LeadCallHistory.tsx
 import React from "react";
 import { useLeadCallHistory } from "../hooks/useCallHistory";
+import { getSafeRecordingUrl } from "@/utils/dialer";
 
 interface LeadCallHistoryProps {
   leadId: string;
@@ -19,18 +20,38 @@ export const LeadCallHistory: React.FC<LeadCallHistoryProps> = ({ leadId }) => {
     switch (status) {
       case "ended":
       case "answered":
-        return <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">Answered</span>;
+        return (
+          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800">
+            Answered
+          </span>
+        );
       case "missed":
-        return <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">Missed</span>;
+        return (
+          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">
+            Missed
+          </span>
+        );
       case "rejected":
-        return <span className="px-2 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-800">Rejected</span>;
+        return (
+          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-rose-100 text-rose-800">
+            Rejected
+          </span>
+        );
       default:
-        return <span className="px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-800">{status}</span>;
+        return (
+          <span className="px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-800">
+            {status}
+          </span>
+        );
     }
   };
 
-  if (loading) return <div className="p-4 text-xs text-gray-500">Loading call history...</div>;
-  if (error) return <div className="p-4 text-xs text-rose-500">Error: {error}</div>;
+  if (loading)
+    return (
+      <div className="p-4 text-xs text-gray-500">Loading call history...</div>
+    );
+  if (error)
+    return <div className="p-4 text-xs text-rose-500">Error: {error}</div>;
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
@@ -45,7 +66,9 @@ export const LeadCallHistory: React.FC<LeadCallHistoryProps> = ({ leadId }) => {
       </div>
 
       {calls.length === 0 ? (
-        <p className="text-xs text-gray-400 py-2">No calls logged yet for this lead.</p>
+        <p className="text-xs text-gray-400 py-2">
+          No calls logged yet for this lead.
+        </p>
       ) : (
         <div className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
           {calls.map((call) => (
@@ -64,7 +87,12 @@ export const LeadCallHistory: React.FC<LeadCallHistoryProps> = ({ leadId }) => {
 
               {call.recordingUrl && (
                 <div className="pt-1">
-                  <audio controls src={call.recordingUrl} className="w-full h-7" />
+                  <audio
+                    controls
+                    preload="metadata"
+                    src={getSafeRecordingUrl(call.recordingUrl)}
+                    className="w-full h-8 rounded"
+                  />
                 </div>
               )}
             </div>
