@@ -148,6 +148,7 @@ export const RecentCallLogsTable = ({
                       <audio
                         controls
                         preload="none"
+                        crossOrigin="anonymous"
                         src={getSafeRecordingUrl(log.recordingUrl)}
                         className="h-8 w-48 rounded"
                       />
@@ -155,7 +156,7 @@ export const RecentCallLogsTable = ({
                       <span className="text-gray-400">No Recording</span>
                     )}
                   </td>
-                  
+
                   <td className="py-3 px-3 text-right">
                     {onRedial && (
                       <button

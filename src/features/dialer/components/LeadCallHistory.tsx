@@ -90,6 +90,7 @@ export const LeadCallHistory: React.FC<LeadCallHistoryProps> = ({ leadId }) => {
                   <audio
                     controls
                     preload="metadata"
+                    crossOrigin="anonymous"
                     src={getSafeRecordingUrl(call.recordingUrl)}
                     className="w-full h-8 rounded"
                   />
