@@ -1,7 +1,7 @@
 // src/features/dialer/components/LeadCallHistory.tsx
 import React from "react";
 import { useLeadCallHistory } from "../hooks/useCallHistory";
-import { getSafeRecordingUrl } from "@/utils/dialer";
+import { getSafeRecordingUrl, pauseOtherAudio } from "@/utils/dialer";
 
 interface LeadCallHistoryProps {
   leadId: string;
@@ -92,6 +92,7 @@ export const LeadCallHistory: React.FC<LeadCallHistoryProps> = ({ leadId }) => {
                     preload="metadata"
                     crossOrigin="anonymous"
                     src={getSafeRecordingUrl(call.recordingUrl)}
+                    onPlay={pauseOtherAudio}
                     className="w-full h-8 rounded"
                   />
                 </div>

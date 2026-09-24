@@ -8,6 +8,7 @@ import React, { useState, useEffect } from "react";
 import { useAuthStore } from "@/store/auth.store";
 import { dialerKeys, useCallLogs } from "../hooks/useCallHistory";
 import RefreshButton from "@/components/ui/RefreshButton";
+import { getSafeRecordingUrl, pauseOtherAudio } from "@/utils/dialer";
 
 const formatDuration = (seconds: number) => {
   if (!seconds || seconds <= 0) return "--";
@@ -479,21 +480,13 @@ const CallHistoryPage: React.FC = () => {
                     </td>
 
                     <td className="py-3.5 px-4">
-                      {/* {log.recordingUrl ? (
-                        <audio
-                          controls
-                          src={log.recordingUrl}
-                          className="h-7 w-48 rounded-md"
-                        />
-                      ) : (
-                        <span className="text-[10px] text-on-surface-variant/60 italic">
-                          No Recording
-                        </span>
-                      )} */}
                       {log.recordingUrl ? (
                         <audio
                           controls
-                          src={log.recordingUrl}
+                          preload="metadata"
+                          crossOrigin="anonymous"
+                          src={getSafeRecordingUrl(log.recordingUrl)}
+                          onPlay={pauseOtherAudio}
                           className="h-8 w-48"
                         >
                           Your browser does not support the audio element.

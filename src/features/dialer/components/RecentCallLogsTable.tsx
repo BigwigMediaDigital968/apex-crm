@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router";
 import { useCallLogs } from "../hooks/useCallHistory";
 import { useAuthStore } from "@/store/auth.store";
-import { getSafeRecordingUrl } from "@/utils/dialer";
+import { getSafeRecordingUrl, pauseOtherAudio } from "@/utils/dialer";
 
 interface RecentCallLogsTableProps {
   limit?: number;
@@ -147,9 +147,10 @@ export const RecentCallLogsTable = ({
                     {log.recordingUrl ? (
                       <audio
                         controls
-                        preload="none"
+                        preload="metadata"
                         crossOrigin="anonymous"
                         src={getSafeRecordingUrl(log.recordingUrl)}
+                        onPlay={pauseOtherAudio}
                         className="h-8 w-48 rounded"
                       />
                     ) : (

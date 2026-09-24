@@ -1,3 +1,5 @@
+import type { SyntheticEvent } from "react";
+
 export const getSafeRecordingUrl = (url?: string): string => {
   if (!url) return "";
 
@@ -7,4 +9,11 @@ export const getSafeRecordingUrl = (url?: string): string => {
   }
 
   return url;
+};
+
+// Only one recording plays at a time: pause every other <audio> on the page
+export const pauseOtherAudio = (e: SyntheticEvent<HTMLAudioElement>) => {
+  document.querySelectorAll("audio").forEach((audio) => {
+    if (audio !== e.currentTarget && !audio.paused) audio.pause();
+  });
 };
