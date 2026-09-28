@@ -1,13 +1,14 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 import { tasksApi } from "@/services/tasksApi";
 import { getErrorMessage } from "@/utils/getErrorMessage";
-import type { CreateTaskPayload, Task, TaskListQuery, UpdateTaskPayload } from "@/types/task";
+import type {
+  CreateTaskPayload,
+  Task,
+  TaskListQuery,
+  UpdateTaskPayload,
+} from "@/types/task";
 
 /* =========================================================
    Query Keys
@@ -24,7 +25,8 @@ export const taskQueryKeys = {
 
   detail: (id: string) => [...taskQueryKeys.details(), id] as const,
 
-  activities: (id: string) => [...taskQueryKeys.detail(id), "activities"] as const,
+  activities: (id: string) =>
+    [...taskQueryKeys.detail(id), "activities"] as const,
 };
 
 /* =========================================================
@@ -81,6 +83,7 @@ export const useCreateTask = () => {
    PATCH /tasks/:id
 ========================================================= */
 
+// useTasks.ts
 export const useUpdateTask = () => {
   const queryClient = useQueryClient();
 
@@ -91,13 +94,9 @@ export const useUpdateTask = () => {
     }: {
       id: string;
       payload: UpdateTaskPayload;
-      /** Skip the success toast — for high-frequency actions like a board drag. */
       silent?: boolean;
     }) => tasksApi.update(id, payload),
 
-    // Patch every cached task list immediately so a board drag (or the
-    // inline status select) reflects instantly instead of waiting on the
-    // round-trip — rolled back in onError if the request fails.
     onMutate: async ({ id, payload }) => {
       await queryClient.cancelQueries({ queryKey: taskQueryKeys.lists() });
 
@@ -109,8 +108,8 @@ export const useUpdateTask = () => {
         { queryKey: taskQueryKeys.lists() },
         (old) =>
           old?.map((task) =>
-            task._id === id ? { ...task, ...payload } as Task : task
-          )
+            task._id === id ? ({ ...task, ...payload } as Task) : task,
+          ),
       );
 
       return { previousLists };
@@ -119,11 +118,11 @@ export const useUpdateTask = () => {
     onSuccess: (task, variables) => {
       if (!variables.silent) toast.success("Task updated successfully");
 
-      // PATCH /tasks/:id returns the raw (unpopulated) document, unlike
-      // GET /tasks/:id — invalidate rather than cache it directly so the
-      // detail view refetches the fully populated task instead of losing
-      // assignedTo/branch/assignedBy back to raw ObjectId strings.
-      queryClient.invalidateQueries({ queryKey: taskQueryKeys.detail(task._id) });
+      // Invalidate detail query and refetch immediately
+      queryClient.invalidateQueries({
+        queryKey: taskQueryKeys.detail(task._id),
+        refetchType: "active",
+      });
 
       queryClient.invalidateQueries({ queryKey: taskQueryKeys.lists() });
 

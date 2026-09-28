@@ -1,236 +1,374 @@
-
-
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { TaskOverviewWidget } from "@/features/tasks";
 import { useEmployeesQuery } from "@/features/employees";
 import { useBranchesQuery } from "@/features/branches/hooks/useBranches";
 import { useLeads } from "@/features/leads/hooks/useLeads";
 import { useAuditLogs } from "@/features/logs/hooks/useAuditLogs";
+import ActionBadge from "@/features/logs/components/ActionBadge";
+import { useDashboardReport } from "../hooks/useDashboardReport";
 import ExportReportButton from "../components/ExportReportButton";
+
+const TIMEFRAMES = ["This Week", "This Month", "This Quarter"] as const;
+type Timeframe = (typeof TIMEFRAMES)[number];
+
+const PERFORMANCE_TIMEFRAMES = ["Daily", "Weekly", "Monthly"] as const;
+type PerformanceTimeframe = (typeof PERFORMANCE_TIMEFRAMES)[number];
+
+const timeframeRange = (timeframe: Timeframe) => {
+  const endDate = new Date();
+  const startDate = new Date();
+  if (timeframe === "This Week") startDate.setDate(endDate.getDate() - 7);
+  else if (timeframe === "This Quarter")
+    startDate.setMonth(endDate.getMonth() - 3);
+  else startDate.setMonth(endDate.getMonth() - 1);
+  return { startDate: startDate.toISOString(), endDate: endDate.toISOString() };
+};
+
+const getPerformanceDateRange = (period: PerformanceTimeframe) => {
+  const endDate = new Date();
+  const startDate = new Date();
+
+  if (period === "Daily") {
+    startDate.setHours(0, 0, 0, 0);
+  } else if (period === "Weekly") {
+    startDate.setDate(endDate.getDate() - 7);
+  } else if (period === "Monthly") {
+    startDate.setMonth(endDate.getMonth() - 1);
+  }
+
+  return {
+    perfStartDate: startDate.toISOString(),
+    perfEndDate: endDate.toISOString(),
+  };
+};
+
+const formatStatus = (status: string) =>
+  status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(amount);
 
 const AdminDashboardPage = () => {
   const navigate = useNavigate();
 
-  const { data: usersData, isLoading: usersLoading } = useEmployeesQuery({ limit: 5 });
-  const { data: activeUsersData } = useEmployeesQuery({ isActive: true, limit: 1 });
+  const [selectedTimeframe, setSelectedTimeframe] =
+    useState<Timeframe>("This Month");
+  const [performancePeriod, setPerformancePeriod] =
+    useState<PerformanceTimeframe>("Monthly");
+
+  const { data: usersData, isLoading: usersLoading } = useEmployeesQuery({
+    limit: 5,
+  });
+  const { data: activeUsersData } = useEmployeesQuery({
+    isActive: true,
+    limit: 1,
+  });
   const { data: branches, isLoading: branchesLoading } = useBranchesQuery();
   const { data: leadsData, isLoading: leadsLoading } = useLeads({ limit: 1 });
-  
-  // FIX 1: Removed invalid 'sortOrder' parameter
+
   const { data: auditData, isLoading: auditLoading } = useAuditLogs({
-    limit: 4,
+    limit: 5,
   });
+
+  const combinedFilters = useMemo(() => {
+    const mainRange = timeframeRange(selectedTimeframe);
+    const perfRange = getPerformanceDateRange(performancePeriod);
+
+    return {
+      ...mainRange,
+      perfStartDate: perfRange.perfStartDate,
+      perfEndDate: perfRange.perfEndDate,
+      performancePeriod,
+    };
+  }, [selectedTimeframe, performancePeriod]);
+
+  const timeframeFilters = useMemo(
+    () => timeframeRange(selectedTimeframe),
+    [selectedTimeframe],
+  );
+
+  const { data: dashboardReport, isLoading: reportLoading } =
+    useDashboardReport(combinedFilters);
 
   const activeBranches = (branches ?? []).filter((b) => b.isActive);
   const totalUsers = usersData?.pagination.total ?? 0;
   const activeUsers = activeUsersData?.pagination.total ?? 0;
 
-  return (
-    <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-8">
+  const totalRevenue = dashboardReport?.revenue?.total ?? 0;
+  const todaysRevenue = dashboardReport?.revenue?.today ?? 0;
+  const topBranchData = dashboardReport?.topPerformers?.branch;
+  const topEmployeeData = dashboardReport?.topPerformers?.employee;
 
+  return (
+    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 lg:p-8 space-y-6">
+     
       {/* 1. Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-outline-variant/30 pb-5">
-        <div>
-          <div className="flex items-center gap-2 text-primary font-bold text-xs tracking-wider uppercase mb-1">
-            <span className="material-symbols-outlined text-sm">admin_panel_settings</span>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+        {/* Left: Section Details */}
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-1.5 text-indigo-600 font-bold text-xs tracking-wider uppercase bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
+            <span className="material-symbols-outlined text-sm">
+              admin_panel_settings
+            </span>
             <span>System Administration</span>
           </div>
-          <h1 className="font-headline-md text-2xl sm:text-3xl font-extrabold text-on-surface">
-            Admin Management Console
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+            Admin Dashboard
           </h1>
-          <p className="font-body-md text-sm text-on-surface-variant mt-0.5">
-            Full system control across users, branch assignments, and audit logs.
+          <p className="text-xs sm:text-sm text-slate-500">
+            Overview performance, access control, and operations across your
+            assigned branches.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <ExportReportButton />
-          <button
-            onClick={() => navigate("/employees/onboard")}
-            className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary hover:bg-primary/90 transition-all shadow-md"
-          >
-            <span className="material-symbols-outlined text-base">person_add</span>
-            <span>Create User</span>
-          </button>
+        {/* Right: Quick Action Controls */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400 mr-1 hidden xl:flex">
+            <span className="material-symbols-outlined text-slate-400 text-base">
+              bolt
+            </span>
+            <span>Actions</span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <ExportReportButton filters={timeframeFilters} />
+
+            <button
+              onClick={() => navigate("/leads")}
+              className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 active:scale-[0.98] transition-all"
+            >
+              <span className="material-symbols-outlined text-base text-sky-600">
+                hub
+              </span>
+              <span>Leads</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 2. System KPI Metric Cards */}
+      {/* 2. System & Revenue Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-        {/* User Management Stat */}
-        <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-2">
+        {/* Revenue Performance Card */}
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-xs space-y-2 relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-              System Users
-            </p>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <span className="material-symbols-outlined text-lg">manage_accounts</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
+              Managed Revenue
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+              <span className="material-symbols-outlined text-lg">
+                payments
+              </span>
             </span>
           </div>
-          <p className="font-headline-md text-3xl font-extrabold text-on-surface">
+          {reportLoading ? (
+            <div className="h-8 w-24 rounded-lg bg-emerald-100/60 animate-pulse" />
+          ) : (
+            <div>
+              <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                {formatCurrency(totalRevenue)}
+              </p>
+              <p className="text-[11px] text-emerald-700 font-medium mt-0.5">
+                Today: {formatCurrency(todaysRevenue)}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* User Management Stat */}
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/50 p-5 shadow-xs space-y-2 relative overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-800">
+              System Users
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
+              <span className="material-symbols-outlined text-lg">
+                manage_accounts
+              </span>
+            </span>
+          </div>
+          <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
             {usersLoading ? "…" : totalUsers}
           </p>
-          <p className="font-label-sm text-xs font-medium text-emerald-600 flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">check_circle</span>
-            {usersLoading ? "Loading…" : `${activeUsers} Active • ${totalUsers - activeUsers} Inactive`}
+          <p className="text-[11px] font-medium text-indigo-700 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs">
+              check_circle
+            </span>
+            {usersLoading
+              ? "Loading…"
+              : `${activeUsers} Active • ${totalUsers - activeUsers} Inactive`}
           </p>
         </div>
 
         {/* Branch Control Stat */}
-        <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-2">
+        <div className="rounded-2xl border border-sky-200 bg-sky-50/50 p-5 shadow-xs space-y-2 relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-sky-800">
               Active Branches
-            </p>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500/10 text-sky-700">
-              <span className="material-symbols-outlined text-lg">storefront</span>
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
+              <span className="material-symbols-outlined text-lg">
+                storefront
+              </span>
             </span>
           </div>
-          <p className="font-headline-md text-3xl font-extrabold text-on-surface">
-            {branchesLoading ? "…" : String(activeBranches.length).padStart(2, "0")}
+          <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            {branchesLoading
+              ? "…"
+              : String(activeBranches.length).padStart(2, "0")}
           </p>
-          <p className="font-label-sm text-xs font-medium text-on-surface-variant truncate">
+          <p className="text-[11px] font-medium text-sky-700 truncate">
             {branchesLoading
               ? "Loading…"
-              : activeBranches.map((b) => b.name).join(", ") || "No active branches"}
+              : activeBranches.map((b) => b.name).join(", ") ||
+                "No active branches"}
           </p>
         </div>
 
         {/* Leads Stat */}
-        <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-2">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 shadow-xs space-y-2 relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
               Total Leads
-            </p>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-700">
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
               <span className="material-symbols-outlined text-lg">hub</span>
             </span>
           </div>
-          <p className="font-headline-md text-3xl font-extrabold text-on-surface">
-            {leadsLoading ? "…" : leadsData?.pagination.total ?? 0}
+          <p className="text-2xl font-extrabold text-slate-900 tracking-tight">
+            {leadsLoading ? "…" : (leadsData?.pagination.total ?? 0)}
           </p>
-          <p className="font-label-sm text-xs font-medium text-on-surface-variant">
-            Across all managed branches
-          </p>
-        </div>
-
-        {/* Security Audit Log Count */}
-        <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-              Audit Log Entries
-            </p>
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-500/10 text-purple-700">
-              <span className="material-symbols-outlined text-lg">shield</span>
-            </span>
-          </div>
-          <p className="font-headline-md text-3xl font-extrabold text-on-surface">
-            {auditLoading ? "…" : auditData?.pagination.total ?? 0}
-          </p>
-          <p className="font-label-sm text-xs font-bold text-on-surface-variant flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">verified</span>
-            Recorded system-wide
+          <p className="text-[11px] font-medium text-amber-700">
+            Across managed branches
           </p>
         </div>
-
       </div>
 
-      {/* 3. Action Hub Mapped to Admin Permissions */}
-      <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm space-y-4">
-        <h2 className="font-label-md text-xs font-bold uppercase tracking-wider text-on-surface-variant/70">
-          Admin Quick Operations
-        </h2>
+      {/* 3. Assigned Branch Performance Showcase */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+              Assigned Branch Performance
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Performance breakdown for branches under your administration.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200/80">
+            {PERFORMANCE_TIMEFRAMES.map((ptf) => (
+              <button
+                key={ptf}
+                onClick={() => setPerformancePeriod(ptf)}
+                className={`px-3 py-1 rounded-lg text-xs transition-all ${
+                  performancePeriod === ptf
+                    ? "bg-white text-indigo-600 font-bold shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                {ptf}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          <button
-            onClick={() => navigate("/employees")}
-            className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
-          >
-            <span className="material-symbols-outlined text-2xl text-primary group-hover:scale-110 transition-transform">
-              group
-            </span>
-            <span className="font-label-md text-xs font-bold text-on-surface">
-              Employee Management
-            </span>
-          </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Top Performing Branch in Scope */}
+          <div className="rounded-xl border border-amber-200/60 bg-gradient-to-b from-amber-50/40 to-white p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-base">
+                  emoji_events
+                </span>
+                Leading Branch
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                {performancePeriod}
+              </span>
+            </div>
+            <div>
+              <p className="text-base font-bold text-slate-900">
+                {topBranchData?.name ?? "—"}
+              </p>
+              <p className="text-xs text-slate-500">
+                {topBranchData?.code
+                  ? `Code: ${topBranchData.code}`
+                  : "No recorded activity"}
+              </p>
+            </div>
+            <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-500">
+                Volume Generated
+              </span>
+              <span className="text-sm font-extrabold text-indigo-600">
+                {formatCurrency(topBranchData?.revenue ?? 0)}
+              </span>
+            </div>
+          </div>
 
-          <button
-            onClick={() => navigate("/branches")}
-            className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
-          >
-            <span className="material-symbols-outlined text-2xl text-on-surface-variant group-hover:scale-110 transition-transform">
-              domain
-            </span>
-            <span className="font-label-md text-xs font-bold text-on-surface">
-              Branch Management
-            </span>
-          </button>
-
-          <button
-            onClick={() => navigate("/leads")}
-            className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
-          >
-            <span className="material-symbols-outlined text-2xl text-on-surface-variant group-hover:scale-110 transition-transform">
-              hub
-            </span>
-            <span className="font-label-md text-xs font-bold text-on-surface">
-              Lead Management
-            </span>
-          </button>
-
-          <button
-            onClick={() => navigate("/logs")}
-            className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
-          >
-            <span className="material-symbols-outlined text-2xl text-on-surface-variant group-hover:scale-110 transition-transform">
-              history
-            </span>
-            <span className="font-label-md text-xs font-bold text-on-surface">
-              Activity Logs
-            </span>
-          </button>
-
-          <button
-            onClick={() => navigate("/tasks")}
-            className="flex flex-col items-center justify-center gap-2 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:border-primary/50 hover:bg-primary/5 transition-all text-center group"
-          >
-            <span className="material-symbols-outlined text-2xl text-on-surface-variant group-hover:scale-110 transition-transform">
-              task_alt
-            </span>
-            <span className="font-label-md text-xs font-bold text-on-surface">
-              Task Management
-            </span>
-          </button>
-
+          {/* Top Representative */}
+          <div className="rounded-xl border border-indigo-200/60 bg-gradient-to-b from-indigo-50/40 to-white p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-indigo-800 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-base">
+                  military_tech
+                </span>
+                Top Representative
+              </span>
+              <span className="text-[10px] font-semibold text-slate-400 uppercase bg-white px-2 py-0.5 rounded-full border border-slate-200">
+                {performancePeriod}
+              </span>
+            </div>
+            <div>
+              <p className="text-base font-bold text-slate-900">
+                {topEmployeeData?.name ?? "—"}
+              </p>
+              <p className="text-xs text-slate-500">
+                {topEmployeeData?.branchName ?? "No recorded activity"}
+              </p>
+            </div>
+            <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs font-medium text-slate-500">
+                Revenue Contribution
+              </span>
+              <span className="text-sm font-extrabold text-indigo-600">
+                {formatCurrency(topEmployeeData?.revenue ?? 0)}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Task Overview */}
-      <TaskOverviewWidget
-        title="Task Overview"
-        description="Task load across the branches you manage."
-      />
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+        <TaskOverviewWidget
+          title="Task Load Overview"
+          description="Task load across the branches you manage."
+        />
+      </div>
 
       {/* 4. Core Management Section (User Management & Audit Activity) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
         {/* Left Column (User Directory Table) */}
-        <div className="lg:col-span-2 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="lg:col-span-2 rounded-2xl border border-slate-200/80 bg-white shadow-xs overflow-hidden">
+          <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="font-headline-sm text-base font-bold text-on-surface">
+              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
                 User Directory & Access Control
               </h3>
-              <p className="font-body-sm text-xs text-on-surface-variant">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Manage roles, statuses, and branch assignments.
               </p>
             </div>
 
             <Link
               to="/employees"
-              className="font-label-md text-xs font-bold text-primary hover:underline self-start sm:self-auto"
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors self-start sm:self-auto"
             >
               View All Users
             </Link>
@@ -239,7 +377,7 @@ const AdminDashboardPage = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-outline-variant/20 bg-surface-container-low/50 font-label-sm text-[11px] uppercase tracking-wider text-on-surface-variant/70">
+                <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] uppercase tracking-wider font-bold text-slate-500">
                   <th className="py-3 px-4">User</th>
                   <th className="py-3 px-4">System Role</th>
                   <th className="py-3 px-4">Branch</th>
@@ -247,44 +385,59 @@ const AdminDashboardPage = () => {
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-outline-variant/20 font-body-sm text-xs text-on-surface">
+              <tbody className="divide-y divide-slate-100 text-xs text-slate-800">
                 {usersLoading ? (
                   Array.from({ length: 4 }).map((_, i) => (
                     <tr key={i}>
                       <td colSpan={5} className="py-3.5 px-4">
-                        <div className="h-6 rounded-lg bg-surface-container-high animate-pulse" />
+                        <div className="h-6 rounded-lg bg-slate-100 animate-pulse" />
                       </td>
                     </tr>
                   ))
                 ) : (usersData?.employees ?? []).length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-6 px-4 text-center text-on-surface-variant">
+                    <td
+                      colSpan={5}
+                      className="py-6 px-4 text-center text-slate-400"
+                    >
                       No users found.
                     </td>
                   </tr>
                 ) : (
                   usersData!.employees.map((user) => (
-                    <tr key={user._id} className="hover:bg-surface-container-low/30 transition-colors">
+                    <tr
+                      key={user._id}
+                      className="hover:bg-slate-50/80 transition-colors"
+                    >
                       <td className="py-3.5 px-4">
                         <div>
-                          <p className="font-label-md font-bold">{user.name}</p>
-                          <p className="font-body-sm text-[11px] text-on-surface-variant/70">{user.email}</p>
+                          <p className="font-bold text-slate-900">
+                            {user.name}
+                          </p>
+                          <p className="text-[11px] text-slate-500">
+                            {user.email}
+                          </p>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 font-label-sm text-xs font-semibold capitalize">
+                      <td className="py-3.5 px-4 font-semibold capitalize text-slate-700">
                         {user.role}
                       </td>
-                      <td className="py-3.5 px-4 text-on-surface-variant">
-                        {user.branches[0]?.name ?? "—"}
+                      <td className="py-3.5 px-4 text-slate-600">
+                        {user.branches?.[0]?.name ?? "—"}
                       </td>
                       <td className="py-3.5 px-4">
                         <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${user.isActive
-                            ? "bg-emerald-500/10 text-emerald-700"
-                            : "bg-error/10 text-error"
-                            }`}
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                            user.isActive
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : "bg-rose-50 text-rose-700 border border-rose-200"
+                          }`}
                         >
-                          <span className={`h-1.5 w-1.5 rounded-full ${user.isActive ? "bg-emerald-500" : "bg-error"}`} />
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              user.isActive ? "bg-emerald-500" : "bg-rose-500"
+                            }`}
+                          />
                           {user.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
@@ -292,9 +445,11 @@ const AdminDashboardPage = () => {
                         <Link
                           to={`/employees/${user._id}/edit`}
                           aria-label="Edit User"
-                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
                         >
-                          <span className="material-symbols-outlined text-base">edit</span>
+                          <span className="material-symbols-outlined text-base">
+                            edit
+                          </span>
                         </Link>
                       </td>
                     </tr>
@@ -306,35 +461,41 @@ const AdminDashboardPage = () => {
         </div>
 
         {/* Right Column: Security Audit Trail */}
-        <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 space-y-4 shadow-sm">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 space-y-4 shadow-xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-purple-700 text-xl">security</span>
-              <h3 className="font-headline-sm text-base font-bold text-on-surface">
+              <span className="material-symbols-outlined text-purple-700 text-xl">
+                security
+              </span>
+              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
                 Audit Trail Log
               </h3>
             </div>
+            <Link
+              to="/logs"
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+            >
+              View All
+            </Link>
           </div>
 
-          <div className="space-y-3.5 divide-y divide-outline-variant/10">
+          <div className="space-y-3 divide-y divide-slate-100">
             {auditLoading ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="pt-3 first:pt-0">
-                  <div className="h-10 rounded-lg bg-surface-container-high animate-pulse" />
+                  <div className="h-10 rounded-lg bg-slate-100 animate-pulse" />
                 </div>
               ))
             ) : (auditData?.logs ?? []).length === 0 ? (
-              <p className="py-4 text-center font-body-sm text-xs text-on-surface-variant/70">
+              <p className="py-4 text-center text-xs text-slate-400">
                 No audit activity recorded yet.
               </p>
             ) : (
               auditData!.logs.map((log) => (
                 <div key={log._id} className="pt-3 first:pt-0 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-label-sm text-[10px] font-bold font-mono text-primary bg-primary/5 px-2 py-0.5 rounded">
-                      {log.action}
-                    </span>
-                    <span className="font-body-sm text-[10px] text-on-surface-variant/60">
+                  <div className="flex items-center justify-between gap-2">
+                    <ActionBadge action={log.action} />
+                    <span className="text-[10px] text-slate-400 font-mono shrink-0">
                       {new Date(log.createdAt).toLocaleString("en-IN", {
                         day: "2-digit",
                         month: "short",
@@ -343,24 +504,20 @@ const AdminDashboardPage = () => {
                       })}
                     </span>
                   </div>
-                  {/* FIX 2 & 3: Replaced log.actor and log.entity with log.entityId */}
-                  <p className="font-body-sm text-xs text-on-surface">
-                    {log.entityId ?? "System"}
+                  <p className="text-xs text-slate-800 font-medium">
+                    {log.description ?? log.entityId ?? "System Action"}
                   </p>
+                  {log.performedBy && (
+                    <p className="text-[10px] text-slate-400">
+                      {log.performedBy.name}
+                    </p>
+                  )}
                 </div>
               ))
             )}
           </div>
-
-          <div className="pt-2 text-center border-t border-outline-variant/20">
-            <Link to="/logs" className="font-label-md text-xs font-bold text-primary hover:underline">
-              View All Audit Logs
-            </Link>
-          </div>
         </div>
-
       </div>
-
     </div>
   );
 };

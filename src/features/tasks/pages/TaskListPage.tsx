@@ -382,7 +382,7 @@ const TaskListPage = () => {
                 <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
                   Due Date
                 </th>
-                <th className="px-4 py-3.5 w-10" />
+                <th className="px-6 py-3.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant flex justify-end align-middle">View</th>
               </tr>
             </thead>
 

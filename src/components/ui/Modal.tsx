@@ -11,9 +11,9 @@ interface ModalProps {
 }
 
 const SIZE_CLASSES: Record<NonNullable<ModalProps["size"]>, string> = {
-  sm: "max-w-sm",
-  md: "max-w-lg",
-  lg: "max-w-2xl",
+  sm: "max-w-md",
+  md: "max-w-xl",
+  lg: "max-w-3xl",
 };
 
 const Modal = ({

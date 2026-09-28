@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { useAuthStore } from "@/store/auth.store";
 import { useLeads, useMyFollowUps } from "@/features/leads/hooks/useLeads";
-import { useAttendanceRecords, } from "@/features/attendance/hooks/useAttendance";
+import { useAttendanceRecords } from "@/features/attendance/hooks/useAttendance";
 import { useRevenueReportQuery } from "@/features/revenue/hooks/useRevenue";
 import { REVENUE_STATUS, type RevenueStatusSummary } from "@/types/revenue";
 import TaskOverviewWidget from "@/features/tasks/components/TaskOverviewWidget";
@@ -21,10 +21,6 @@ const isFollowUpOverdue = (scheduledAt: string) =>
   new Date(scheduledAt).getTime() < Date.now();
 
 const formatInr = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
-
-/** Reads/writes a per-user scratchpad draft in this browser's localStorage —
- * private to this device, but real enough to justify the "Autosaved" label
- * (previously it just held React state and vanished on refresh). */
 const scratchpadKey = (userId: string) => `crm:scratchpad:${userId}`;
 
 const EmployeeDashboardPage = () => {
@@ -40,14 +36,23 @@ const EmployeeDashboardPage = () => {
     }
   });
 
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     if (!currentUser?._id) return;
     try {
       localStorage.setItem(scratchpadKey(currentUser._id), scratchpadText);
     } catch {
-      // localStorage unavailable (private mode, etc.) — draft just won't persist
+      // localStorage unavailable (private mode, etc.)
     }
   }, [scratchpadText, currentUser?._id]);
+
+  const handleCopyScratchpad = () => {
+    if (!scratchpadText) return;
+    navigator.clipboard.writeText(scratchpadText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
 
   const { data: myLeadsData, isLoading: leadsLoading } = useLeads({
     assignedTo: currentUser?._id,
@@ -56,8 +61,8 @@ const EmployeeDashboardPage = () => {
   const myLeads = useMemo(() => myLeadsData?.leads ?? [], [myLeadsData]);
   const leadsTotal = myLeadsData?.pagination.total ?? myLeads.length;
   const newLeadsToday = useMemo(() => {
-    const today = new Date().toDateString();
-    return myLeads.filter((l) => new Date(l.createdAt).toDateString() === today).length;
+    const todayStr = new Date().toDateString();
+    return myLeads.filter((l) => new Date(l.createdAt).toDateString() === todayStr).length;
   }, [myLeads]);
 
   const { data: followUps, isLoading: followUpsLoading } = useMyFollowUps();
@@ -82,8 +87,13 @@ const EmployeeDashboardPage = () => {
       )?.totalAmount ?? 0
     : 0;
 
-  const today = todayInput();
+  const pendingRevenue = Array.isArray(revenueData?.summary)
+    ? (revenueData.summary as RevenueStatusSummary[]).find(
+        (s) => s._id === REVENUE_STATUS.PENDING
+      )?.totalAmount ?? 0
+    : 0;
 
+  const today = todayInput();
 
   const { data, isLoading: isAttendanceLoading, isFetching } = useAttendanceRecords({
     date: today,
@@ -93,76 +103,31 @@ const EmployeeDashboardPage = () => {
   });
   const todaysRecord = data?.records.find((r) => r.date === today);
 
-  // Mutators for Punch In / Out
-
   return (
-    <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="min-h-screen bg-slate-50/50 p-4 sm:p-6 lg:p-8 space-y-6 font-sans max-w-7xl mx-auto">
+      
       {/* Top Banner Header */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-1">
-          <h1 className="font-headline-md text-3xl font-bold text-on-surface">
-            Namaste, {firstName}.{" "}
-            <span className="text-on-surface-variant/60 font-normal">
-              Ready for the hustle?
-            </span>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="space-y-1.5">
+          <div className="inline-flex items-center gap-1.5 text-indigo-600 font-bold text-xs tracking-wider uppercase bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-100">
+            <span className="material-symbols-outlined text-sm">waving_hand</span>
+            <span>Agent Workspace</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight capitalize">
+            Welcome, {firstName}.
           </h1>
-          <p className="font-body-md text-sm text-on-surface-variant">
+          <p className="text-xs sm:text-sm text-slate-500">
             {pendingFollowUps.length > 0
-              ? `${pendingFollowUps.length} follow-up${pendingFollowUps.length > 1 ? "s" : ""} waiting for you${overdueFollowUps > 0 ? `, ${overdueFollowUps} overdue` : ""
-              }.`
-              : "No pending follow-ups — you're all caught up."}
+              ? `${pendingFollowUps.length} follow-up${
+                  pendingFollowUps.length > 1 ? "s" : ""
+                } waiting for you${
+                  overdueFollowUps > 0 ? `, ${overdueFollowUps} overdue` : ""
+                }.`
+              : "No pending follow-ups scheduled for today. You're all caught up!"}
           </p>
         </div>
 
-        {/* Daily Attendance Card */}
-        {/* <div className="flex items-center justify-between gap-6 rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm shrink-0 self-start">
-          <div>
-            <p className="font-label-md text-xs text-on-surface-variant">
-              Daily Attendance
-            </p>
-            <p className={`mt-0.5 flex items-center gap-1.5 text-xs font-semibold ${status.text}`}>
-  <span className={`h-2 w-2 rounded-full ${status.color}`} />
-  {status.label}
-</p>
-          </div>
-          <div className="w-full lg:w-auto">
-            <button
-              type="button"
-              disabled={
-                checkInMutation.isPending ||
-                checkOutMutation.isPending ||
-                isCheckedOut || isAttendanceLoading || isFetching
-              }
-              onClick={handlePunchAction}
-              className={`w-full lg:w-auto flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 font-label-md text-xs font-bold text-on-primary shadow-sm transition-all ${isCheckedOut
-                ? "bg-surface-container-high text-on-surface-variant cursor-not-allowed"
-                : isCheckedIn
-                  ? "bg-rose-600 hover:bg-rose-700 text-white"
-                  : "bg-primary hover:bg-primary/90 text-white"
-                }`}
-            >
-              <span className="material-symbols-outlined text-lg">
-                {isCheckedOut
-                  ? "verified"
-                  : isCheckedIn
-                    ? "logout"
-                    : "fingerprint"}
-              </span>
-              <span>
-                {checkInMutation.isPending || checkOutMutation.isPending
-                  ? "Processing Location..."
-                  : isCheckedOut
-                    ? "Day Completed"
-                    : isCheckedIn
-                      ? "Check Out Now"
-                      : "Check In Now"}
-              </span>
-            </button>
-          </div>
-          
-        </div> */}
-
-        <div>
+        <div className="w-full lg:w-auto shrink-0">
           <DailyAttendanceCard
             attendanceData={todaysRecord}
             isAttendanceLoading={isAttendanceLoading || isFetching}
@@ -170,149 +135,165 @@ const EmployeeDashboardPage = () => {
         </div>
       </div>
 
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* My Leads */}
+      {/* KPI Stat Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        {/* My Leads Card */}
         <Link
           to="/leads"
-          className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm hover:border-primary/40 transition-colors"
+          className="group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs hover:border-indigo-300 hover:shadow-md transition-all space-y-3"
         >
-          <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-            My Leads
-          </p>
-          <p className="font-headline-md text-3xl font-extrabold text-on-surface mt-1">
-            {leadsLoading ? "—" : leadsTotal}
-          </p>
-          <p className="font-label-sm text-xs font-semibold text-primary mt-2 flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">trending_up</span>
-            {leadsLoading ? "Loading…" : `+${newLeadsToday} New today`}
-          </p>
-          <span className="material-symbols-outlined absolute -right-3 -bottom-3 text-7xl text-on-surface-variant/5 pointer-events-none">
-            group
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Assigned Leads
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 text-sky-600 border border-sky-100">
+              <span className="material-symbols-outlined text-xl">group</span>
+            </div>
+          </div>
+          
+          <div>
+            <div className="text-3xl font-black text-slate-900 tracking-tight">
+              {leadsLoading ? "—" : leadsTotal}
+            </div>
+            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-bold text-sky-700 border border-sky-100">
+              <span className="material-symbols-outlined text-sm">trending_up</span>
+              <span>{leadsLoading ? "Loading…" : `+${newLeadsToday} New today`}</span>
+            </div>
+          </div>
         </Link>
 
-        {/* Follow-ups */}
-        <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 shadow-sm">
-          <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-            Follow-ups
-          </p>
-          <p className="font-headline-md text-3xl font-extrabold text-on-surface mt-1">
-            {followUpsLoading ? "—" : pendingFollowUps.length}
-          </p>
-          {!followUpsLoading && overdueFollowUps > 0 ? (
-            <p className="font-label-sm text-xs font-bold text-error mt-2 flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">priority_high</span>
-              ! {overdueFollowUps} Overdue
-            </p>
-          ) : (
-            <p className="font-label-sm text-xs font-semibold text-emerald-600 mt-2 flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">check_circle</span>
-              {followUpsLoading ? "Loading…" : "None overdue"}
-            </p>
-          )}
-          <span className="material-symbols-outlined absolute -right-3 -bottom-3 text-7xl text-on-surface-variant/5 pointer-events-none">
-            calendar_today
-          </span>
+        {/* Follow-ups Card */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Pending Follow-ups
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-100">
+              <span className="material-symbols-outlined text-xl">calendar_today</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-3xl font-black text-slate-900 tracking-tight">
+              {followUpsLoading ? "—" : pendingFollowUps.length}
+            </div>
+            <div className="mt-2">
+              {!followUpsLoading && overdueFollowUps > 0 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 border border-rose-200/60">
+                  <span className="material-symbols-outlined text-sm">priority_high</span>
+                  {overdueFollowUps} Overdue
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200/60">
+                  <span className="material-symbols-outlined text-sm">check_circle</span>
+                  {followUpsLoading ? "Loading…" : "On schedule"}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* My Revenue */}
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-surface-container-lowest p-5 shadow-sm border-b-2 border-b-primary">
-          <p className="font-label-sm text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70">
-            My Verified Revenue
-          </p>
-          <p className="font-headline-md text-3xl font-extrabold text-on-surface mt-1">
-            {revenueLoading ? "—" : formatInr(verifiedRevenue)}
-          </p>
-          <Link
-            to="/revenue"
-            className="font-label-sm text-xs font-semibold text-primary mt-2 flex items-center gap-1"
-          >
-            <span className="material-symbols-outlined text-sm">payments</span>
-            View revenue log
-          </Link>
-          <span className="material-symbols-outlined absolute -right-3 -bottom-3 text-7xl text-on-surface-variant/5 pointer-events-none">
-            payments
-          </span>
+        {/* My Revenue Card */}
+        <div className="sm:col-span-2 lg:col-span-1 relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs transition-all space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Verified Revenue
+            </span>
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <span className="material-symbols-outlined text-xl">payments</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-3xl font-black text-slate-900 tracking-tight">
+              {revenueLoading ? "—" : formatInr(verifiedRevenue)}
+            </div>
+            <Link
+              to="/revenue"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+            >
+              <span>View Revenue Ledger</span>
+              <span className="material-symbols-outlined text-sm">chevron_right</span>
+            </Link>
+          </div>
         </div>
+
       </div>
 
-      {/* Main Grid: Left Column (Follow-ups & Tasks), Right Column (Scratchpad & Calls) */}
+      {/* Main Sections Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* Left Span (2 Columns) */}
+        {/* Left Column (2 Spans): Revenue Banner, Follow-ups, Tasks */}
         <div className="lg:col-span-2 space-y-6">
 
-          {/* Revenue Summary Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary via-primary/95 to-primary/80 p-6 sm:p-8 text-on-primary shadow-md">
+          {/* Revenue Summary Banner */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 p-6 sm:p-7 text-white shadow-md">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h2 className="font-headline-sm text-xl font-bold">
-                  Revenue Summary
+              <div className="space-y-1">
+                <span className="inline-block text-[10px] font-black uppercase tracking-widest text-indigo-200 bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-700/50">
+                  Performance Ledger
+                </span>
+                <h2 className="text-xl font-extrabold tracking-tight">
+                  Personal Revenue Snapshot
                 </h2>
-                <p className="font-body-sm text-xs text-on-primary/70 mt-0.5">
-                  Verified vs. pending, all time
+                <p className="text-xs text-indigo-200/80">
+                  Verified conversions vs pending verification
                 </p>
               </div>
 
               <div className="text-left sm:text-right">
-                <p className="font-headline-md text-3xl font-extrabold tracking-tight">
+                <div className="text-2xl sm:text-3xl font-black tracking-tight text-white">
                   {revenueLoading ? "—" : formatInr(verifiedRevenue)}
-                  <span className="text-lg font-normal text-on-primary/60">
-                    {" "}verified
-                  </span>
-                </p>
+                </div>
+                <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1 sm:justify-end">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  Verified Total
+                </span>
               </div>
             </div>
 
-            {/* Pending amount */}
-            <div className="mt-6 flex items-center justify-between pt-4 border-t border-white/15">
-              <span className="font-label-sm text-xs font-bold tracking-wider uppercase text-sky-100">
-                Pending review
-              </span>
-              <span className="font-label-md text-sm font-bold">
-                {revenueLoading
-                  ? "—"
-                  : formatInr(
-                      Array.isArray(revenueData?.summary)
-                        ? (revenueData!.summary as RevenueStatusSummary[]).find(
-                            (s) => s._id === REVENUE_STATUS.PENDING
-                          )?.totalAmount ?? 0
-                        : 0
-                    )}
+            <div className="mt-5 pt-4 border-t border-indigo-700/50 flex items-center justify-between text-xs">
+              <span className="font-medium text-indigo-200">Pending Review:</span>
+              <span className="font-bold text-amber-300 font-mono text-sm">
+                {revenueLoading ? "—" : formatInr(pendingRevenue)}
               </span>
             </div>
           </div>
 
-          {/* Today's Follow-ups Card */}
-          <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
+          {/* Pending Follow-ups List */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-xl">
-                  edit_calendar
-                </span>
-                <h3 className="font-headline-sm text-base font-bold text-on-surface">
-                  Pending Follow-ups
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                  <span className="material-symbols-outlined text-lg">edit_calendar</span>
+                </div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Scheduled Follow-ups
                 </h3>
               </div>
-              <Link to="/leads" className="font-label-md text-xs font-bold text-primary hover:underline">
-                View All Leads
+              <Link
+                to="/leads"
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors"
+              >
+                View Leads →
               </Link>
             </div>
 
-            {/* Follow-up Items */}
             {followUpsLoading ? (
               <div className="space-y-3">
-                {Array.from({ length: 2 }).map((_, i) => (
-                  <div key={i} className="h-16 rounded-xl bg-surface-container-high animate-pulse" />
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-16 rounded-xl bg-slate-100 animate-pulse" />
                 ))}
               </div>
             ) : pendingFollowUps.length === 0 ? (
-              <p className="py-6 text-center font-body-sm text-xs text-on-surface-variant/70">
-                Nothing scheduled — you're all caught up.
-              </p>
+              <div className="py-8 text-center space-y-1">
+                <span className="material-symbols-outlined text-emerald-500 text-3xl">check_circle</span>
+                <p className="text-xs font-bold text-slate-700">No scheduled calls</p>
+                <p className="text-[11px] text-slate-400">All follow-ups are completed for now.</p>
+              </div>
             ) : (
-              <div className="divide-y divide-outline-variant/20">
+              <div className="divide-y divide-slate-100">
                 {pendingFollowUps.slice(0, 6).map((item) => {
                   const lead = typeof item.lead === "string" ? null : item.lead;
                   const overdue = isFollowUpOverdue(item.scheduledAt);
@@ -320,50 +301,47 @@ const EmployeeDashboardPage = () => {
                   return (
                     <div
                       key={item._id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 first:pt-2 last:pb-0"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5 first:pt-1 last:pb-0 group"
                     >
-                      {/* Lead Info */}
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-label-md text-xs font-bold text-primary">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-700 font-extrabold text-xs border border-slate-200 uppercase">
                           {lead ? initialsOf(lead.name) : "?"}
                         </div>
                         <div className="min-w-0">
-                          <p className="font-label-md text-sm font-bold text-on-surface truncate">
-                            {lead?.name ?? "Unknown lead"}
+                          <p className="text-xs font-bold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                            {lead?.name ?? "Lead Record"}
                           </p>
-                          <p className="font-body-sm text-xs text-on-surface-variant truncate">
-                            {lead?.city ?? "—"}
+                          <p className="text-[11px] text-slate-400 truncate">
+                            {lead?.city ?? "General"}
                             {item.remark ? ` • ${item.remark}` : ""}
                           </p>
                         </div>
                       </div>
 
-                      {/* Meta & Actions */}
-                      <div className="flex items-center justify-between sm:justify-end gap-6">
-                        <div>
-                          <p className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60">
-                            {overdue ? "Overdue since" : "Scheduled"}
-                          </p>
-                          <p
-                            className={`font-label-md text-xs font-bold ${overdue ? "text-error" : "text-on-surface"
-                              }`}
+                      <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
+                        <div className="text-left sm:text-right">
+                          <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            {overdue ? "Overdue" : "Scheduled"}
+                          </span>
+                          <span
+                            className={`text-xs font-bold font-mono ${
+                              overdue ? "text-rose-600" : "text-slate-700"
+                            }`}
                           >
                             {new Date(item.scheduledAt).toLocaleString([], {
-                              dateStyle: "medium",
+                              dateStyle: "short",
                               timeStyle: "short",
                             })}
-                          </p>
+                          </span>
                         </div>
 
                         {lead && (
                           <a
                             href={`tel:${lead.phone}`}
-                            className="flex items-center gap-1.5 rounded-xl bg-sky-900 hover:bg-sky-950 px-4 py-2 font-label-md text-xs font-bold text-white shadow-sm transition-all shrink-0"
+                            className="flex items-center gap-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 active:scale-[0.98] px-3.5 py-2 text-xs font-bold text-white shadow-xs transition-all"
                           >
-                            <span className="material-symbols-outlined text-base">
-                              call
-                            </span>
-                            <span>Call Now</span>
+                            <span className="material-symbols-outlined text-sm">call</span>
+                            <span>Call</span>
                           </a>
                         )}
                       </div>
@@ -376,57 +354,87 @@ const EmployeeDashboardPage = () => {
 
           <TaskOverviewWidget
             title="My Tasks"
-            description="Your task load and progress."
+            description="Your personal task queue and assigned goals."
           />
         </div>
 
-        {/* Right Span (1 Column) */}
+        {/* Right Column (1 Span): Responsive Notepad & Dialer Shortcut */}
         <div className="space-y-6">
 
-          {/* Scratchpad Card */}
-          <div className="rounded-2xl bg-sky-50/70 border border-sky-100 p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sky-900">
-                <span className="material-symbols-outlined text-lg">
-                  edit_note
-                </span>
-                <h3 className="font-label-md text-sm font-bold">Scratchpad</h3>
+          {/* Optimized Notepad / Scratchpad */}
+          <div className="rounded-2xl border border-amber-200/80 bg-amber-50/40 p-5 shadow-xs space-y-3 relative">
+            <div className="flex items-center justify-between border-b border-amber-200/50 pb-2.5">
+              <div className="flex items-center gap-2 text-amber-900">
+                <span className="material-symbols-outlined text-lg">edit_note</span>
+                <h3 className="text-xs font-bold uppercase tracking-wider">
+                  Quick Scratchpad
+                </h3>
               </div>
-              <span className="font-label-sm text-[10px] font-bold uppercase tracking-wider text-sky-700 bg-sky-200/60 px-2 py-0.5 rounded-md">
-                Autosaved
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyScratchpad}
+                  disabled={!scratchpadText}
+                  className="text-[10px] font-bold text-amber-800 hover:text-amber-950 disabled:opacity-40 transition-opacity bg-amber-100/80 px-2 py-0.5 rounded border border-amber-200"
+                >
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded border border-emerald-200/60">
+                  Autosaved
+                </span>
+              </div>
             </div>
+
             <textarea
-              rows={3}
-              placeholder="Jot down quick details from calls..."
+              rows={5}
+              placeholder="Jot down quick client requests, phone numbers, or notes during calls..."
               value={scratchpadText}
               onChange={(e) => setScratchpadText(e.target.value)}
-              className="w-full bg-transparent font-body-sm text-xs text-sky-950 placeholder:text-sky-800/40 outline-none resize-none"
+              className="w-full bg-transparent text-xs text-amber-950 placeholder:text-amber-800/40 outline-none resize-y min-h-[100px] leading-relaxed font-mono"
             />
+
+            {scratchpadText && (
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={() => setScratchpadText("")}
+                  className="text-[10px] text-amber-700 hover:text-rose-600 transition-colors"
+                >
+                  Clear Notes
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Call Logs Card */}
-          <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 space-y-4 shadow-sm">
-            <h3 className="font-headline-sm text-base font-bold text-on-surface">
-              Call Logs
-            </h3>
-
-            <p className="font-body-sm text-xs text-on-surface-variant/80">
-              Your recent calls live in the Dialer — open your call history to see them.
-            </p>
-
-            <div className="pt-2 text-center border-t border-outline-variant/20">
-              <Link
-                to="/dialer/history"
-                className="font-label-md text-xs font-bold text-primary hover:underline"
-              >
-                View Call History
-              </Link>
+          {/* Call Dialer Quick Link */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 space-y-3 shadow-xs">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                <span className="material-symbols-outlined text-lg">history</span>
+              </div>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                  Call Logs & History
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Review call duration and dialer records
+                </p>
+              </div>
             </div>
+
+            <Link
+              to="/dialer/history"
+              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-all"
+            >
+              <span>Open Call Dialer History</span>
+              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </Link>
           </div>
+
         </div>
 
       </div>
+
     </div>
   );
 };

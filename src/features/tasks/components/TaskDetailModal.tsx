@@ -44,12 +44,6 @@ const InfoField = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-/**
- * Quick-view popover: a snapshot (status, assignee, due date, last update) plus
- * a fast status/remark update — mirrors LeadDetailModal's "quick save" pattern.
- * Everything else (reassignment, lead linking, priority/due-date edits, full
- * activity log) lives on the full TaskDetailPage, reached via "View Full Details".
- */
 const TaskDetailModal = ({ taskId, onClose }: TaskDetailModalProps) => {
   const open = Boolean(taskId);
   const navigate = useNavigate();
@@ -95,7 +89,7 @@ const TaskDetailModal = ({ taskId, onClose }: TaskDetailModalProps) => {
   };
 
   return (
-    <Modal title="Task Quick View" open={open} onClose={onClose} size="sm">
+    <Modal title="Task Quick View" open={open} onClose={onClose} size="md">
       {isLoading || !task ? (
         <div className="flex flex-col items-center justify-center py-12 space-y-2">
           <span className="material-symbols-outlined animate-spin text-2xl text-primary">

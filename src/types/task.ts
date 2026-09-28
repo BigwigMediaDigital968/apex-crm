@@ -99,6 +99,7 @@ export interface UpdateTaskPayload {
   remarks?: string;
   completedAt?: string | null;
   assignedTo?: string;
+  branch?: string;
   leads?: string[] | null;
 }
 

@@ -18,14 +18,31 @@ export interface DashboardLeadsSummary {
   statusBreakdown: LeadStatusBreakdown[];
 }
 
-/** The other DashboardSummary sections (attendance/calls/revenue/leaves) are
- * raw Mongo aggregation output — shape kept loose since no widget consumes
- * them yet. */
+export interface RevenueSummary {
+  today: number;
+  total: number;
+}
+
+export interface TopPerformer {
+  name: string;
+  code?: string;
+  branchName?: string;
+  managedBranch?: string;
+  revenue: number;
+}
+
+export interface TopPerformersSummary {
+  branch?: TopPerformer;
+  employee?: TopPerformer;
+  admin?: TopPerformer;
+}
+
 export interface DashboardSummary {
   leads: DashboardLeadsSummary;
+  revenue?: RevenueSummary;
+  topPerformers?: TopPerformersSummary;
   attendance: unknown[];
   calls: unknown[];
-  revenue: unknown[];
   leaves: unknown[];
 }
 
@@ -66,12 +83,10 @@ const FORMAT_EXTENSIONS: Record<ReportFormat, string> = {
   excel: "xlsx",
 };
 
-/** Pulls the server's filename out of Content-Disposition when it survives CORS. */
 const filenameFromDisposition = (disposition?: string) =>
   disposition?.match(/filename=([^;]+)/i)?.[1]?.trim().replace(/"/g, "");
 
 export const reportApi = {
-  /** GET /reports/dashboard — role/branch-scoped server-side. */
   getDashboard: async (
     filters: DashboardReportFilters = {}
   ): Promise<DashboardSummary> => {
@@ -82,7 +97,6 @@ export const reportApi = {
     return data.data;
   },
 
-  /** GET /reports/export — returns a CSV/XLSX attachment, not JSON. */
   exportReport: async (
     filters: ExportReportFilters = {}
   ): Promise<ExportedReport> => {

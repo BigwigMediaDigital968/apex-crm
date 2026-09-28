@@ -1,14 +1,16 @@
-
-
 import type {
   CallLogEntry,
   GetCallLogsQueryParams,
 } from "@/services/dialerApi";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuthStore } from "@/store/auth.store";
 import { dialerKeys, useCallLogs } from "../hooks/useCallHistory";
 import RefreshButton from "@/components/ui/RefreshButton";
 import { getSafeRecordingUrl, pauseOtherAudio } from "@/utils/dialer";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const STORAGE_KEY_LIMIT = "call_history_page_limit";
+const STORAGE_KEY_PAGE = "call_history_current_page";
 
 const formatDuration = (seconds: number) => {
   if (!seconds || seconds <= 0) return "--";
@@ -47,7 +49,7 @@ interface ExtendedQueryParams extends GetCallLogsQueryParams {
 const CallHistoryPage: React.FC = () => {
   const user = useAuthStore((s) => s.user);
 
-  const getDefaultRoleParams = (): Partial<ExtendedQueryParams> => {
+  const getDefaultRoleParams = useCallback((): Partial<ExtendedQueryParams> => {
     if (!user) return {};
     switch (user.role) {
       case "employee":
@@ -59,12 +61,42 @@ const CallHistoryPage: React.FC = () => {
       default:
         return {};
     }
+  }, [user]);
+
+  // Read initial pagination state from URL parameters or localStorage
+  const getInitialPagination = () => {
+    if (typeof window === "undefined") return { page: 1, limit: 25 };
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlPage = parseInt(searchParams.get("page") || "", 10);
+    const urlLimit = parseInt(searchParams.get("limit") || "", 10);
+
+    const storedLimit = parseInt(
+      localStorage.getItem(STORAGE_KEY_LIMIT) || "25",
+      10,
+    );
+    const storedPage = parseInt(
+      localStorage.getItem(STORAGE_KEY_PAGE) || "1",
+      10,
+    );
+
+    const page = !isNaN(urlPage) && urlPage > 0 ? urlPage : storedPage || 1;
+    const limit =
+      !isNaN(urlLimit) && PAGE_SIZE_OPTIONS.includes(urlLimit)
+        ? urlLimit
+        : storedLimit || 25;
+
+    return { page, limit };
   };
 
+  const initialPagination = getInitialPagination();
+
   const [datePreset, setDatePreset] = useState<DatePreset>("custom");
+  const [searchInput, setSearchInput] = useState("");
+
   const [queryParams, setQueryParams] = useState<ExtendedQueryParams>({
-    page: 1,
-    limit: 50,
+    page: initialPagination.page,
+    limit: initialPagination.limit,
     search: "",
     status: "",
     leadId: "",
@@ -73,33 +105,75 @@ const CallHistoryPage: React.FC = () => {
     ...getDefaultRoleParams(),
   });
 
-  // Debounce search state to prevent triggering API on every single keystroke
-  const [debouncedParams, setDebouncedParams] =
-    useState<ExtendedQueryParams>(queryParams);
+  // Sync page & limit with URL search parameters and localStorage on change
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
+    const page = queryParams.page || 1;
+    const limit = queryParams.limit || 25;
+
+    // Save to LocalStorage for persistence across tab closes/refreshes
+    localStorage.setItem(STORAGE_KEY_PAGE, page.toString());
+    localStorage.setItem(STORAGE_KEY_LIMIT, limit.toString());
+
+    // Sync with browser URL without reloading page
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set("page", page.toString());
+    currentUrl.searchParams.set("limit", limit.toString());
+    window.history.replaceState({}, "", currentUrl.toString());
+  }, [queryParams.page, queryParams.limit]);
+
+  // Debounce search input without touching page state during normal operation
   useEffect(() => {
     const handler = setTimeout(() => {
-      // Clean query parameters before making API calls (strip empty string values)
-      const cleanedParams: ExtendedQueryParams = { ...queryParams };
-
-      Object.keys(cleanedParams).forEach((key) => {
-        const k = key as keyof ExtendedQueryParams;
-        if (cleanedParams[k] === "" || cleanedParams[k] === undefined) {
-          delete cleanedParams[k];
-        }
+      setQueryParams((prev) => {
+        if (prev.search === searchInput) return prev;
+        return {
+          ...prev,
+          page: 1, // Reset page to 1 on search input change
+          search: searchInput,
+        };
       });
-
-      setDebouncedParams(cleanedParams);
     }, 400);
 
     return () => clearTimeout(handler);
+  }, [searchInput]);
+
+  // Clean empty params before fetching logs
+  const cleanedParams = useMemo(() => {
+    const params: ExtendedQueryParams = { ...queryParams };
+    Object.keys(params).forEach((key) => {
+      const k = key as keyof ExtendedQueryParams;
+      if (params[k] === "" || params[k] === undefined) {
+        delete params[k];
+      }
+    });
+    return params;
   }, [queryParams]);
 
-  // `metrics` comes straight from the server, aggregated over every log the
-  // current filter matches. It used to be reduced from `logs`, which is only
-  // the current page — so the cards changed as you paged through results.
-  const { logs, stats: metrics, pagination, loading, error } =
-    useCallLogs(debouncedParams);
+  const {
+    logs,
+    stats: metrics,
+    pagination,
+    loading,
+    error,
+  } = useCallLogs(cleanedParams);
+
+  // Pagination Change Handlers
+  const handlePageChange = (newPage: number) => {
+    setQueryParams((prev) => ({
+      ...prev,
+      page: newPage,
+    }));
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setQueryParams((prev) => ({
+      ...prev,
+      page: 1, // Reset to page 1 when changing total records per page
+      limit: newLimit,
+    }));
+  };
 
   const handleFilterChange = (
     key: keyof ExtendedQueryParams,
@@ -110,7 +184,7 @@ const CallHistoryPage: React.FC = () => {
     }
     setQueryParams((prev) => ({
       ...prev,
-      page: 1,
+      page: 1, // Reset page on active filter modification
       [key]: value,
     }));
   };
@@ -173,17 +247,26 @@ const CallHistoryPage: React.FC = () => {
 
   const handleResetFilters = () => {
     setDatePreset("custom");
-    setQueryParams({
+    setSearchInput("");
+    setQueryParams((prev) => ({
       page: 1,
-      limit: 20,
+      limit: prev.limit || 25,
       search: "",
       status: "",
       leadId: "",
       startDate: "",
       endDate: "",
       ...getDefaultRoleParams(),
-    });
+    }));
   };
+
+  // Pagination bounds metadata
+  const currentLimit = queryParams.limit || 25;
+  const currentPage = queryParams.page || 1;
+  const totalRecords = pagination?.total || 0;
+  const startItem =
+    totalRecords === 0 ? 0 : (currentPage - 1) * currentLimit + 1;
+  const endItem = Math.min(currentPage * currentLimit, totalRecords);
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -199,6 +282,7 @@ const CallHistoryPage: React.FC = () => {
           </p>
         </div>
 
+        {/* Refresh button refetches without mutating queryParams state */}
         <RefreshButton
           queryKey={dialerKeys.all}
           label="Refresh Logs"
@@ -206,12 +290,11 @@ const CallHistoryPage: React.FC = () => {
         />
       </div>
 
-      {/* Summary KPI Cards — totals for the active filter, all pages */}
+      {/* KPI Cards */}
       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-on-surface-variant">
         <span className="material-symbols-outlined text-sm">filter_alt</span>
         <span>
-          Totals across all {pagination.total} matching records, not just this
-          page
+          Totals across all {totalRecords} matching records, not just this page
         </span>
       </div>
 
@@ -279,8 +362,8 @@ const CallHistoryPage: React.FC = () => {
 
       {/* Filter Toolbar */}
       <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
-          {/* Unified Search */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-8 gap-3">
+          {/* Search Input */}
           <div className="relative sm:col-span-2">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant">
               search
@@ -288,8 +371,8 @@ const CallHistoryPage: React.FC = () => {
             <input
               type="text"
               placeholder="Search leads, agents or phone..."
-              value={queryParams.search || ""}
-              onChange={(e) => handleFilterChange("search", e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-full rounded-xl border border-outline-variant/30 bg-surface-container-low pl-9 pr-4 py-2 text-xs text-on-surface outline-none focus:border-primary transition-all"
             />
           </div>
@@ -310,7 +393,7 @@ const CallHistoryPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Quick Date Range Preset */}
+          {/* Date Range Preset */}
           <div>
             <select
               value={datePreset}
@@ -326,7 +409,7 @@ const CallHistoryPage: React.FC = () => {
             </select>
           </div>
 
-          {/* Date Range Start */}
+          {/* Date Start */}
           <div>
             <input
               type="date"
@@ -336,7 +419,7 @@ const CallHistoryPage: React.FC = () => {
             />
           </div>
 
-          {/* Date Range End */}
+          {/* Date End */}
           <div>
             <input
               type="date"
@@ -346,7 +429,22 @@ const CallHistoryPage: React.FC = () => {
             />
           </div>
 
-          {/* Branch Filter (Head Role Only) */}
+          {/* Records Per Page Filter Selector */}
+          <div>
+            <select
+              value={currentLimit}
+              onChange={(e) => handleLimitChange(Number(e.target.value))}
+              className="w-full rounded-xl border border-outline-variant/30 bg-surface-container-low px-3 py-2 text-xs text-on-surface outline-none focus:border-primary transition-all font-semibold"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  {size} Logs / Page
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Branch Filter */}
           {user?.role === "head" && (
             <div>
               <input
@@ -386,7 +484,7 @@ const CallHistoryPage: React.FC = () => {
         </div>
       )}
 
-      {/* Logs Table */}
+      {/* Table */}
       <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 space-y-2">
@@ -508,42 +606,64 @@ const CallHistoryPage: React.FC = () => {
           </div>
         )}
 
-        {/* Pagination Bar */}
-        {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant/20 bg-surface-container-low">
-            <p className="text-xs text-on-surface-variant">
-              Page <span className="font-bold">{pagination.page}</span> of{" "}
-              <span className="font-bold">{pagination.totalPages}</span> (
-              {pagination.total} total logs)
-            </p>
+        {/* Enhanced Bottom Pagination Toolbar */}
+        {pagination && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 border-t border-outline-variant/20 bg-surface-container-low text-xs text-on-surface-variant">
+            {/* Range & Page Size Selector */}
+            <div className="flex items-center gap-4">
+              <span>
+                Showing <strong className="text-on-surface">{startItem}</strong>
+                –<strong className="text-on-surface">{endItem}</strong> of{" "}
+                <strong className="text-on-surface">{totalRecords}</strong> logs
+              </span>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={pagination.page <= 1}
-                onClick={() =>
-                  setQueryParams((prev) => ({
-                    ...prev,
-                    page: (prev.page || 1) - 1,
-                  }))
-                }
-                className="px-3 py-1 text-xs font-bold rounded-lg border border-outline-variant/30 hover:bg-surface-container-high disabled:opacity-40 transition-all"
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                disabled={pagination.page >= pagination.totalPages}
-                onClick={() =>
-                  setQueryParams((prev) => ({
-                    ...prev,
-                    page: (prev.page || 1) + 1,
-                  }))
-                }
-                className="px-3 py-1 text-xs font-bold rounded-lg border border-outline-variant/30 hover:bg-surface-container-high disabled:opacity-40 transition-all"
-              >
-                Next
-              </button>
+              <div className="flex items-center gap-2">
+                <label htmlFor="pageSizeSelectBottom" className="font-semibold">
+                  Per page:
+                </label>
+                <select
+                  id="pageSizeSelectBottom"
+                  value={currentLimit}
+                  onChange={(e) => handleLimitChange(Number(e.target.value))}
+                  className="rounded-lg border border-outline-variant/30 bg-surface-container-lowest px-2 py-1 text-xs text-on-surface outline-none focus:border-primary transition-all font-semibold"
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Navigation Controls */}
+            <div className="flex items-center gap-3">
+              <span>
+                Page <strong className="text-on-surface">{currentPage}</strong>{" "}
+                of{" "}
+                <strong className="text-on-surface">
+                  {pagination.totalPages || 1}
+                </strong>
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={currentPage <= 1}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  className="px-3 py-1 text-xs font-bold rounded-lg border border-outline-variant/30 hover:bg-surface-container-high disabled:opacity-40 transition-all"
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  disabled={currentPage >= (pagination.totalPages || 1)}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  className="px-3 py-1 text-xs font-bold rounded-lg border border-outline-variant/30 hover:bg-surface-container-high disabled:opacity-40 transition-all"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         )}

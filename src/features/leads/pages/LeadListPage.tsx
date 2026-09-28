@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { leadQueryKeys, useCreateLead, useImportLeads, useLeads } from "../hooks/useLeads";
+import {
+  leadQueryKeys,
+  useCreateLead,
+  useImportLeads,
+  useLeads,
+} from "../hooks/useLeads";
 import RefreshButton from "@/components/ui/RefreshButton";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { getErrorMessage } from "@/utils/getErrorMessage";
-import { type CreateLeadPayload, type Lead, type LeadStatus } from "@/types/lead";
+import {
+  type CreateLeadPayload,
+  type Lead,
+  type LeadStatus,
+} from "@/types/lead";
 import { useBranchesQuery } from "@/features/branches";
 import { useEmployeesQuery } from "@/features/employees";
 import { useAuthStore } from "@/store/auth.store";
@@ -13,7 +22,7 @@ import LeadDetailModal from "../components/Leaddetailmodal";
 import AssignLeadModal from "../components/AssignLeadModal";
 import { useSearchParams } from "react-router";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 const SOURCE_OPTIONS = ["All Sources", "Website", "Excel Import"];
 const STATUS_FILTERS: { label: string; value: LeadStatus | "" }[] = [
@@ -55,8 +64,18 @@ const STATUS_DOT_CLASSES: Record<LeadStatus, string> = {
 
 const LeadListPage = () => {
   // Navigation & Filtering States
-  const [searchParams] = useSearchParams();
-  const viewMode = searchParams.get('view');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewMode = searchParams.get("view");
+  // Read current page & pageSize from URL params (defaults to page 1, 25 items per page)
+  const currentPage = Math.max(
+    1,
+    parseInt(searchParams.get("page") || "1", 10),
+  );
+  const pageSize = Math.max(
+    10,
+    parseInt(searchParams.get("pageSize") || "25", 10),
+  );
+
   const currentUser = useAuthStore((s) => s.user);
   const isEmployee = currentUser?.role === ROLES.EMPLOYEE;
   const isHead = currentUser?.role === ROLES.HEAD;
@@ -73,7 +92,6 @@ const LeadListPage = () => {
   const [selectedStatus, setSelectedStatus] = useState<LeadStatus | "">("");
   const [selectedSource, setSelectedSource] = useState("All Sources");
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
   const [branchFilter, setBranchFilter] = useState("");
   const [assigneeFilter, setAssigneeFilter] = useState("");
   const [createdFrom, setCreatedFrom] = useState("");
@@ -88,23 +106,46 @@ const LeadListPage = () => {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importBranchId, setImportBranchId] = useState("");
 
-  // Jump back to page 1 whenever the filters change — mirrors the same
-  // during-render pattern EmployeeListPage uses to avoid a stale page
-  // number silently returning an empty result set.
-  const filtersKey = `${debouncedSearch}|${selectedSource}|${branchFilter}|${assigneeFilter}|${createdFrom}|${createdTo}`;
+  // Helper function to update search params while preserving existing ones
+  const updateUrlParams = (updates: Record<string, string | number | null>) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === null || value === "") {
+          next.delete(key);
+        } else {
+          next.set(key, String(value));
+        }
+      });
+      return next;
+    });
+  };
+
+  // Helper to change page
+  const setPage = (page: number) => {
+    updateUrlParams({ page });
+  };
+
+  // Helper to change limit/pageSize
+  const setPageSize = (size: number) => {
+    updateUrlParams({ pageSize: size, page: 1 }); // reset to page 1 on limit change
+  };
+
+  // Reset to page 1 whenever search/filters change
+  const filtersKey = `${debouncedSearch}|${selectedSource}|${selectedStatus}|${branchFilter}|${assigneeFilter}|${createdFrom}|${createdTo}`;
   const [trackedFiltersKey, setTrackedFiltersKey] = useState(filtersKey);
   if (filtersKey !== trackedFiltersKey) {
     setTrackedFiltersKey(filtersKey);
-    setCurrentPage(1);
+    setPage(1);
   }
 
   const { data, isLoading, isFetching, isError, error } = useLeads({
     page: currentPage,
-    limit: PAGE_SIZE,
+    limit: pageSize,
     search: debouncedSearch || undefined,
     source: selectedSource === "All Sources" ? undefined : selectedSource,
     ...((selectedStatus !== "" || isFollowupsView) && {
-      status: isFollowupsView ? 'follow_up' : selectedStatus,
+      status: isFollowupsView ? "follow_up" : selectedStatus,
     }),
     branchId: branchFilter || undefined,
     assignedTo: isMineView
@@ -120,10 +161,7 @@ const LeadListPage = () => {
   const pagination = data?.pagination;
 
   // Client-side status filter — see note above STATUS_FILTERS.
-  const visibleLeads = useMemo(
-    () => (leadsData),
-    [leadsData]
-  );
+  const visibleLeads = useMemo(() => leadsData, [leadsData]);
 
   const { data: branches } = useBranchesQuery();
 
@@ -142,8 +180,12 @@ const LeadListPage = () => {
   });
 
   // Modal Control States
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(searchParams.has("new") || false);
-  const [creationMethod, setCreationMethod] = useState<"choose" | "manual" | "sheet">("choose");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(
+    searchParams.has("new") || false,
+  );
+  const [creationMethod, setCreationMethod] = useState<
+    "choose" | "manual" | "sheet"
+  >("choose");
 
   // Manual Form State
   const [manualForm, setManualForm] = useState<CreateLeadPayload>({
@@ -166,7 +208,7 @@ const LeadListPage = () => {
     setManualForm((prev) =>
       prev.branchId === assignableBranches[0]._id
         ? prev
-        : { ...prev, branchId: assignableBranches[0]._id }
+        : { ...prev, branchId: assignableBranches[0]._id },
     );
   }, [manualBranchRequired, creationMethod, assignableBranches]);
 
@@ -202,7 +244,7 @@ const LeadListPage = () => {
         });
       },
     });
-  }
+  };
 
   const handleImportLeads = () => {
     if (!importFile) {
@@ -225,14 +267,14 @@ const LeadListPage = () => {
           setImportFile(null);
           closeCreateModal();
         },
-      }
+      },
     );
   };
 
   // Toggle Checkboxes
   const toggleSelectLead = (id: string) => {
     setSelectedLeads((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
 
@@ -252,7 +294,6 @@ const LeadListPage = () => {
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 space-y-6">
-
       {/* --- TOP BANNER / HEADER --- */}
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -265,14 +306,15 @@ const LeadListPage = () => {
             Lead Management
           </h1>
           <p className="font-body-md text-xs sm:text-sm text-on-surface-variant mt-1 max-w-2xl">
-            Track customer acquisition, assign incoming prospects, and monitor real-time deal flow.
+            Track customer acquisition, assign incoming prospects, and monitor
+            real-time deal flow.
           </p>
         </div>
 
         <div className="flex items-center gap-3 self-start md:self-auto shrink-0">
           <RefreshButton queryKey={leadQueryKeys.all} />
 
-          <Can permission={'lead:create'}>
+          <Can permission={"lead:create"}>
             <button
               onClick={() => {
                 setCreationMethod("choose");
@@ -280,17 +322,17 @@ const LeadListPage = () => {
               }}
               className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 font-label-md text-xs font-bold text-on-primary shadow-sm hover:bg-primary/90 transition-all shrink-0"
             >
-              <span className="material-symbols-outlined text-lg">add_circle</span>
+              <span className="material-symbols-outlined text-lg">
+                add_circle
+              </span>
               <span>Create New Lead</span>
             </button>
           </Can>
         </div>
       </div>
 
-
       {/* --- CONTROL BAR: SEARCH & FILTERS --- */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest p-3 rounded-2xl border border-outline-variant/30 shadow-sm">
-
         {/* Search Field */}
         <div className="relative flex-1 min-w-[280px]">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-xl text-on-surface-variant/70">
@@ -313,7 +355,9 @@ const LeadListPage = () => {
             className="appearance-none rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2 pr-9 text-xs font-semibold text-on-surface outline-none focus:border-primary cursor-pointer transition-all"
           >
             {SOURCE_OPTIONS.map((src) => (
-              <option key={src} value={src}>{src}</option>
+              <option key={src} value={src}>
+                {src}
+              </option>
             ))}
           </select>
           <span className="material-symbols-outlined pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-lg text-on-surface-variant">
@@ -324,14 +368,12 @@ const LeadListPage = () => {
         <div className="relative">
           <select
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value as LeadStatus | "")}
+            onChange={(e) =>
+              setSelectedStatus(e.target.value as LeadStatus | "")
+            }
             className="appearance-none rounded-xl border border-outline-variant/30 bg-surface-container-low px-3.5 py-2 pr-9 text-xs font-semibold text-on-surface outline-none focus:border-primary cursor-pointer transition-all"
           >
             {STATUS_FILTERS.map((f) => {
-              // const count = f.value && leadsData
-              //   ? leadsData?.filter((l) => l.status === f.value).length
-              //   : leadsData?.length;
-
               return (
                 <option key={f.label} value={f.value}>
                   {f.label}
@@ -411,6 +453,29 @@ const LeadListPage = () => {
           />
         </div>
 
+        {/* Page Size Dropdown */}
+        <div className="relative flex items-center gap-2">
+          <span className="text-xs font-semibold text-on-surface-variant">
+            Show:
+          </span>
+          <div className="relative">
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="appearance-none rounded-xl border border-outline-variant/30 bg-surface-container-low px-3 py-2 pr-8 text-xs font-semibold text-on-surface outline-none focus:border-primary cursor-pointer transition-all"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  {size} / page
+                </option>
+              ))}
+            </select>
+            <span className="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-lg text-on-surface-variant">
+              expand_more
+            </span>
+          </div>
+        </div>
+
         {/* Clear Filters Button (If active) */}
         {(searchQuery ||
           selectedStatus ||
@@ -419,41 +484,42 @@ const LeadListPage = () => {
           assigneeFilter ||
           createdFrom ||
           createdTo) && (
-            <button
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedStatus("");
-                setSelectedSource("All Sources");
-                setBranchFilter("");
-                setAssigneeFilter("");
-                setCreatedFrom("");
-                setCreatedTo("");
-              }}
-              className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:underline px-2 py-1"
-            >
-              <span className="material-symbols-outlined text-sm">filter_alt_off</span>
-              <span>Reset Filters</span>
-            </button>
-          )}
+          <button
+            onClick={() => {
+              setSearchQuery("");
+              setSelectedStatus("");
+              setSelectedSource("All Sources");
+              setBranchFilter("");
+              setAssigneeFilter("");
+              setCreatedFrom("");
+              setCreatedTo("");
+            }}
+            className="flex items-center gap-1 text-xs font-bold text-rose-600 hover:underline px-2 py-1"
+          >
+            <span className="material-symbols-outlined text-sm">
+              filter_alt_off
+            </span>
+            <span>Reset Filters</span>
+          </button>
+        )}
       </div>
 
       {selectedStatus && (
         <p className="-mt-2 flex items-center gap-1.5 font-body-sm text-[11px] text-on-surface-variant/70">
           <span className="material-symbols-outlined text-sm">info</span>
-          Status filter only applies to leads already loaded on this page —
-          it isn't sent to the server, so results on other pages aren't
-          included.
+          Status filter only applies to leads already loaded on this page — it
+          isn't sent to the server, so results on other pages aren't included.
         </p>
       )}
 
       {/* --- MAIN DATA TABLE --- */}
       <div className="relative overflow-hidden rounded-2xl border border-outline-variant/30 bg-surface-container-lowest shadow-sm">
-
         {/* Bulk Action Floating Overlay Bar */}
         {selectedLeads.length > 0 && (
           <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between bg-primary px-6 py-3 text-on-primary animate-in fade-in slide-in-from-top duration-200">
             <span className="text-xs font-bold">
-              {selectedLeads.length} Lead{selectedLeads.length > 1 ? "s" : ""} selected
+              {selectedLeads.length} Lead{selectedLeads.length > 1 ? "s" : ""}{" "}
+              selected
             </span>
             <div className="flex items-center gap-2">
               <Can permission="lead:assign">
@@ -462,7 +528,9 @@ const LeadListPage = () => {
                   onClick={() => setIsBulkAssignOpen(true)}
                   className="flex items-center gap-1 rounded-lg bg-on-primary/10 px-3 py-1.5 text-xs font-bold hover:bg-on-primary/20 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-sm">assignment_ind</span>
+                  <span className="material-symbols-outlined text-sm">
+                    assignment_ind
+                  </span>
                   Assign selected
                 </button>
               </Can>
@@ -576,7 +644,10 @@ const LeadListPage = () => {
                       </p>
 
                       <p className="mt-1 max-w-sm text-xs text-on-surface-variant/70">
-                        {getErrorMessage(error, "Something went wrong while fetching your leads.")}
+                        {getErrorMessage(
+                          error,
+                          "Something went wrong while fetching your leads.",
+                        )}
                       </p>
                     </div>
                   </td>
@@ -595,10 +666,11 @@ const LeadListPage = () => {
                   return (
                     <tr
                       key={lead._id}
-                      className={`group transition-colors ${isSelected
-                        ? "bg-primary/5"
-                        : "hover:bg-surface-container-low/40"
-                        }`}
+                      className={`group transition-colors ${
+                        isSelected
+                          ? "bg-primary/5"
+                          : "hover:bg-surface-container-low/40"
+                      }`}
                     >
                       {/* Checkbox */}
                       <td className="px-5 py-4">
@@ -765,9 +837,7 @@ const LeadListPage = () => {
                       search_off
                     </span>
 
-                    <p className="font-bold text-sm">
-                      No matching leads found
-                    </p>
+                    <p className="font-bold text-sm">No matching leads found</p>
 
                     <p className="text-xs text-on-surface-variant/70 mt-1">
                       Try adjusting your search terms or filter configurations.
@@ -803,26 +873,33 @@ const LeadListPage = () => {
 
             <div className="flex items-center gap-1.5">
               <button
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                disabled={pagination.page <= 1}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container disabled:opacity-30"
+                type="button"
+                onClick={() => setPage(Math.max(pagination.page - 1, 1))}
+                disabled={pagination.page <= 1 || isLoading}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
-                <span className="material-symbols-outlined text-lg">chevron_left</span>
+                <span className="material-symbols-outlined text-lg">
+                  chevron_left
+                </span>
               </button>
+
               <span className="px-3 text-xs font-bold text-on-surface">
                 Page {pagination.page} of {Math.max(pagination.totalPages, 1)}
               </span>
+
               <button
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={pagination.page >= pagination.totalPages}
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container disabled:opacity-30"
+                type="button"
+                onClick={() => setPage(pagination.page + 1)}
+                disabled={pagination.page >= pagination.totalPages || isLoading}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
-                <span className="material-symbols-outlined text-lg">chevron_right</span>
+                <span className="material-symbols-outlined text-lg">
+                  chevron_right
+                </span>
               </button>
             </div>
           </div>
         )}
-
       </div>
 
       {/* ========================================================================= */}
@@ -831,11 +908,12 @@ const LeadListPage = () => {
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="w-full max-w-xl rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-6 shadow-2xl space-y-6">
-
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-outline-variant/20 pb-4">
               <div>
-                <h3 className="text-lg font-extrabold text-on-surface">Add New Lead</h3>
+                <h3 className="text-lg font-extrabold text-on-surface">
+                  Add New Lead
+                </h3>
                 <p className="text-xs text-on-surface-variant mt-0.5">
                   Select your preferred ingestion method for new inquiries.
                 </p>
@@ -857,12 +935,17 @@ const LeadListPage = () => {
                   className="flex flex-col items-start gap-3 rounded-2xl border-2 border-outline-variant/30 bg-surface-container-low/40 p-5 text-left hover:border-primary hover:bg-primary/5 transition-all group"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-on-primary transition-colors">
-                    <span className="material-symbols-outlined text-xl">edit_square</span>
+                    <span className="material-symbols-outlined text-xl">
+                      edit_square
+                    </span>
                   </div>
                   <div>
-                    <h4 className="font-bold text-sm text-on-surface">Manual Entry</h4>
+                    <h4 className="font-bold text-sm text-on-surface">
+                      Manual Entry
+                    </h4>
                     <p className="text-xs text-on-surface-variant/70 mt-1">
-                      Fill out a quick form to create an individual lead record immediately.
+                      Fill out a quick form to create an individual lead record
+                      immediately.
                     </p>
                   </div>
                 </button>
@@ -873,12 +956,17 @@ const LeadListPage = () => {
                   className="flex flex-col items-start gap-3 rounded-2xl border-2 border-outline-variant/30 bg-surface-container-low/40 p-5 text-left hover:border-primary hover:bg-primary/5 transition-all group"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                    <span className="material-symbols-outlined text-xl">file_upload</span>
+                    <span className="material-symbols-outlined text-xl">
+                      file_upload
+                    </span>
                   </div>
                   <div>
-                    <h4 className="font-bold text-sm text-on-surface">Import Spreadsheet</h4>
+                    <h4 className="font-bold text-sm text-on-surface">
+                      Import Spreadsheet
+                    </h4>
                     <p className="text-xs text-on-surface-variant/70 mt-1">
-                      Upload CSV or Excel files to bulk import hundreds of leads at once.
+                      Upload CSV or Excel files to bulk import hundreds of leads
+                      at once.
                     </p>
                   </div>
                 </button>
@@ -887,13 +975,9 @@ const LeadListPage = () => {
 
             {/* STEP 2A: MANUAL ENTRY FORM */}
             {creationMethod === "manual" && (
-              <form
-                onSubmit={handleCreateLead}
-                className="space-y-4"
-              >
+              <form onSubmit={handleCreateLead} className="space-y-4">
                 {/* Basic Information */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
                   {/* Full Name */}
                   <div>
                     <label className="block text-[11px] font-bold uppercase text-on-surface-variant mb-1">
@@ -1024,7 +1108,8 @@ const LeadListPage = () => {
                       Lead Source *
                     </label>
 
-                    <input type="text"
+                    <input
+                      type="text"
                       value={manualForm.source}
                       disabled={true}
                       title="This field cannot be changed"
@@ -1044,7 +1129,8 @@ const LeadListPage = () => {
                         Branch{manualBranchRequired ? " *" : " (optional)"}
                       </label>
 
-                      {manualBranchRequired && assignableBranches.length <= 1 ? (
+                      {manualBranchRequired &&
+                      assignableBranches.length <= 1 ? (
                         <div className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-xs font-medium text-on-surface-variant">
                           {assignableBranches[0]?.name ?? "No branch assigned"}
                         </div>
@@ -1061,7 +1147,9 @@ const LeadListPage = () => {
                           className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-xs font-medium text-on-surface outline-none focus:border-primary"
                         >
                           <option value="">
-                            {manualBranchRequired ? "Select branch" : "No branch (assign later)"}
+                            {manualBranchRequired
+                              ? "Select branch"
+                              : "No branch (assign later)"}
                           </option>
                           {assignableBranches.map((branch) => (
                             <option key={branch._id} value={branch._id}>
@@ -1072,7 +1160,6 @@ const LeadListPage = () => {
                       )}
                     </div>
                   )}
-
                 </div>
 
                 {/* Message */}
@@ -1119,7 +1206,6 @@ const LeadListPage = () => {
 
                 {/* Footer */}
                 <div className="flex items-center justify-between border-t border-outline-variant/20 pt-4">
-
                   <button
                     type="button"
                     onClick={() => setCreationMethod("choose")}
@@ -1136,7 +1222,6 @@ const LeadListPage = () => {
                   >
                     {createLead.isPending ? "Saving..." : "Save Lead"}
                   </button>
-
                 </div>
               </form>
             )}
@@ -1144,7 +1229,6 @@ const LeadListPage = () => {
             {/* STEP 2B: SPREADSHEET DROPZONE */}
             {creationMethod === "sheet" && (
               <div className="space-y-4">
-
                 {/* Sample Excel File Helper Banner */}
                 <div className="flex items-center justify-between rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-2.5">
                   <div className="flex items-center gap-2">
@@ -1161,7 +1245,9 @@ const LeadListPage = () => {
                     download="leads_import_sample.xlsx"
                     className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline"
                   >
-                    <span className="material-symbols-outlined text-sm">download</span>
+                    <span className="material-symbols-outlined text-sm">
+                      download
+                    </span>
                     Download Excel Template
                   </a>
                 </div>
@@ -1253,15 +1339,10 @@ const LeadListPage = () => {
                     required
                     className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3 py-2 text-xs font-medium text-on-surface outline-none focus:border-primary"
                   >
-                    <option value="">
-                      Select branch
-                    </option>
+                    <option value="">Select branch</option>
 
                     {assignableBranches.map((branch) => (
-                      <option
-                        key={branch._id}
-                        value={branch._id}
-                      >
+                      <option key={branch._id} value={branch._id}>
                         {branch.name}
                       </option>
                     ))}
@@ -1270,7 +1351,6 @@ const LeadListPage = () => {
 
                 {/* Footer */}
                 <div className="flex items-center justify-between border-t border-outline-variant/20 pt-4">
-
                   <button
                     type="button"
                     onClick={() => setCreationMethod("choose")}
@@ -1284,20 +1364,15 @@ const LeadListPage = () => {
                     type="button"
                     onClick={handleImportLeads}
                     disabled={
-                      !importFile ||
-                      !importBranchId ||
-                      importLeads.isPending
+                      !importFile || !importBranchId || importLeads.isPending
                     }
                     className="rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {importLeads.isPending ? "Importing..." : "Import Leads"}
                   </button>
-
                 </div>
-
               </div>
             )}
-
           </div>
         </div>
       )}
@@ -1318,7 +1393,6 @@ const LeadListPage = () => {
           setSelectedLeads([]);
         }}
       />
-
     </div>
   );
 };
