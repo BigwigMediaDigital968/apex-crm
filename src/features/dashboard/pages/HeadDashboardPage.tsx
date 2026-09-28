@@ -57,8 +57,7 @@ const formatCurrency = (amount: number) =>
   }).format(amount);
 
 const HeadDashboardPage = () => {
-  const [selectedTimeframe, setSelectedTimeframe] =
-    useState<Timeframe>("This Month");
+  const [selectedTimeframe] = useState<Timeframe>("This Month");
   const [performancePeriod, setPerformancePeriod] =
     useState<PerformanceTimeframe>("Monthly");
 

@@ -186,7 +186,7 @@ import { useSidebarStore } from "@/store/sidebar.store";
 import { useLogout } from "@/hooks/useAuth";
 import QuickAddMenu from "./QuickAddMenu";
 import { Can } from "@/components/Auth/Can";
-import { ROLES, type Permission, type Role } from "@/types/auth";
+import { ROLES, type Role } from "@/types/auth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { SearchRegistry, type SearchableItem } from "@/config/searchRegistry";
 
