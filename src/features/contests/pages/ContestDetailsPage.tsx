@@ -1,6 +1,7 @@
 import { useBranchesQuery } from "@/features/branches";
 import { Link, useParams } from "react-router";
 import { useContestId, useToggleContestStatus } from "../hooks/useContests";
+import { ContestLeaderboard } from "../components/ContestLeaderboard";
 // Adjust hooks and types import paths according to your project setup
 
 export const ContestDetailsPage = () => {
@@ -163,20 +164,11 @@ export const ContestDetailsPage = () => {
                                 <h3 className="text-sm font-bold text-on-surface">Contest Results & Leaderboard</h3>
                             </div>
                             <span className="text-[11px] font-bold text-on-surface-variant/70 bg-surface-container-high px-2 py-0.5 rounded-md">
-                                Live Standings
+                                {statusLabel === "Completed" ? "Final Standings" : "Live Standings"}
                             </span>
                         </div>
 
-                        {/* Results Placeholder / Empty State */}
-                        <div className="py-8 text-center space-y-2 bg-surface-container-low/40 rounded-xl border border-dashed border-outline-variant/40">
-                            <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
-                                <span className="material-symbols-outlined text-xl">military_tech</span>
-                            </div>
-                            <h4 className="text-xs font-bold text-on-surface">No Leaderboard Data Yet</h4>
-                            <p className="text-[11px] text-on-surface-variant max-w-xs mx-auto">
-                                Results will automatically update here as sales entries and performance data are logged.
-                            </p>
-                        </div>
+                        <ContestLeaderboard contest={contest} />
                     </div>
 
                 </div>
