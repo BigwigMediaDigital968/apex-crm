@@ -7,6 +7,8 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS, ROLES, type Permission, type Role } from "@/types/auth";
 import { useAuthStore } from "@/store/auth.store";
 import { usePendingLateCheckInCount } from "@/features/attendance/api/lateCheckInApi";
+import { useReportWindow } from "@/features/dailyReports";
+import { DAILY_REPORT_WINDOW_STATE } from "@/types/dailyReport";
 
 /**
  * `roles` narrows visibility, it never grants it — an entry that also declares
@@ -175,6 +177,34 @@ export const NAV_GROUPS: NavGroup[] = [
         ],
       },
       {
+        label: "Daily Report",
+        icon: "assignment",
+        permissions: [
+          PERMISSIONS.DAILY_REPORT_CREATE,
+          PERMISSIONS.DAILY_REPORT_VIEW,
+        ],
+        children: [
+          {
+            label: "Today's Report",
+            path: ROUTES.dailyReport,
+            roles: [ROLES.EMPLOYEE],
+            permissions: [PERMISSIONS.DAILY_REPORT_CREATE],
+          },
+          {
+            label: "My Reports",
+            path: ROUTES.dailyReportHistory,
+            roles: [ROLES.EMPLOYEE],
+            permissions: [PERMISSIONS.DAILY_REPORT_CREATE],
+          },
+          {
+            label: "Team Reports",
+            path: ROUTES.dailyReports,
+            roles: [ROLES.HEAD, ROLES.ADMIN, ROLES.MANAGER],
+            permissions: [PERMISSIONS.DAILY_REPORT_VIEW],
+          },
+        ],
+      },
+      {
         label: "Performance",
         path: "/performance",
         icon: "show_chart",
@@ -245,6 +275,20 @@ const Sidebar = () => {
   const canApproveLateCheckIn = hasAnyPermission([PERMISSIONS.LATE_CHECKIN_APPROVE]);
   const { data: pendingLateCount = 0 } = usePendingLateCheckInCount(canApproveLateCheckIn);
 
+  // Head holds every permission, so gate on role too: only employees file reports.
+  const canSubmitDailyReport =
+    user?.role === ROLES.EMPLOYEE &&
+    hasAnyPermission([PERMISSIONS.DAILY_REPORT_CREATE]);
+  const { data: reportWindow } = useReportWindow(canSubmitDailyReport);
+  // A "1" badge while today's report is due and not yet filed.
+  const dailyReportDue =
+    !!reportWindow &&
+    !reportWindow.report &&
+    (reportWindow.state === DAILY_REPORT_WINDOW_STATE.OPEN ||
+      reportWindow.state === DAILY_REPORT_WINDOW_STATE.LATE)
+      ? 1
+      : 0;
+
   const passesRoles = (roles?: Role[]) =>
     !roles?.length || (!!user?.role && roles.includes(user.role as Role));
 
@@ -288,6 +332,9 @@ const Sidebar = () => {
                 if (child.path === "/attendance/late-approvals") {
                   return { ...child, badgeCount: pendingLateCount };
                 }
+                if (child.path === ROUTES.dailyReport) {
+                  return { ...child, badgeCount: dailyReportDue };
+                }
                 return child;
               });
 
@@ -308,11 +355,12 @@ const Sidebar = () => {
         };
       })
       .filter((group) => group.items.length > 0);
-  }, [isLoading, hasAnyPermission, hasAllPermissions, pendingLateCount, user?.role]);
+  }, [isLoading, hasAnyPermission, hasAllPermissions, pendingLateCount, dailyReportDue, user?.role]);
 
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
     Leads: true,
     Attendance: true,
+    "Daily Report": true,
   });
 
   const toggleSubmenu = (label: string) => {

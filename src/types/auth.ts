@@ -206,6 +206,12 @@ export const PERMISSIONS = {
   REPORT_VIEW: "report:view",
   REPORT_EXPORT: "report:export",
 
+  // Daily reports: CREATE = submit/see own; VIEW/REVIEW/EXPORT = team
+  DAILY_REPORT_CREATE: "daily-report:create",
+  DAILY_REPORT_VIEW: "daily-report:view",
+  DAILY_REPORT_REVIEW: "daily-report:review",
+  DAILY_REPORT_EXPORT: "daily-report:export",
+
   // Audit
   AUDIT_VIEW: "audit:view",
   AUDIT_READ: "audit:read",

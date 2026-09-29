@@ -41,6 +41,12 @@ import {
 } from "./features/leave";
 import { CreateRevenuePage, RevenuePage } from "./features/revenue";
 import { ContestListPage } from "./features/contests";
+import {
+  DailyReportsReviewPage,
+  MyDailyReportHistoryPage,
+  MyDailyReportPage,
+} from "./features/dailyReports";
+import { ROUTES } from "./config/routes";
 import { PERMISSIONS } from "./types/auth";
 
 export const router = createBrowserRouter([
@@ -203,6 +209,28 @@ export const router = createBrowserRouter([
             ),
             children: [
               { path: "/leave/balances", element: <LeaveBalancesPage /> },
+            ],
+          },
+
+          /* Daily Reports */
+          {
+            element: (
+              <PermissionRoute permission={PERMISSIONS.DAILY_REPORT_CREATE} />
+            ),
+            children: [
+              { path: ROUTES.dailyReport, element: <MyDailyReportPage /> },
+              {
+                path: ROUTES.dailyReportHistory,
+                element: <MyDailyReportHistoryPage />,
+              },
+            ],
+          },
+          {
+            element: (
+              <PermissionRoute permission={PERMISSIONS.DAILY_REPORT_VIEW} />
+            ),
+            children: [
+              { path: ROUTES.dailyReports, element: <DailyReportsReviewPage /> },
             ],
           },
 

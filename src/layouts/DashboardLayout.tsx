@@ -4,6 +4,7 @@ import Sidebar from "./components/Sidebar";
 import { useSidebarStore } from "@/store/sidebar.store";
 import { ActiveContestPopup } from "@/features/contests/components/ActiveContestPopup";
 import { ActiveCallPopup } from "@/features/dialer/components/ActiveCallPopup";
+import { DailyReportReminder } from "@/features/dailyReports";
 
 const DashboardLayout = () => {
   const collapsed = useSidebarStore((s) => s.collapsed);
@@ -20,6 +21,9 @@ const DashboardLayout = () => {
 
       {/* Floating Call Bar for navigate-away active calls */}
       <ActiveCallPopup />
+
+      {/* Employees only: floating reminder while today's report is due */}
+      <DailyReportReminder />
 
       <main
         className={`pt-16 min-h-screen transition-all duration-300 ${

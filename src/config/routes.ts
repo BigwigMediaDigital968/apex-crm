@@ -7,5 +7,8 @@ export const ROUTES = {
   attendance: "/attendance",
   lateApprovals: "/attendance/late-approvals",
   lateHistory: "/attendance/late-history",
+  dailyReport: "/daily-report",
+  dailyReportHistory: "/daily-report/history",
+  dailyReports: "/daily-reports",
   settings: "/settings",
 } as const;
