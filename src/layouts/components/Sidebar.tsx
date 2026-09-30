@@ -283,7 +283,7 @@ export const NAV_GROUPS: NavGroup[] = [
 ];
 
 const Sidebar = () => {
-  const { collapsed, mobileOpen, closeMobileSidebar } = useSidebarStore();
+  const { collapsed, mobileOpen, closeMobileSidebar, toggleSidebar } = useSidebarStore();
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
 
@@ -381,6 +381,13 @@ const Sidebar = () => {
   });
 
   const toggleSubmenu = (label: string) => {
+    // Collapsed rail has no room for submenus: expand the sidebar and open
+    // the one that was clicked instead of silently toggling a hidden list.
+    if (collapsed) {
+      toggleSidebar();
+      setOpenSubmenus((prev) => ({ ...prev, [label]: true }));
+      return;
+    }
     setOpenSubmenus((prev) => ({
       ...prev,
       [label]: !prev[label],
