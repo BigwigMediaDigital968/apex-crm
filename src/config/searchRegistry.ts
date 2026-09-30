@@ -141,6 +141,16 @@ export class SearchRegistry {
       keywords: ["contests", "competitions", "badges", "rewards"],
       permissions: [PERMISSIONS.CONTEST_VIEW_ALL],
     },
+    {
+      id: "nav-live-contests",
+      title: "Live Contests",
+      description: "Contests running in your branch",
+      category: "Navigation",
+      path: "/contests/live",
+      icon: "emoji_events",
+      keywords: ["contests", "live contests", "competitions", "leaderboard"],
+      roles: [ROLES.EMPLOYEE, ROLES.MANAGER],
+    },
 
     // Leads & Actions
     {

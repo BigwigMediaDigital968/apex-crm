@@ -2,10 +2,18 @@ import { useBranchesQuery } from "@/features/branches";
 import { Link, useParams } from "react-router";
 import { useContestId, useToggleContestStatus } from "../hooks/useContests";
 import { ContestLeaderboard } from "../components/ContestLeaderboard";
-// Adjust hooks and types import paths according to your project setup
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS, ROLES } from "@/types/auth";
+import { useAuthStore } from "@/store/auth.store";
 
 export const ContestDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
+    const { hasPermission } = usePermissions();
+    // Employees see only the contest brief — no leaderboard or branch targeting.
+    const isEmployee = useAuthStore((s) => s.user?.role) === ROLES.EMPLOYEE;
+    const canUpdate = hasPermission(PERMISSIONS.CONTEST_UPDATE);
+    // Employees reach this page from Live Contests, not the full list.
+    const backPath = hasPermission(PERMISSIONS.CONTEST_VIEW_ALL) ? "/contests" : "/contests/live";
 
     // Queries & Mutations
     const { data: contest, isLoading, isError } = useContestId(id??"");
@@ -34,7 +42,7 @@ export const ContestDetailsPage = () => {
                     The contest you are looking for does not exist or has been removed.
                 </p>
                 <Link
-                    to="/contests"
+                    to={backPath}
                     className="rounded-xl bg-primary px-4 py-2 text-xs font-bold text-on-primary"
                 >
                     Back to Contests
@@ -73,7 +81,7 @@ export const ContestDetailsPage = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <Link
-                        to="/contests"
+                        to={backPath}
                         className="inline-flex items-center gap-1 text-xs font-bold text-on-surface-variant hover:text-primary transition-colors mb-2"
                     >
                         <span className="material-symbols-outlined text-sm">arrow_back</span>
@@ -89,6 +97,7 @@ export const ContestDetailsPage = () => {
                     </div>
                 </div>
 
+                {canUpdate && (
                 <div className="flex items-center gap-2">
                     <Link
                         type="button"
@@ -108,6 +117,7 @@ export const ContestDetailsPage = () => {
                         Delete
                     </button>
                 </div>
+                )}
             </div>
 
             {/* Main Content Layout */}
@@ -157,6 +167,7 @@ export const ContestDetailsPage = () => {
                     </div>
 
                     {/* Contest Results Section (Prepared for Future Data) */}
+                    {!isEmployee && (
                     <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 space-y-4 shadow-sm">
                         <div className="flex items-center justify-between border-b border-outline-variant/20 pb-3">
                             <div className="flex items-center gap-2">
@@ -170,6 +181,7 @@ export const ContestDetailsPage = () => {
 
                         <ContestLeaderboard contest={contest} />
                     </div>
+                    )}
 
                 </div>
 
@@ -216,6 +228,7 @@ export const ContestDetailsPage = () => {
                     </div>
 
                     {/* Target Branches */}
+                    {!isEmployee && (
                     <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 space-y-3 shadow-sm">
                         <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">
                             Target Branches ({targetBranches.length})
@@ -232,6 +245,7 @@ export const ContestDetailsPage = () => {
                             ))}
                         </div>
                     </div>
+                    )}
 
                 </div>
 

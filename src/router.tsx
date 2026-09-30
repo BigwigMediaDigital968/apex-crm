@@ -40,7 +40,7 @@ import {
   MyLeavePage,
 } from "./features/leave";
 import { CreateRevenuePage, RevenuePage } from "./features/revenue";
-import { ContestListPage } from "./features/contests";
+import { ContestListPage, LiveContestsPage } from "./features/contests";
 import {
   DailyReportsReviewPage,
   MyDailyReportHistoryPage,
@@ -311,6 +311,9 @@ export const router = createBrowserRouter([
             element: <PermissionRoute permission={PERMISSIONS.CONTEST_CREATE} />,
             children: [{ path: "/contest/new", element: <ContestFormPage /> }],
           },
+          // Ungated like /contest/:id: GET /contest/my-branch is scoped to the
+          // caller's own branch.
+          { path: "/contests/live", element: <LiveContestsPage /> },
           // Intentionally ungated: GET /contest/:id has no authorize() either —
           // it is branch-scoped in the handler so employees can open their own
           // branch's contest from ActiveContestPopup.

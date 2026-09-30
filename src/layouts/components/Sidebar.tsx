@@ -228,6 +228,14 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "military_tech",
         permissions: [PERMISSIONS.CONTEST_VIEW_ALL],
       },
+      {
+        // Employees/managers lack contest:view-all, so they get their
+        // branch's running contests instead.
+        label: "Live Contests",
+        path: "/contests/live",
+        icon: "emoji_events",
+        roles: [ROLES.EMPLOYEE, ROLES.MANAGER],
+      },
     ],
   },
   {
