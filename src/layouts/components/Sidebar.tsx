@@ -254,6 +254,14 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "timer",
         permissions: [PERMISSIONS.AUDIT_VIEW],
       },
+      {
+        // Payouts span every branch and show everyone's salary: Head only.
+        label: "Salary",
+        path: ROUTES.salary,
+        icon: "payments",
+        roles: [ROLES.HEAD],
+        permissions: [PERMISSIONS.SALARY_MANAGE],
+      },
       // {
       //   label: "Settings",
       //   path: ROUTES.settings,

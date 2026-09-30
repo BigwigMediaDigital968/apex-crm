@@ -11,4 +11,7 @@ export const ROUTES = {
   dailyReportHistory: "/daily-report/history",
   dailyReports: "/daily-reports",
   settings: "/settings",
+  salary: "/salary",
+  payoutNew: "/salary/payouts/new",
+  payoutDetail: "/salary/payouts/:id",
 } as const;

@@ -46,6 +46,7 @@ import {
   MyDailyReportHistoryPage,
   MyDailyReportPage,
 } from "./features/dailyReports";
+import { GeneratePayoutPage, PayoutDetailPage, SalaryPage } from "./features/salary";
 import { ROUTES } from "./config/routes";
 import { PERMISSIONS } from "./types/auth";
 
@@ -231,6 +232,18 @@ export const router = createBrowserRouter([
             ),
             children: [
               { path: ROUTES.dailyReports, element: <DailyReportsReviewPage /> },
+            ],
+          },
+
+          /* Salary (Head): payouts, deductions, rules */
+          {
+            element: (
+              <PermissionRoute permission={PERMISSIONS.SALARY_MANAGE} />
+            ),
+            children: [
+              { path: ROUTES.salary, element: <SalaryPage /> },
+              { path: ROUTES.payoutNew, element: <GeneratePayoutPage /> },
+              { path: ROUTES.payoutDetail, element: <PayoutDetailPage /> },
             ],
           },
 
