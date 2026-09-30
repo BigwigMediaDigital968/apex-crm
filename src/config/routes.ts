@@ -13,5 +13,7 @@ export const ROUTES = {
   settings: "/settings",
   salary: "/salary",
   payoutNew: "/salary/payouts/new",
+  myPayouts: "/my-payouts",
+  myPayslip: "/my-payouts/:id",
   payoutDetail: "/salary/payouts/:id",
 } as const;

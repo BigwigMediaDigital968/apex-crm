@@ -189,6 +189,7 @@ import { Can } from "@/components/Auth/Can";
 import { ROLES, type Role } from "@/types/auth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { SearchRegistry, type SearchableItem } from "@/config/searchRegistry";
+import { ROUTES } from "@/config/routes";
 
 const Header = () => {
   const user = useAuthStore((s) => s.user);
@@ -530,6 +531,20 @@ const Header = () => {
                       My Branch
                     </Link>
                   )}
+
+                {/* Head isn't paid through payouts; everyone else sees their payslips. */}
+                {user && user.role !== ROLES.HEAD && (
+                  <Link
+                    to={ROUTES.myPayouts}
+                    onClick={() => setProfileOpen(false)}
+                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-lg text-slate-400">
+                      payments
+                    </span>
+                    My Payouts
+                  </Link>
+                )}
 
                 <div className="my-1 border-t border-slate-100" />
 

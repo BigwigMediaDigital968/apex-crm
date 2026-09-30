@@ -68,6 +68,16 @@ export class SearchRegistry {
       permissions: [PERMISSIONS.DAILY_REPORT_VIEW],
     },
     {
+      id: "nav-my-payouts",
+      title: "My Payouts",
+      description: "Your payslips: days, earnings, deductions and net pay",
+      category: "Navigation",
+      path: ROUTES.myPayouts,
+      icon: "payments",
+      keywords: ["salary", "payslip", "pay", "my payouts", "payout"],
+      roles: [ROLES.EMPLOYEE, ROLES.MANAGER, ROLES.ADMIN],
+    },
+    {
       id: "nav-salary",
       title: "Salary",
       description: "Salary payouts, deductions and salary rules",

@@ -29,7 +29,25 @@ export const salaryKeys = {
     [...salaryKeys.all, "preview", input] as const,
   deductions: (query: DeductionListQuery) =>
     [...salaryKeys.all, "deductions", query] as const,
+  mine: (page: number) => [...salaryKeys.all, "mine", page] as const,
+  myPayslip: (id: string) => [...salaryKeys.all, "mine", "detail", id] as const,
 };
+
+// ---------- Self-service ----------
+
+export const useMyPayouts = (page: number) =>
+  useQuery({
+    queryKey: salaryKeys.mine(page),
+    queryFn: () => salaryApi.listMine({ page }),
+    placeholderData: keepPreviousData,
+  });
+
+export const useMyPayslip = (id?: string) =>
+  useQuery({
+    queryKey: salaryKeys.myPayslip(id ?? ""),
+    queryFn: () => salaryApi.getMine(id as string),
+    enabled: Boolean(id),
+  });
 
 // ---------- Settings ----------
 

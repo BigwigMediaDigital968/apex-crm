@@ -45,6 +45,12 @@ export const PAYOUT_STATUS_STYLES: Record<
   },
 };
 
+/** How a payout's status reads to the employee being paid. */
+export const MY_STATUS = {
+  generated: { label: "Processing", className: "bg-primary/10 text-primary", icon: "hourglass_top" },
+  paid: { label: "Paid", className: "bg-emerald-500/10 text-emerald-700", icon: "task_alt" },
+} as const;
+
 export const useDebounced = <T,>(value: T, delayMs = 400) => {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {

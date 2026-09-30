@@ -46,7 +46,13 @@ import {
   MyDailyReportHistoryPage,
   MyDailyReportPage,
 } from "./features/dailyReports";
-import { GeneratePayoutPage, PayoutDetailPage, SalaryPage } from "./features/salary";
+import {
+  GeneratePayoutPage,
+  MyPayoutsPage,
+  MyPayslipPage,
+  PayoutDetailPage,
+  SalaryPage,
+} from "./features/salary";
 import { ROUTES } from "./config/routes";
 import { PERMISSIONS } from "./types/auth";
 
@@ -234,6 +240,10 @@ export const router = createBrowserRouter([
               { path: ROUTES.dailyReports, element: <DailyReportsReviewPage /> },
             ],
           },
+
+          /* Own payslips: any signed-in user; the API returns only their own line */
+          { path: ROUTES.myPayouts, element: <MyPayoutsPage /> },
+          { path: ROUTES.myPayslip, element: <MyPayslipPage /> },
 
           /* Salary (Head): payouts, deductions, rules */
           {

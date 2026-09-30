@@ -263,3 +263,38 @@ export interface CreateDeductionPayload {
   days?: number;
   reason: string;
 }
+
+// ---------- Employee self-service ----------
+
+export interface MyPayoutSummary {
+  _id: string;
+  payoutNo: string;
+  from: string;
+  to: string;
+  status: Exclude<SalaryPayoutStatus, "cancelled">;
+  generatedAt: string;
+  paidAt?: string | null;
+  gross: number;
+  deductions: number;
+  net: number;
+}
+
+export interface PayslipLine {
+  employeeCode: string;
+  name: string;
+  designation: string | null;
+  branch: BranchRefLite | null;
+  monthlyGross: number;
+  perDayRate: number;
+  days: PayoutDays;
+  lateCount: number;
+  earnings: Record<EarningField | "gross", number>;
+  deductions: Record<DeductionField | "total", number>;
+  deductionItems: { date: string; description: string; amount: number }[];
+  adjustments: { label: string; amount: number }[];
+  net: number;
+}
+
+export interface Payslip extends Omit<MyPayoutSummary, "gross" | "deductions" | "net"> {
+  line: PayslipLine;
+}

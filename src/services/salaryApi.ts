@@ -11,6 +11,8 @@ import type {
   PayoutListQuery,
   PayoutPreview,
   PayoutTotals,
+  MyPayoutSummary,
+  Payslip,
   SalaryDeduction,
   SalaryPayout,
   SalaryPayoutSummary,
@@ -22,6 +24,23 @@ const filenameFromDisposition = (header?: string) =>
   header?.match(/filename="?([^";]+)"?/)?.[1];
 
 export const salaryApi = {
+  // ---------- Self-service ----------
+
+  listMine: async (query: { page?: number; limit?: number } = {}) => {
+    const { data } = await apiClient.get<PaginatedApiEnvelope<MyPayoutSummary>>(
+      "/salary/my/payouts",
+      { params: query }
+    );
+    return { payouts: data.data, pagination: data.pagination as Pagination };
+  },
+
+  getMine: async (id: string) => {
+    const { data } = await apiClient.get<ApiEnvelope<Payslip>>(
+      `/salary/my/payouts/${id}`
+    );
+    return data.data;
+  },
+
   // ---------- Settings ----------
 
   getSettings: async () => {
