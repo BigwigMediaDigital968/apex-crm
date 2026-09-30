@@ -53,6 +53,11 @@ import {
   PayoutDetailPage,
   SalaryPage,
 } from "./features/salary";
+import {
+  ConnectIntegrationPage,
+  IntegrationDetailPage,
+  SettingsPage,
+} from "./features/integrations";
 import { ROUTES } from "./config/routes";
 import { PERMISSIONS } from "./types/auth";
 
@@ -270,9 +275,16 @@ export const router = createBrowserRouter([
             path: "/achievements",
             element: <ComingSoonPage featureName="Achievements" />,
           },
+          /* Settings → Integrations (Head) */
           {
-            path: "/settings",
-            element: <ComingSoonPage featureName="Settings" />,
+            element: (
+              <PermissionRoute permission={PERMISSIONS.INTEGRATION_VIEW} />
+            ),
+            children: [
+              { path: ROUTES.settings, element: <SettingsPage /> },
+              { path: ROUTES.integrationConnect, element: <ConnectIntegrationPage /> },
+              { path: ROUTES.integrationDetail, element: <IntegrationDetailPage /> },
+            ],
           },
 
           /* Dialer */

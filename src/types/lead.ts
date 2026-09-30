@@ -18,6 +18,7 @@ export const LEAD_SOURCE_TYPE = {
   EXCEL: "EXCEL",
   API: "API",
   IMPORT: "IMPORT",
+  INTEGRATION: "INTEGRATION",
 } as const;
 
 /**
@@ -56,6 +57,9 @@ export interface Lead {
   sourceType: LeadSourceType;
 
   externalId?: string;
+
+  /** Set for leads that came in through an integration (e.g. WATI). */
+  integration?: string;
 
   /** Populated on list/get responses; falls back to a raw id elsewhere. */
   branch: BranchRef | any;
@@ -197,7 +201,10 @@ export interface LeadActivity {
   | "assigned"
   | "status_changed"
   | "remark_added"
-  | "follow_up";
+  | "follow_up"
+  | "call_logged"
+  | "whatsapp_in"
+  | "whatsapp_out";
   performedBy: LeadUserSummary;
   previousStatus?: string;
   newStatus?: string;

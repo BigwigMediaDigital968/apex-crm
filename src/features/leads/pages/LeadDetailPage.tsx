@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate, Link, useLocation } from "react-router";
 import { Can } from "@/components/Auth/Can";
 import { useAuthStore } from "@/store/auth.store";
 import { ROLES } from "@/types/auth";
@@ -17,6 +17,7 @@ import {
     useCompleteFollowUp,
 } from "../hooks/useLeads";
 import { LeadCallHistory } from "@/features/dialer/components/LeadCallHistory";
+import LeadWhatsAppPanel from "../components/LeadWhatsAppPanel";
 
 const STATUS_OPTIONS: { label: string; value: LeadStatus }[] = [
     { label: "New", value: "new" },
@@ -55,6 +56,9 @@ const ACTIVITY_LABELS: Record<string, string> = {
     status_changed: "Status changed",
     remark_added: "Remark added",
     follow_up: "Follow-up activity",
+    call_logged: "Call logged",
+    whatsapp_in: "WhatsApp received",
+    whatsapp_out: "WhatsApp sent",
 };
 
 const ACTIVITY_ICONS: Record<string, string> = {
@@ -63,6 +67,9 @@ const ACTIVITY_ICONS: Record<string, string> = {
     status_changed: "sync_alt",
     remark_added: "edit_note",
     follow_up: "event_upcoming",
+    call_logged: "call",
+    whatsapp_in: "chat",
+    whatsapp_out: "send",
 };
 
 const formatDateTime = (value?: string | Date | null) => {
@@ -108,6 +115,13 @@ const LeadDetailPage = () => {
     const { data: activities, isLoading: activitiesLoading } = useLeadActivities(leadId);
     const { data: callLogs, isLoading: callLogsLoading } = useLeadCallLogs(leadId);
     const { data: followUps, isLoading: followUpsLoading } = useLeadFollowUps(leadId);
+    const location = useLocation();
+
+    // Notifications about WhatsApp messages link to /leads/:id#whatsapp.
+    useEffect(() => {
+        if (!lead || location.hash !== "#whatsapp") return;
+        document.getElementById("whatsapp")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, [lead, location.hash]);
 
     const updateStatus = useUpdateLeadStatus();
     const assignLead = useAssignLead();
@@ -253,6 +267,20 @@ const LeadDetailPage = () => {
                 </div>
 
                 <div className="flex gap-2 shrink-0">
+                    {/* WhatsApp only for leads linked to a WATI integration. */}
+                    {lead.integration && (
+                        <a
+                            href="#whatsapp"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                document.getElementById("whatsapp")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-600/40 px-4 py-2.5 font-label-md text-xs font-bold text-emerald-700 hover:bg-emerald-500/10 transition-all"
+                        >
+                            <span className="material-symbols-outlined text-sm">chat</span>
+                            WhatsApp
+                        </a>
+                    )}
                     {lead.phone && (
                         <Link
                             to={`/dialer?leadId=${lead._id}`}
@@ -310,6 +338,14 @@ const LeadDetailPage = () => {
                             </div>
                         )}
                     </SectionCard>
+
+                    {lead.integration && (
+                        <div id="whatsapp" className="scroll-mt-24">
+                            <SectionCard title="WhatsApp" icon="chat">
+                                <LeadWhatsAppPanel leadId={lead._id} leadName={lead.name} />
+                            </SectionCard>
+                        </div>
+                    )}
 
                     <SectionCard title="Assignment Details" icon="group">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -68,6 +68,17 @@ export class SearchRegistry {
       permissions: [PERMISSIONS.DAILY_REPORT_VIEW],
     },
     {
+      id: "nav-settings-integrations",
+      title: "Settings: Integrations",
+      description: "Connect lead sources like WATI (WhatsApp)",
+      category: "Management",
+      path: `${ROUTES.settings}?tab=integrations`,
+      icon: "hub",
+      keywords: ["settings", "integrations", "wati", "whatsapp", "lead source", "webhook"],
+      roles: [ROLES.HEAD],
+      permissions: [PERMISSIONS.INTEGRATION_VIEW],
+    },
+    {
       id: "nav-my-payouts",
       title: "My Payouts",
       description: "Your payslips: days, earnings, deductions and net pay",

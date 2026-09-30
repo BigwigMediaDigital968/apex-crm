@@ -171,6 +171,10 @@ export const PERMISSIONS = {
   SALARY_DELETE: "salary:delete",
   SALARY_MANAGE: "salary:manage",
 
+  INTEGRATION_VIEW: "integration:view",
+  INTEGRATION_MANAGE: "integration:manage",
+  LEAD_MESSAGE_SEND: "lead-message:send",
+
   // Achievements
   ACHIEVEMENT_VIEW: "achievement:view",
   ACHIEVEMENT_CREATE: "achievement:create",

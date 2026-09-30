@@ -185,6 +185,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { useSidebarStore } from "@/store/sidebar.store";
 import { useLogout } from "@/hooks/useAuth";
 import QuickAddMenu from "./QuickAddMenu";
+import NotificationBell from "./NotificationBell";
 import { Can } from "@/components/Auth/Can";
 import { ROLES, type Role } from "@/types/auth";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -462,6 +463,8 @@ const Header = () => {
         <Can permission={["user:create", "lead:create", "branch:create"]}>
           <QuickAddMenu />
         </Can>
+
+        <NotificationBell />
 
         <div className="h-6 w-px bg-slate-200" />
 

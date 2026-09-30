@@ -24,7 +24,7 @@ import { useSearchParams } from "react-router";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
-const SOURCE_OPTIONS = ["All Sources", "Website", "Excel Import"];
+const SOURCE_OPTIONS = ["All Sources", "Website", "Excel Import", "WATI"];
 const STATUS_FILTERS: { label: string; value: LeadStatus | "" }[] = [
   { label: "All Statuses", value: "" },
   { label: "New", value: "new" },
@@ -731,7 +731,15 @@ const LeadListPage = () => {
                       {/* Source */}
                       <td className="px-6 py-4">
                         <div>
-                          <p className="font-semibold text-on-surface">
+                          <p className="flex items-center gap-1 font-semibold text-on-surface">
+                            {lead.sourceType === "INTEGRATION" && (
+                              <span
+                                className="material-symbols-outlined text-sm text-emerald-600"
+                                title="Synced from an integration (WhatsApp)"
+                              >
+                                chat
+                              </span>
+                            )}
                             {lead.source}
                           </p>
 

@@ -11,6 +11,8 @@ export const ROUTES = {
   dailyReportHistory: "/daily-report/history",
   dailyReports: "/daily-reports",
   settings: "/settings",
+  integrationConnect: "/settings/integrations/connect/:provider",
+  integrationDetail: "/settings/integrations/:id",
   salary: "/salary",
   payoutNew: "/salary/payouts/new",
   myPayouts: "/my-payouts",

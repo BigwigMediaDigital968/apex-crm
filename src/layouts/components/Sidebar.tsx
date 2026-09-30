@@ -248,6 +248,14 @@ export const NAV_GROUPS: NavGroup[] = [
         icon: "domain",
         permissions: [PERMISSIONS.BRANCH_VIEW],
       },
+      // {
+      //   // Integrations (lead sources) and future system settings: Head only.
+      //   label: "Settings",
+      //   path: ROUTES.settings,
+      //   icon: "settings",
+      //   roles: [ROLES.HEAD],
+      //   permissions: [PERMISSIONS.INTEGRATION_VIEW],
+      // },
       {
         // Payouts span every branch and show everyone's salary: Head only.
         label: "Salary",
