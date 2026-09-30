@@ -26,11 +26,14 @@ const timeAgo = (iso: string) => {
   return `${Math.round(hours / 24)}d`;
 };
 
-/** Where a notification leads. WhatsApp messages jump to the lead's WhatsApp card. */
+/**
+ * Where a notification leads. WhatsApp messages jump to the lead's WhatsApp
+ * card. Integration notifications deliberately link nowhere: Settings isn't
+ * exposed on the live site yet, so they render as plain, non-clickable rows.
+ */
 const targetFor = (n: AppNotification): string | null => {
   if (!n.entityId) return null;
   if (n.entityType === "Lead") return `/leads/${n.entityId}${n.type === "LEAD_WHATSAPP_RECEIVED" ? "#whatsapp" : ""}`;
-  if (n.entityType === "Integration") return `/settings/integrations/${n.entityId}`;
   return null;
 };
 
@@ -60,8 +63,9 @@ const NotificationBell = () => {
   const openNotification = (n: AppNotification) => {
     if (!n.isRead) markRead.mutate(n._id);
     const to = targetFor(n);
+    if (!to) return;
     setOpen(false);
-    if (to) navigate(to);
+    navigate(to);
   };
 
   return (
@@ -99,13 +103,11 @@ const NotificationBell = () => {
             {!data?.notifications.length ? (
               <li className="px-4 py-10 text-center text-xs text-on-surface-variant">You're all caught up.</li>
             ) : (
-              data.notifications.map((n) => (
-                <li key={n._id}>
-                  <button
-                    type="button"
-                    onClick={() => openNotification(n)}
-                    className={`flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-container-low ${n.isRead ? "" : "bg-primary/5"}`}
-                  >
+              data.notifications.map((n) => {
+                const to = targetFor(n);
+                const rowClass = `flex w-full gap-3 px-4 py-3 text-left ${n.isRead ? "" : "bg-primary/5"}`;
+                const content = (
+                  <>
                     <span className={`material-symbols-outlined mt-0.5 text-lg ${n.type === "INTEGRATION_ERROR" ? "text-error" : "text-primary"}`}>
                       {ICONS[n.type] ?? "notifications"}
                     </span>
@@ -117,9 +119,25 @@ const NotificationBell = () => {
                       <span className="mt-0.5 line-clamp-2 block text-[11px] text-on-surface-variant">{n.message}</span>
                     </span>
                     {!n.isRead && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-label="Unread" />}
-                  </button>
-                </li>
-              ))
+                  </>
+                );
+                return (
+                  <li key={n._id}>
+                    {to ? (
+                      <button
+                        type="button"
+                        onClick={() => openNotification(n)}
+                        className={`${rowClass} transition-colors hover:bg-surface-container-low`}
+                      >
+                        {content}
+                      </button>
+                    ) : (
+                      // Informational only (e.g. integration alerts): no link.
+                      <div className={rowClass}>{content}</div>
+                    )}
+                  </li>
+                );
+              })
             )}
           </ul>
         </div>

@@ -743,10 +743,7 @@ const LeadListPage = () => {
                             {lead.source}
                           </p>
 
-                          <p className="text-[11px] text-on-surface-variant/70 flex items-center gap-1 mt-0.5">
-                            <span className="material-symbols-outlined text-xs">
-                              hub
-                            </span>
+                          <p className="text-[11px] text-on-surface-variant/70 mt-0.5">
                             {lead.sourceType}
                           </p>
                         </div>
