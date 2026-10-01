@@ -150,7 +150,7 @@ const SubmittedReportsTab = () => {
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4 text-right">Calls</th>
                 <th className="py-3 px-4 text-right">Answered</th>
-                <th className="py-3 px-4 text-right">Conversions</th>
+                <th className="py-3 px-4 text-right">Converted</th>
                 <th className="py-3 px-4 text-right">Duration</th>
                 <th className="py-3 px-4">Work completed</th>
               </tr>

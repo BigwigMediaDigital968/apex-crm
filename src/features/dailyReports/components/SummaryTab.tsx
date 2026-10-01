@@ -40,9 +40,9 @@ const SummaryTab = () => {
                 <th className="py-3 px-4 text-right">Late</th>
                 <th className="py-3 px-4 text-right">Calls</th>
                 <th className="py-3 px-4 text-right">Answered</th>
-                <th className="py-3 px-4 text-right">Conversions</th>
+                <th className="py-3 px-4 text-right">Converted</th>
                 <th className="py-3 px-4 text-right">Duration</th>
-                <th className="py-3 px-4 text-right">System calls / conv.</th>
+                <th className="py-3 px-4 text-right">System calls / converted</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/20 font-body-sm text-xs text-on-surface">

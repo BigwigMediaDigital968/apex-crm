@@ -35,7 +35,7 @@ const MyDailyReportPage = () => {
           {reportWindow ? formatDate(reportWindow.date) : "Today's Report"}
         </h1>
         <p className="font-body-md text-xs sm:text-sm text-on-surface-variant mt-1 max-w-2xl">
-          Record today's work, calls and conversions before your day ends.
+          Record today's work, calls and converted clients before your day ends.
         </p>
       </div>
       <div className="flex items-center gap-2 self-start md:self-auto">

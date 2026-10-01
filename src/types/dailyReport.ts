@@ -148,7 +148,7 @@ export const METRIC_FIELDS: {
 }[] = [
   { key: "callsAttended", label: "Calls attended" },
   { key: "callsAnswered", label: "Calls answered" },
-  { key: "conversions", label: "Conversions" },
+  { key: "conversions", label: "Converted" },
   { key: "totalCallDurationSeconds", label: "Call duration" },
 ];
 

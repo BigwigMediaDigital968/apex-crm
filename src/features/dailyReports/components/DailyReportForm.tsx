@@ -273,7 +273,7 @@ const DailyReportForm = ({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {numberField("callsAttended", "Calls attended")}
           {numberField("callsAnswered", "Calls answered")}
-          {numberField("conversions", "Conversions")}
+          {numberField("conversions", "Converted")}
 
           <div className="space-y-1.5">
             <span className={labelClass}>Call duration</span>

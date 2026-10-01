@@ -129,6 +129,17 @@
   --spacing-xl: 32px;
   --spacing-gutter: 16px;
   --spacing-margin: 24px; */
+
+  /* ---- Animations ---- */
+  /* A short wiggle followed by a long rest, for attention-seeking buttons. */
+  --animate-nudge: nudge 4s ease-in-out infinite;
+  @keyframes nudge {
+    0%, 76%, 100% { transform: rotate(0deg) scale(1); }
+    80% { transform: rotate(-14deg) scale(1.1); }
+    84% { transform: rotate(12deg) scale(1.1); }
+    88% { transform: rotate(-8deg) scale(1.05); }
+    92% { transform: rotate(4deg) scale(1); }
+  }
 }
 
 @layer base {

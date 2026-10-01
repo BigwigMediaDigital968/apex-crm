@@ -53,42 +53,60 @@ const DailyReportReminder = () => {
       callState === "active") &&
     !pathname.startsWith("/dialer");
 
+  const title = isLate ? "Daily report overdue" : "Daily report submission opened";
+  const subtitle = isLate
+    ? `Marked late · closes in ${formatRemaining(remaining)}`
+    : `Due in ${formatRemaining(remaining)}`;
+
+  // A compact round button so it doesn't cover form actions; the full message
+  // shows as a tooltip on hover or keyboard focus.
   return (
     <Link
       to={ROUTES.dailyReport}
       role="status"
-      aria-label={`${isLate ? "Daily report overdue" : "Daily report submission opened"}. ${formatRemaining(remaining)} left. Open the form.`}
-      className={`group fixed right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full py-2 pl-4 pr-2 shadow-2xl ring-1 transition-all hover:-translate-y-0.5 sm:right-6 animate-in slide-in-from-bottom-4 duration-300 ${
+      aria-label={`${title}. ${formatRemaining(remaining)} left. Open the form.`}
+      className={`group fixed right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-xl ring-4 transition-all duration-200 hover:scale-110 hover:shadow-2xl focus-visible:scale-110 focus-visible:outline-none sm:right-6 ${
         callBarVisible ? "bottom-28" : "bottom-6"
       } ${
         isLate
-          ? "bg-amber-600 text-white ring-amber-700/30"
-          : "bg-primary text-on-primary ring-black/10"
+          ? "bg-amber-600 text-white ring-amber-200 hover:bg-amber-500"
+          : "bg-primary text-on-primary ring-primary-fixed hover:bg-primary-container"
       }`}
     >
-      <span className="relative flex h-2.5 w-2.5 shrink-0">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
-        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
-      </span>
-
-      <span className="min-w-0 leading-tight">
-        <span className="block truncate font-label-md text-xs font-bold">
-          {isLate
-            ? "Daily report overdue"
-            : "Daily report submission opened"}
-        </span>
-        <span className="block truncate font-body-sm text-[11px] opacity-85 tabular-nums">
-          {isLate
-            ? `Marked late · closes in ${formatRemaining(remaining)}`
-            : `Due in ${formatRemaining(remaining)}`}
-        </span>
-      </span>
+      {/* Attention halo */}
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-0 rounded-full motion-safe:animate-ping group-hover:hidden ${
+          isLate ? "bg-amber-500/50" : "bg-primary/40"
+        }`}
+      />
 
       <span
         aria-hidden="true"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 transition-colors group-hover:bg-white/30"
+        className="material-symbols-outlined relative text-[26px] motion-safe:animate-nudge group-hover:animate-none"
       >
-        <span className="material-symbols-outlined text-xl">add</span>
+        {isLate ? "assignment_late" : "edit_note"}
+      </span>
+
+      {/* Countdown badge */}
+      <span
+        aria-hidden="true"
+        className={`absolute -top-1.5 -left-1.5 rounded-full bg-white px-1.5 py-0.5 font-label-sm text-[10px] font-bold leading-none shadow ring-1 tabular-nums ${
+          isLate ? "text-amber-700 ring-amber-200" : "text-primary ring-primary-fixed"
+        }`}
+      >
+        {formatRemaining(remaining)}
+      </span>
+
+      {/* Hover / focus tooltip */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute right-full mr-3 w-max max-w-[calc(100vw-6rem)] translate-x-2 rounded-xl bg-inverse-surface px-3 py-2 text-left leading-tight text-inverse-on-surface opacity-0 shadow-xl transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
+      >
+        <span className="block font-label-md text-xs font-bold">{title}</span>
+        <span className="block font-body-sm text-[11px] opacity-80 tabular-nums">
+          {subtitle} · click to fill
+        </span>
       </span>
     </Link>
   );

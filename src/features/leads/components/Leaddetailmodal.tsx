@@ -125,15 +125,6 @@ const LeadDetailModal = ({ leadId, onClose }: LeadDetailModalProps) => {
                     <span className="material-symbols-outlined text-base text-emerald-600 block">call</span>
                   </Link>
                 )}
-                {lead.email && (
-                  <a
-                    href={`mailto:${lead.email}`}
-                    className="rounded-lg border border-outline-variant/40 bg-surface-container-lowest p-2 text-on-surface hover:bg-surface-container-low transition-colors"
-                    title="Email Lead"
-                  >
-                    <span className="material-symbols-outlined text-base text-sky-600 block">mail</span>
-                  </a>
-                )}
               </div>
             </div>
 
