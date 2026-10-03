@@ -8,11 +8,15 @@ import type {
     UpdateContestPayload,
 } from "@/types/contest";
 
+// Everything sits under "contests" so one invalidation refreshes lists, the
+// details page, participants and the leaderboard together.
 export const contestKeys = {
     all: ["contests"] as const,
-    contest :  (id:string) => ['contest', id] as const,
+    contest: (id: string) => [...contestKeys.all, "detail", id] as const,
     list: (query: ContestListQuery) => [...contestKeys.all, "list", query] as const,
     myBranch: () => [...contestKeys.all, "my-branch"] as const,
+    participants: (id: string) => [...contestKeys.all, "participants", id] as const,
+    leaderboard: (id: string) => [...contestKeys.all, "leaderboard", id] as const,
 };
 
 export const useContestsQuery = (query: ContestListQuery = {}) =>
@@ -71,5 +75,56 @@ export const useToggleContestStatus = () => {
         },
         onError: (error) =>
             toast.error(getErrorMessage(error, "Failed to update contest status")),
+    });
+};
+
+export const useContestParticipantsQuery = (id: string, enabled = true) =>
+    useQuery({
+        queryKey: contestKeys.participants(id),
+        queryFn: () => contestApi.participants(id),
+        enabled: !!id && enabled,
+    });
+
+export const useContestLeaderboardQuery = (id: string, enabled = true) =>
+    useQuery({
+        queryKey: contestKeys.leaderboard(id),
+        queryFn: () => contestApi.leaderboard(id),
+        enabled: !!id && enabled,
+    });
+
+export const useJoinContest = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => contestApi.join(id),
+        onSuccess: () => {
+            toast.success("You're in! Good luck 🏆");
+            queryClient.invalidateQueries({ queryKey: contestKeys.all });
+        },
+        onError: (error) => toast.error(getErrorMessage(error, "Couldn't join the contest")),
+    });
+};
+
+export const useWithdrawFromContest = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => contestApi.withdraw(id),
+        onSuccess: () => {
+            toast.success("You've withdrawn from the contest");
+            queryClient.invalidateQueries({ queryKey: contestKeys.all });
+        },
+        onError: (error) => toast.error(getErrorMessage(error, "Couldn't withdraw")),
+    });
+};
+
+export const useRemoveContestParticipant = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ id, userId }: { id: string; userId: string }) =>
+            contestApi.removeParticipant(id, userId),
+        onSuccess: () => {
+            toast.success("Participant removed");
+            queryClient.invalidateQueries({ queryKey: contestKeys.all });
+        },
+        onError: (error) => toast.error(getErrorMessage(error, "Couldn't remove participant")),
     });
 };

@@ -205,6 +205,9 @@ export const PERMISSIONS = {
   CONTEST_CREATE: "contest:create",
   CONTEST_UPDATE: "contest:update",
   CONTEST_VIEW_ALL: "contest:view-all",
+  CONTEST_JOIN: "contest:join",
+  CONTEST_PARTICIPANT_VIEW: "contest:participant:view",
+  CONTEST_LEADERBOARD_VIEW: "contest:leaderboard:view",
 
   // Reports
   REPORT_VIEW: "report:view",

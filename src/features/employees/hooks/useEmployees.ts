@@ -112,6 +112,8 @@ export const useUpdateEmployeeBranches = () => {
     onSuccess: () => {
       toast.success("Branch assignment updated successfully");
       queryClient.invalidateQueries({ queryKey: employeeKeys.all });
+      // Backend moves the HR profile's branch along with the user's.
+      queryClient.invalidateQueries({ queryKey: employeeProfileKeys.all });
     },
     onError: (error) => {
       toast.error(getErrorMessage(error, "Failed to update branch assignment"));

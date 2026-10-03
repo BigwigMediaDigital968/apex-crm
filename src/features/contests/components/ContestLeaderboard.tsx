@@ -1,6 +1,9 @@
-import { useMemo } from "react";
-import { useRevenueReportQuery } from "@/features/revenue/hooks/useRevenue";
-import type { Contest } from "@/types/contest";
+import { useAuthStore } from "@/store/auth.store";
+import { useContestLeaderboardQuery } from "../hooks/useContests";
+import type { Contest, ContestLeaderboardRow } from "@/types/contest";
+
+// Only the top of the table is shown; the viewer's own row is pinned below it.
+const TOP_N = 10;
 
 const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -15,70 +18,21 @@ const MEDAL_CLASSES = [
     "bg-orange-400/15 text-orange-600 border-orange-400/40",
 ];
 
-interface LeaderboardRow {
-    employeeId: string;
-    name: string;
-    branchName: string;
-    verified: number;
-    pending: number;
-    entries: number;
-}
-
 interface ContestLeaderboardProps {
     contest: Contest;
 }
 
+// Ranking happens on the backend (GET /contest/:id/leaderboard): only joined
+// participants, verified revenue from startDate to endDate, pending breaks ties.
 export const ContestLeaderboard = ({ contest }: ContestLeaderboardProps) => {
     const hasStarted = new Date() >= new Date(contest.startDate);
+    const currentUserId = useAuthStore((s) => s.user?._id);
 
-    const targetBranchIds = useMemo(
-        () =>
-            new Set(
-                contest.branches.map((b) => (typeof b === "string" ? b : b._id))
-            ),
-        [contest.branches]
+    const { data, isLoading, isError } = useContestLeaderboardQuery(
+        contest._id,
+        hasStarted
     );
-
-    // "ALL" = everything the viewer may see; narrowed to the contest's
-    // target branches client-side so it works for Admins whose branch set
-    // differs from the contest's (BRANCH mode would 403 on those).
-    const { data, isLoading, isError } = useRevenueReportQuery(
-        {
-            viewMode: "ALL",
-            startDate: new Date(contest.startDate).toISOString(),
-            endDate: new Date(contest.endDate).toISOString(),
-        },
-        { enabled: hasStarted }
-    );
-
-    const rows = useMemo<LeaderboardRow[]>(() => {
-        const byEmployee = new Map<string, LeaderboardRow>();
-
-        for (const record of data?.records ?? []) {
-            if (record.status === "REJECTED") continue;
-            if (!record.employee || !targetBranchIds.has(record.branch?._id)) continue;
-
-            const row = byEmployee.get(record.employee._id) ?? {
-                employeeId: record.employee._id,
-                name: record.employee.name,
-                branchName: record.branch.name,
-                verified: 0,
-                pending: 0,
-                entries: 0,
-            };
-
-            if (record.status === "VERIFIED") row.verified += record.amount;
-            else row.pending += record.amount;
-            row.entries += 1;
-
-            byEmployee.set(row.employeeId, row);
-        }
-
-        // Only verified revenue counts toward the rank; pending breaks ties
-        return [...byEmployee.values()].sort(
-            (a, b) => b.verified - a.verified || b.pending - a.pending
-        );
-    }, [data, targetBranchIds]);
+    const rows = data ?? [];
 
     const totalVerified = rows.reduce((sum, r) => sum + r.verified, 0);
     const topAmount = rows[0]?.verified ?? 0;
@@ -124,81 +78,114 @@ export const ContestLeaderboard = ({ contest }: ContestLeaderboardProps) => {
     if (rows.length === 0) {
         return emptyState(
             "military_tech",
-            "No Leaderboard Data Yet",
-            "Results will automatically update here as revenue entries are logged in the target branches."
+            "No Participants Yet",
+            "Standings appear here once employees tap \"I'm in\" to join this contest."
         );
     }
+
+    const topRows = rows.slice(0, TOP_N);
+    // Someone ranked below the cut still sees where they stand.
+    const myRow = rows.find((r) => r.employeeId === currentUserId);
+    const pinnedRow = myRow && myRow.rank > TOP_N ? myRow : null;
+    const hiddenCount = rows.length - topRows.length - (pinnedRow ? 1 : 0);
+
+    const renderRow = (row: ContestLeaderboardRow) => {
+        const { rank } = row;
+        const share = topAmount > 0 ? (row.verified / topAmount) * 100 : 0;
+        const isMe = row.employeeId === currentUserId;
+
+        return (
+            <li
+                key={row.employeeId}
+                className={`flex items-center gap-3 rounded-xl border p-3 ${
+                    isMe
+                        ? "border-primary/50 bg-primary/10 ring-2 ring-primary/20"
+                        : rank <= 3
+                          ? "border-primary/20 bg-primary/5"
+                          : "border-outline-variant/30 bg-surface-container-low/40"
+                }`}
+            >
+                <div
+                    className={`h-8 w-8 shrink-0 rounded-full border flex items-center justify-center font-extrabold tabular-nums ${
+                        rank >= 100 ? "text-[10px]" : "text-xs"
+                    } ${
+                        MEDAL_CLASSES[rank - 1] ??
+                        "bg-surface-container-high text-on-surface-variant border-outline-variant/30"
+                    }`}
+                >
+                    {rank <= 3 ? (
+                        <span className="material-symbols-outlined text-base">
+                            {rank === 1 ? "trophy" : "military_tech"}
+                        </span>
+                    ) : (
+                        rank
+                    )}
+                </div>
+
+                <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                        <p className="truncate text-sm font-bold text-on-surface">
+                            {row.name}
+                            {isMe && (
+                                <span className="ml-1.5 rounded-md bg-primary px-1.5 py-0.5 align-middle text-[10px] font-bold text-on-primary">
+                                    You
+                                </span>
+                            )}
+                        </p>
+                        <p className="shrink-0 text-sm font-extrabold text-on-surface">
+                            {formatCurrency(row.verified)}
+                        </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-2 text-[11px] text-on-surface-variant">
+                        <span className="truncate">
+                            {row.branchName} · {row.entries}{" "}
+                            {row.entries === 1 ? "entry" : "entries"}
+                        </span>
+                        {row.pending > 0 && (
+                            <span className="shrink-0 text-amber-600">
+                                +{formatCurrency(row.pending)} pending
+                            </span>
+                        )}
+                    </div>
+                    <div className="h-1 w-full rounded-full bg-surface-container-high overflow-hidden">
+                        <div
+                            className="h-full rounded-full bg-primary"
+                            style={{ width: `${share}%` }}
+                        />
+                    </div>
+                </div>
+            </li>
+        );
+    };
 
     return (
         <div className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-on-surface-variant">
                 <span>
-                    <span className="font-bold text-on-surface">{rows.length}</span> participants ·
-                    Total verified{" "}
+                    <span className="font-bold text-on-surface">{rows.length}</span>{" "}
+                    {rows.length === 1 ? "participant" : "participants"} · Total verified{" "}
                     <span className="font-bold text-on-surface">{formatCurrency(totalVerified)}</span>
                 </span>
-                <span>Ranked by verified revenue</span>
+                <span>
+                    {rows.length > TOP_N ? `Top ${TOP_N} by verified revenue` : "Ranked by verified revenue"}
+                </span>
             </div>
 
             <ol className="space-y-2">
-                {rows.map((row, idx) => {
-                    const rank = idx + 1;
-                    const share = topAmount > 0 ? (row.verified / topAmount) * 100 : 0;
+                {topRows.map(renderRow)}
 
-                    return (
-                        <li
-                            key={row.employeeId}
-                            className={`flex items-center gap-3 rounded-xl border p-3 ${
-                                rank <= 3
-                                    ? "border-primary/20 bg-primary/5"
-                                    : "border-outline-variant/30 bg-surface-container-low/40"
-                            }`}
-                        >
-                            <div
-                                className={`h-8 w-8 shrink-0 rounded-full border flex items-center justify-center text-xs font-extrabold ${
-                                    MEDAL_CLASSES[idx] ??
-                                    "bg-surface-container-high text-on-surface-variant border-outline-variant/30"
-                                }`}
-                            >
-                                {rank <= 3 ? (
-                                    <span className="material-symbols-outlined text-base">
-                                        {rank === 1 ? "trophy" : "military_tech"}
-                                    </span>
-                                ) : (
-                                    rank
-                                )}
-                            </div>
+                {hiddenCount > 0 && (
+                    <li
+                        aria-hidden="true"
+                        className="flex items-center gap-3 py-1 text-[11px] font-semibold text-on-surface-variant"
+                    >
+                        <span className="h-px flex-1 border-t border-dashed border-outline-variant/50" />
+                        {hiddenCount} more {hiddenCount === 1 ? "participant" : "participants"}
+                        <span className="h-px flex-1 border-t border-dashed border-outline-variant/50" />
+                    </li>
+                )}
 
-                            <div className="min-w-0 flex-1 space-y-1">
-                                <div className="flex items-baseline justify-between gap-2">
-                                    <p className="truncate text-sm font-bold text-on-surface">
-                                        {row.name}
-                                    </p>
-                                    <p className="shrink-0 text-sm font-extrabold text-on-surface">
-                                        {formatCurrency(row.verified)}
-                                    </p>
-                                </div>
-                                <div className="flex items-center justify-between gap-2 text-[11px] text-on-surface-variant">
-                                    <span className="truncate">
-                                        {row.branchName} · {row.entries}{" "}
-                                        {row.entries === 1 ? "entry" : "entries"}
-                                    </span>
-                                    {row.pending > 0 && (
-                                        <span className="shrink-0 text-amber-600">
-                                            +{formatCurrency(row.pending)} pending
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="h-1 w-full rounded-full bg-surface-container-high overflow-hidden">
-                                    <div
-                                        className="h-full rounded-full bg-primary"
-                                        style={{ width: `${share}%` }}
-                                    />
-                                </div>
-                            </div>
-                        </li>
-                    );
-                })}
+                {pinnedRow && renderRow(pinnedRow)}
             </ol>
         </div>
     );

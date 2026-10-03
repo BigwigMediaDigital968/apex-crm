@@ -2,7 +2,9 @@ import { apiClient } from "./apiClient";
 import type { ApiEnvelope } from "./apiEnvelope";
 import type {
     Contest,
+    ContestLeaderboardRow,
     ContestListData,
+    ContestParticipant,
     ContestListQuery,
     CreateContestPayload,
     UpdateContestPayload,
@@ -20,6 +22,9 @@ const buildFormData = (payload: CreateContestPayload | UpdateContestPayload) => 
     if (payload.startDate !== undefined)
         formData.append("startDate", payload.startDate);
     if (payload.endDate !== undefined) formData.append("endDate", payload.endDate);
+    // "" tells the backend to clear the deadline
+    if (payload.joinDeadline !== undefined)
+        formData.append("joinDeadline", payload.joinDeadline ?? "");
     if (payload.branches !== undefined)
         formData.append("branches", JSON.stringify(payload.branches));
     if (payload.media) formData.append("media", payload.media);
@@ -75,6 +80,37 @@ export const contestApi = {
         const { data } = await apiClient.patch<ApiEnvelope<Contest>>(
             `/contest/${id}/status`,
             { isActive }
+        );
+        return data.data;
+    },
+
+    /** POST /contest/:id/join — "I'm in" (employees). */
+    join: async (id: string): Promise<void> => {
+        await apiClient.post(`/contest/${id}/join`);
+    },
+
+    /** DELETE /contest/:id/join — withdraw before the join deadline. */
+    withdraw: async (id: string): Promise<void> => {
+        await apiClient.delete(`/contest/${id}/join`);
+    },
+
+    /** GET /contest/:id/participants */
+    participants: async (id: string): Promise<ContestParticipant[]> => {
+        const { data } = await apiClient.get<ApiEnvelope<ContestParticipant[]>>(
+            `/contest/${id}/participants`
+        );
+        return data.data;
+    },
+
+    /** DELETE /contest/:id/participants/:userId — Head only; blocks rejoining. */
+    removeParticipant: async (id: string, userId: string): Promise<void> => {
+        await apiClient.delete(`/contest/${id}/participants/${userId}`);
+    },
+
+    /** GET /contest/:id/leaderboard — joined participants ranked by revenue. */
+    leaderboard: async (id: string): Promise<ContestLeaderboardRow[]> => {
+        const { data } = await apiClient.get<ApiEnvelope<ContestLeaderboardRow[]>>(
+            `/contest/${id}/leaderboard`
         );
         return data.data;
     },

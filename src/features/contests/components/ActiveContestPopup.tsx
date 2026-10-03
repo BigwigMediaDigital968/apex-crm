@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router";
 import { useMyBranchContestsQuery } from "../hooks/useContests";
 import { useAuthStore } from "@/store/auth.store";
+import { isJoinOpen } from "@/types/contest";
+import { ContestJoinButton } from "./ContestJoinButton";
 
 export const ActiveContestPopup = () => {
   const user = useAuthStore((state) => state.user);
   const { data: contests, isLoading } = useMyBranchContestsQuery();
 
-  const [activeContest, setActiveContest] = useState<any | null>(null);
+  const [activeContestId, setActiveContestId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -16,14 +19,19 @@ export const ActiveContestPopup = () => {
     const isDismissed = sessionStorage.getItem("dismissed_contest_popup");
     if (isDismissed) return;
 
-    // Pick the first active contest returned for this branch
-    const matched = contests.find((c) => c.isActive);
+    // Prefer a contest the user can still join; otherwise the first active one
+    const matched =
+      contests.find((c) => !c.hasJoined && isJoinOpen(c)) ??
+      contests.find((c) => c.isActive);
 
     if (matched) {
-      setActiveContest(matched);
+      setActiveContestId(matched._id);
       setIsOpen(true);
     }
   }, [contests, isLoading]);
+
+  // Read the live object so the join button reflects hasJoined after a refetch.
+  const activeContest = contests?.find((c) => c._id === activeContestId) ?? null;
 
   const handleClose = () => {
     setIsOpen(false);
@@ -119,22 +127,16 @@ export const ActiveContestPopup = () => {
         </div>
 
         {/* Footer Actions */}
-        {/* <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="rounded-xl px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-          >
-            Dismiss
-          </button>
+        <div className="space-y-2 pt-2 border-t border-slate-100">
+          <ContestJoinButton contest={activeContest} fullWidth />
           <Link
             to={`/contest/${activeContest._id}`}
             onClick={handleClose}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700 transition-colors shadow-xs"
+            className="block text-center text-xs font-semibold text-primary hover:underline"
           >
-            View Details
+            View details
           </Link>
-        </div> */}
+        </div>
       </div>
     </div>
   );

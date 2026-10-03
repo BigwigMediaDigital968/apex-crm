@@ -2,16 +2,21 @@ import { useBranchesQuery } from "@/features/branches";
 import { Link, useParams } from "react-router";
 import { useContestId, useToggleContestStatus } from "../hooks/useContests";
 import { ContestLeaderboard } from "../components/ContestLeaderboard";
+import { ContestJoinButton } from "../components/ContestJoinButton";
+import { ContestParticipants } from "../components/ContestParticipants";
 import { usePermissions } from "@/hooks/usePermissions";
 import { PERMISSIONS, ROLES } from "@/types/auth";
+import { getJoinDeadline } from "@/types/contest";
 import { useAuthStore } from "@/store/auth.store";
 
 export const ContestDetailsPage = () => {
     const { id } = useParams<{ id: string }>();
     const { hasPermission } = usePermissions();
-    // Employees see only the contest brief — no leaderboard or branch targeting.
+    // Employees don't see branch targeting.
     const isEmployee = useAuthStore((s) => s.user?.role) === ROLES.EMPLOYEE;
     const canUpdate = hasPermission(PERMISSIONS.CONTEST_UPDATE);
+    const canJoin = hasPermission(PERMISSIONS.CONTEST_JOIN);
+    const canViewLeaderboard = hasPermission(PERMISSIONS.CONTEST_LEADERBOARD_VIEW);
     // Employees reach this page from Live Contests, not the full list.
     const backPath = hasPermission(PERMISSIONS.CONTEST_VIEW_ALL) ? "/contests" : "/contests/live";
 
@@ -166,8 +171,7 @@ export const ContestDetailsPage = () => {
                         </p>
                     </div>
 
-                    {/* Contest Results Section (Prepared for Future Data) */}
-                    {!isEmployee && (
+                    {canViewLeaderboard && (
                     <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 space-y-4 shadow-sm">
                         <div className="flex items-center justify-between border-b border-outline-variant/20 pb-3">
                             <div className="flex items-center gap-2">
@@ -187,6 +191,22 @@ export const ContestDetailsPage = () => {
 
                 {/* Right Side: Meta Info Sidebar (1 Col) */}
                 <div className="space-y-6">
+
+                    {canJoin && (
+                        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 space-y-3 shadow-sm">
+                            <div>
+                                <h3 className="text-sm font-bold text-on-surface">
+                                    {contest.hasJoined ? "You're competing" : "Want to compete?"}
+                                </h3>
+                                <p className="text-[11px] text-on-surface-variant mt-0.5">
+                                    {contest.hasJoined
+                                        ? "Your revenue from start to end date counts toward the leaderboard."
+                                        : "Join to appear on the leaderboard. Revenue counts from the start date, whenever you join."}
+                                </p>
+                            </div>
+                            <ContestJoinButton contest={contest} fullWidth />
+                        </div>
+                    )}
 
                     {/* Timeline & Schedule */}
                     <div className="rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-5 space-y-4 shadow-sm">
@@ -224,8 +244,28 @@ export const ContestDetailsPage = () => {
                                     </p>
                                 </div>
                             </div>
+
+                            <div className="flex items-start gap-3">
+                                <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-outlined text-base">how_to_reg</span>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-on-surface-variant/70">Join By</p>
+                                    <p className="text-xs font-bold text-on-surface">
+                                        {getJoinDeadline(contest).toLocaleString(undefined, {
+                                            dateStyle: "medium",
+                                            timeStyle: "short",
+                                        })}
+                                        {!contest.joinDeadline && (
+                                            <span className="ml-1 font-normal text-on-surface-variant">(until it ends)</span>
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
+
+                    <ContestParticipants contest={contest} />
 
                     {/* Target Branches */}
                     {!isEmployee && (

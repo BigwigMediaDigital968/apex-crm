@@ -15,7 +15,15 @@ export interface ContestFormProps {
     className?: string;
 }
 
-const toLocalInput = (iso?: string) => (iso ? iso.slice(0, 16) : "");
+// datetime-local wants local wall-clock time; slicing the UTC ISO string would
+// shift the value by the timezone offset on every save.
+const toLocalInput = (iso?: string | null) => {
+    if (!iso) return "";
+    const date = new Date(iso);
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+        .toISOString()
+        .slice(0, 16);
+};
 
 export const ContestForm = ({ contest, onSuccess, onCancel, className = "" }: ContestFormProps) => {
     const isEditMode = Boolean(contest);
@@ -28,6 +36,7 @@ export const ContestForm = ({ contest, onSuccess, onCancel, className = "" }: Co
     const [description, setDescription] = useState("");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+    const [joinDeadline, setJoinDeadline] = useState("");
     const [selectedBranches, setSelectedBranches] = useState<Set<string>>(new Set());
     const [mediaFile, setMediaFile] = useState<File | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -38,6 +47,7 @@ export const ContestForm = ({ contest, onSuccess, onCancel, className = "" }: Co
         setDescription(contest?.description ?? "");
         setStartDate(toLocalInput(contest?.startDate));
         setEndDate(toLocalInput(contest?.endDate));
+        setJoinDeadline(toLocalInput(contest?.joinDeadline));
         setSelectedBranches(
             new Set((contest?.branches ?? []).map((b) => (typeof b === "string" ? b : b._id)))
         );
@@ -88,8 +98,11 @@ export const ContestForm = ({ contest, onSuccess, onCancel, className = "" }: Co
         if (selectedBranches.size === 0) next.branches = "Select at least one branch";
         if (!startDate) next.startDate = "Start date is required";
         if (!endDate) next.endDate = "End date is required";
-        if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
-            next.endDate = "End date cannot be before start date";
+        if (startDate && endDate && new Date(endDate) <= new Date(startDate)) {
+            next.endDate = "End date must be after the start date";
+        }
+        if (joinDeadline && endDate && new Date(joinDeadline) > new Date(endDate)) {
+            next.joinDeadline = "Join deadline cannot be after the end date";
         }
         setErrors(next);
         return Object.keys(next).length === 0;
@@ -105,6 +118,8 @@ export const ContestForm = ({ contest, onSuccess, onCancel, className = "" }: Co
             branches: Array.from(selectedBranches),
             startDate: new Date(startDate).toISOString(),
             endDate: new Date(endDate).toISOString(),
+            // null clears an existing deadline on edit
+            joinDeadline: joinDeadline ? new Date(joinDeadline).toISOString() : null,
             media: mediaFile,
         };
 
@@ -192,6 +207,43 @@ export const ContestForm = ({ contest, onSuccess, onCancel, className = "" }: Co
                         <p className="font-body-sm text-[11px] font-medium text-error">{errors.endDate}</p>
                     )}
                 </div>
+            </div>
+
+            {/* Join Deadline */}
+            <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                    <label
+                        htmlFor="contest-join-deadline"
+                        className="block font-label-md text-xs font-semibold text-on-surface-variant"
+                    >
+                        Join Deadline <span className="font-normal text-on-surface-variant/60">(optional)</span>
+                    </label>
+                    {joinDeadline && (
+                        <button
+                            type="button"
+                            onClick={() => setJoinDeadline("")}
+                            className="text-[11px] font-medium text-on-surface-variant/70 hover:underline"
+                        >
+                            Clear
+                        </button>
+                    )}
+                </div>
+                <input
+                    id="contest-join-deadline"
+                    type="datetime-local"
+                    value={joinDeadline}
+                    max={endDate || undefined}
+                    onChange={(e) => setJoinDeadline(e.target.value)}
+                    className="w-full rounded-xl border border-outline-variant/40 bg-surface-container-low px-3.5 py-2.5 font-body-md text-sm text-on-surface outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+                {errors.joinDeadline ? (
+                    <p className="font-body-sm text-[11px] font-medium text-error">{errors.joinDeadline}</p>
+                ) : (
+                    <p className="font-body-sm text-[11px] text-on-surface-variant/70">
+                        Last moment employees can tap "I'm in". Leave empty to keep joining open until the contest ends.
+                        Revenue always counts from the start date.
+                    </p>
+                )}
             </div>
 
             {/* Target Branches */}

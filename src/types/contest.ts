@@ -23,10 +23,41 @@ export interface Contest {
     media?: ContestMedia;
     startDate: string;
     endDate: string;
+    /** Last moment to join/withdraw; falls back to endDate when unset. */
+    joinDeadline?: string | null;
+    participantCount?: number;
     isActive: boolean;
     createdBy: ContestCreatorRef | string;
     createdAt: string;
     updatedAt: string;
+    /** Present on /contest/my-branch and /contest/:id. */
+    hasJoined?: boolean;
+}
+
+/** Joining closes at joinDeadline, or when the contest ends. */
+export const getJoinDeadline = (contest: Pick<Contest, "joinDeadline" | "endDate">) =>
+    new Date(contest.joinDeadline || contest.endDate);
+
+export const isJoinOpen = (contest: Contest, now = new Date()) =>
+    contest.isActive && now <= getJoinDeadline(contest);
+
+export interface ContestParticipant {
+    _id: string;
+    contest: string;
+    user: { _id: string; name: string; email: string };
+    branch: { _id: string; name: string; branchCode?: string };
+    joinedAt: string;
+    status: "joined" | "withdrawn" | "removed";
+}
+
+export interface ContestLeaderboardRow {
+    rank: number;
+    employeeId: string;
+    name: string;
+    branchName: string;
+    verified: number;
+    pending: number;
+    entries: number;
 }
 
 export interface ContestListQuery {
@@ -53,6 +84,8 @@ export interface CreateContestPayload {
     branches: string[];
     startDate: string; // ISO datetime
     endDate: string; // ISO datetime
+    /** ISO datetime; null clears it (joining stays open until endDate). */
+    joinDeadline?: string | null;
     media?: File | null;
 }
 

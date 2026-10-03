@@ -103,6 +103,25 @@ const EMPTY_PROFILE: ProfileFormState = {
     documents: [],
 };
 
+/**
+ * The HR profile's branch mirrors the saved account branch (backend enforces
+ * this — employeeBranchSync.service): employees/managers use their one
+ * branch, admins keep the profile branch if it's still one of theirs, Head is
+ * unrestricted.
+ */
+const resolveProfileBranchId = (
+    account: { role: Role; branches: Parameters<typeof refId>[0][] } | undefined,
+    profileBranchId: string
+) => {
+    if (!account || account.role === ROLES.HEAD) return profileBranchId;
+    const accountBranchIds = account.branches.map((b) => refId(b));
+    const isSingleBranch =
+        account.role === ROLES.EMPLOYEE || account.role === ROLES.MANAGER;
+    if (!isSingleBranch && accountBranchIds.includes(profileBranchId))
+        return profileBranchId;
+    return accountBranchIds[0] ?? profileBranchId;
+};
+
 // ----------------------------------------------------------------------------
 // Page
 // ----------------------------------------------------------------------------
@@ -317,14 +336,26 @@ const EmployeeFormPage = () => {
         "create"
     );
 
+    // Re-runs when the account is refetched, so a saved branch change
+    // shows up in the profile form.
     useEffect(() => {
         if (!isEditMode) return;
         if (existingProfile) {
+            const savedBranchId = refId(existingProfile.branch);
+            const branchId = resolveProfileBranchId(
+                existingEmployee,
+                savedBranchId
+            );
             setProfileMode("update");
             setProfileForm({
                 employeeCode: existingProfile.employeeCode,
-                branchId: refId(existingProfile.branch),
-                reportingManager: refId(existingProfile.reportingManager),
+                branchId,
+                // Managers are single-branch, so one from the old branch
+                // can't stay on after a move.
+                reportingManager:
+                    branchId === savedBranchId
+                        ? refId(existingProfile.reportingManager)
+                        : "",
                 designation: existingProfile.designation ?? "",
                 department: existingProfile.department ?? "",
                 employmentType: existingProfile.employmentType,
@@ -358,10 +389,10 @@ const EmployeeFormPage = () => {
             });
         } else {
             setProfileMode("create");
-            setProfileForm({
-                ...profileForm,
+            setProfileForm((prev) => ({
+                ...prev,
                 branchId: refId(existingEmployee?.branches[0]),
-            })
+            }));
         }
     }, [isEditMode, existingProfile, existingEmployee]);
 
@@ -1147,10 +1178,22 @@ const EmployeeFormPage = () => {
                                                     expand_more
                                                 </span>
                                             </div>
-                                            {profileErrors.branchId && (
+                                            {profileErrors.branchId ? (
                                                 <p className="font-body-sm text-[11px] text-error">
                                                     {profileErrors.branchId}
                                                 </p>
+                                            ) : existingProfile &&
+                                              profileForm.branchId !==
+                                                  refId(existingProfile.branch) ? (
+                                                <p className="font-body-sm text-[11px] text-amber-700">
+                                                    Updated to match the account's branch — save the profile to apply.
+                                                </p>
+                                            ) : (
+                                                existingEmployee && (
+                                                    <p className="font-body-sm text-[11px] text-on-surface-variant/70">
+                                                        Follows the branch set in Account &amp; Access.
+                                                    </p>
+                                                )
                                             )}
                                         </div>
 

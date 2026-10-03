@@ -1,5 +1,8 @@
 import { Link } from "react-router";
 import { useMyBranchContestsQuery } from "../hooks/useContests";
+import { usePermissions } from "@/hooks/usePermissions";
+import { PERMISSIONS } from "@/types/auth";
+import { getJoinDeadline, isJoinOpen } from "@/types/contest";
 
 const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-IN", {
@@ -12,6 +15,7 @@ const formatDate = (date: string) =>
 // lists the contests running in their own branch via GET /contest/my-branch.
 export const LiveContestsPage = () => {
     const { data: contests, isLoading, isError } = useMyBranchContestsQuery();
+    const canJoin = usePermissions().hasPermission(PERMISSIONS.CONTEST_JOIN);
 
     const now = new Date();
     const visible = (contests ?? []).filter(
@@ -26,7 +30,9 @@ export const LiveContestsPage = () => {
                     Live Contests
                 </h1>
                 <p className="text-xs text-on-surface-variant mt-1">
-                    Contests currently running in your branch. Open one to see the live leaderboard.
+                    {canJoin
+                        ? "Running and upcoming contests in your branch. Tap \"I'm in\" on one to compete."
+                        : "Running and upcoming contests in your branch. Open one to see the live leaderboard."}
                 </p>
             </div>
 
@@ -93,6 +99,23 @@ export const LiveContestsPage = () => {
                                     <p className="text-xs text-on-surface-variant line-clamp-3 flex-1">
                                         {contest.description}
                                     </p>
+                                    {canJoin &&
+                                        (contest.hasJoined ? (
+                                            <span className="inline-flex w-fit items-center gap-1 rounded-lg bg-emerald-500/10 px-2 py-1 text-[11px] font-bold text-emerald-700">
+                                                <span className="material-symbols-outlined text-sm">verified</span>
+                                                You're in
+                                            </span>
+                                        ) : isJoinOpen(contest, now) ? (
+                                            <span className="inline-flex w-fit items-center gap-1 rounded-lg bg-primary/10 px-2 py-1 text-[11px] font-bold text-primary">
+                                                <span className="material-symbols-outlined text-sm">back_hand</span>
+                                                Join by {formatDate(getJoinDeadline(contest).toISOString())}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex w-fit items-center gap-1 rounded-lg bg-surface-container-high px-2 py-1 text-[11px] font-bold text-on-surface-variant">
+                                                <span className="material-symbols-outlined text-sm">lock</span>
+                                                Joining closed
+                                            </span>
+                                        ))}
                                     <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20 text-[11px] text-on-surface-variant">
                                         <span className="flex items-center gap-1">
                                             <span className="material-symbols-outlined text-sm">calendar_today</span>
